@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import TurfCard from "@/components/turfs/TurfCard";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
 
 const sampleTurfs = [
@@ -55,23 +55,35 @@ const sampleTurfs = [
 
 const FeaturedTurfs = () => {
   return (
-    <section className="py-20 bg-gradient-to-b from-background to-card">
-      <div className="container px-4">
+    <section className="py-24 relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-gradient-to-b from-background via-card/50 to-background" />
+      <div className="absolute inset-0 grid-overlay opacity-40" />
+      
+      {/* Ambient glow */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
+
+      <div className="container px-4 relative z-10">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-12">
-          <div className="space-y-2">
-            <Badge variant="success">🔥 Popular Near You</Badge>
-            <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground">
-              Featured <span className="text-primary">Turfs</span>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
+          <div className="space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow-sm">
+                <Zap className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <Badge variant="success" className="animate-pulse-glow">🔥 Popular Near You</Badge>
+            </div>
+            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground">
+              Featured <span className="text-gradient">Turfs</span>
             </h2>
             <p className="text-muted-foreground max-w-md">
               Discover top-rated sports turfs loved by players in your area
             </p>
           </div>
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="group hover:border-primary/50 transition-colors">
             <Link to="/turfs" className="flex items-center gap-2">
               View All Turfs
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </Button>
         </div>

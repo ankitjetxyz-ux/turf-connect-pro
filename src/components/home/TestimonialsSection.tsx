@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, ChevronLeft, ChevronRight } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, Quote } from "lucide-react";
 import { useState } from "react";
 
 const testimonials = [
@@ -50,15 +50,25 @@ const TestimonialsSection = () => {
   };
 
   return (
-    <section className="py-20">
-      <div className="container px-4">
+    <section className="py-24 relative overflow-hidden">
+      {/* Background */}
+      <div className="absolute inset-0 bg-background" />
+      <div className="absolute inset-0 dot-pattern opacity-50" />
+      
+      {/* Ambient glow */}
+      <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
+
+      <div className="container px-4 relative z-10">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <Badge variant="premium" className="mb-4">Testimonials</Badge>
-          <h2 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-4">
-            What Our <span className="text-primary">Users Say</span>
+          <Badge variant="premium" className="mb-4">
+            <Quote className="w-4 h-4 mr-1" />
+            Testimonials
+          </Badge>
+          <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+            What Our <span className="text-gradient">Users Say</span>
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground text-lg">
             Join thousands of happy players and turf owners on our platform
           </p>
         </div>
@@ -69,36 +79,44 @@ const TestimonialsSection = () => {
             <Card
               key={testimonial.id}
               variant="interactive"
-              className="animate-slide-up opacity-0"
+              className="animate-slide-up opacity-0 hover-lift glass-card group"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <CardContent className="p-6">
+              <CardContent className="p-6 relative">
+                {/* Quote icon */}
+                <Quote className="absolute top-4 right-4 w-8 h-8 text-primary/10 group-hover:text-primary/20 transition-colors" />
+                
                 {/* Rating */}
                 <div className="flex gap-1 mb-4">
                   {Array.from({ length: 5 }).map((_, i) => (
                     <Star
                       key={i}
-                      className={`w-4 h-4 ${
+                      className={`w-4 h-4 transition-colors ${
                         i < testimonial.rating
                           ? "text-primary fill-primary"
-                          : "text-muted"
+                          : "text-muted/50"
                       }`}
                     />
                   ))}
                 </div>
 
                 {/* Quote */}
-                <p className="text-muted-foreground text-sm mb-6 line-clamp-4">
+                <p className="text-muted-foreground text-sm mb-6 line-clamp-4 leading-relaxed">
                   "{testimonial.text}"
                 </p>
 
                 {/* Author */}
                 <div className="flex items-center gap-3">
-                  <img
-                    src={testimonial.avatar}
-                    alt={testimonial.name}
-                    className="w-10 h-10 rounded-full object-cover border-2 border-primary/20"
-                  />
+                  <div className="relative">
+                    <img
+                      src={testimonial.avatar}
+                      alt={testimonial.name}
+                      className="w-11 h-11 rounded-full object-cover border-2 border-primary/30 group-hover:border-primary/60 transition-colors"
+                    />
+                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
+                      <Star className="w-2.5 h-2.5 text-primary-foreground fill-primary-foreground" />
+                    </div>
+                  </div>
                   <div>
                     <div className="font-heading font-semibold text-foreground text-sm">
                       {testimonial.name}
@@ -115,8 +133,11 @@ const TestimonialsSection = () => {
 
         {/* Testimonials Carousel (Mobile) */}
         <div className="md:hidden relative">
-          <Card variant="glass" className="overflow-hidden">
+          <Card variant="glass" className="overflow-hidden glass-card">
             <CardContent className="p-8">
+              {/* Quote icon */}
+              <Quote className="w-10 h-10 text-primary/20 mx-auto mb-4" />
+              
               {/* Rating */}
               <div className="flex gap-1 mb-4 justify-center">
                 {Array.from({ length: 5 }).map((_, i) => (
@@ -125,14 +146,14 @@ const TestimonialsSection = () => {
                     className={`w-5 h-5 ${
                       i < testimonials[activeIndex].rating
                         ? "text-primary fill-primary"
-                        : "text-muted"
+                        : "text-muted/50"
                     }`}
                   />
                 ))}
               </div>
 
               {/* Quote */}
-              <p className="text-muted-foreground text-center mb-6">
+              <p className="text-muted-foreground text-center mb-6 leading-relaxed">
                 "{testimonials[activeIndex].text}"
               </p>
 
@@ -141,7 +162,7 @@ const TestimonialsSection = () => {
                 <img
                   src={testimonials[activeIndex].avatar}
                   alt={testimonials[activeIndex].name}
-                  className="w-14 h-14 rounded-full object-cover border-2 border-primary"
+                  className="w-16 h-16 rounded-full object-cover border-2 border-primary shadow-glow-sm"
                 />
                 <div className="text-center">
                   <div className="font-heading font-semibold text-foreground">
@@ -159,23 +180,24 @@ const TestimonialsSection = () => {
           <div className="flex justify-center gap-4 mt-6">
             <button
               onClick={prevTestimonial}
-              className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="w-11 h-11 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary hover:border-primary/50 transition-all duration-300"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <div className="flex items-center gap-2">
               {testimonials.map((_, i) => (
-                <div
+                <button
                   key={i}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    i === activeIndex ? "bg-primary" : "bg-muted"
+                  onClick={() => setActiveIndex(i)}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                    i === activeIndex ? "bg-primary w-6" : "bg-muted hover:bg-muted-foreground/50"
                   }`}
                 />
               ))}
             </div>
             <button
               onClick={nextTestimonial}
-              className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+              className="w-11 h-11 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary hover:border-primary/50 transition-all duration-300"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
