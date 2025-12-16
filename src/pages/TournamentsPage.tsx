@@ -187,8 +187,9 @@ const TournamentsPage = () => {
               Tournaments
             </Badge>
             <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4">
-              Compete & <span className="text-gradient neon-glow">Win Big</span>
+              Compete & <span className="text-gradient">Win Big</span>
             </h1>
+            <div className="glow-divider glow-divider-lg mx-auto my-4" />
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
               Join exciting tournaments, showcase your skills, and win amazing prizes across multiple sports
             </p>
