@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import TurfsPage from "./pages/TurfsPage";
 import TurfDetailPage from "./pages/TurfDetailPage";
+import TournamentsPage from "./pages/TournamentsPage";
+import AboutPage from "./pages/AboutPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import NotFound from "./pages/NotFound";
@@ -22,6 +24,8 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/turfs" element={<TurfsPage />} />
           <Route path="/turfs/:id" element={<TurfDetailPage />} />
+          <Route path="/tournaments" element={<TournamentsPage />} />
+          <Route path="/about" element={<AboutPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

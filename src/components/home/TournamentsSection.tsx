@@ -59,8 +59,8 @@ const TournamentsSection = () => {
   return (
     <section className="py-24 relative overflow-hidden">
       {/* Background Effects */}
-      <div className="absolute inset-0 grid-overlay" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl animate-glow-pulse" />
+      <div className="absolute inset-0 grid-overlay-intense" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/8 rounded-full blur-3xl animate-glow-pulse" />
       
       <div className="container px-4 relative z-10">
         {/* Header */}
