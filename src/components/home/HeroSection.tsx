@@ -38,9 +38,12 @@ const HeroSection = () => {
 
           {/* Heading */}
           <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight animate-slide-up opacity-0 stagger-2">
-            <span className="inline-block">Book Your Perfect</span>
-            <span className="text-gradient block mt-2 neon-glow">Sports Turf</span>
+            <span className="inline-block text-foreground">Book Your Perfect</span>
+            <span className="text-gradient block mt-2">Sports Turf</span>
           </h1>
+
+          {/* Animated Glow Divider */}
+          <div className="glow-divider glow-divider-lg animate-fade-in opacity-0 stagger-2" />
 
           {/* Subtitle */}
           <p className="text-muted-foreground text-lg md:text-xl max-w-2xl mx-auto animate-slide-up opacity-0 stagger-3 leading-relaxed">

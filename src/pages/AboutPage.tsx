@@ -115,9 +115,10 @@ const AboutPage = () => {
               <Target className="w-4 h-4 mr-2" />
               About Us
             </Badge>
-            <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-6">
-              Revolutionizing <span className="text-gradient neon-glow">Sports Booking</span>
+            <h1 className="font-heading text-4xl md:text-5xl lg:text-6xl font-bold text-foreground mb-4">
+              Revolutionizing <span className="text-gradient">Sports Booking</span>
             </h1>
+            <div className="glow-divider glow-divider-lg mx-auto my-4" />
             <p className="text-muted-foreground text-lg md:text-xl max-w-3xl mx-auto leading-relaxed">
               TurfBook is India's premier sports turf booking platform, connecting players with premium 
               sports facilities across the country. We're on a mission to make sports accessible to everyone.

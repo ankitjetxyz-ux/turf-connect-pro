@@ -128,11 +128,12 @@ const TurfsPage = () => {
       <main className="pt-24 pb-12 relative z-10">
         <div className="container px-4">
           {/* Header */}
-          <div className="mb-8">
+          <div className="mb-8 text-center">
             <Badge variant="success" className="mb-4">Browse Turfs</Badge>
             <h1 className="font-heading text-3xl md:text-4xl font-bold text-foreground mb-2">
-              Find Your Perfect <span className="text-primary">Turf</span>
+              Find Your Perfect <span className="text-gradient">Turf</span>
             </h1>
+            <div className="glow-divider mx-auto my-4" />
             <p className="text-muted-foreground">
               Discover and book premium sports turfs near you
             </p>
