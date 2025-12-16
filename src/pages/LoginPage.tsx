@@ -24,10 +24,15 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
+      {/* Background Effects */}
+      <div className="absolute inset-0 grid-overlay-intense" />
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px] animate-glow-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: '1s' }} />
+
       <Navbar />
       
-      <main className="pt-24 pb-12 flex items-center justify-center min-h-screen">
+      <main className="pt-24 pb-12 flex items-center justify-center min-h-screen relative z-10">
         <div className="container px-4 max-w-md">
           <Card variant="glass" className="animate-scale-in">
             <CardHeader className="text-center">

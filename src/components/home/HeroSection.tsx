@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search, MapPin, Calendar, ArrowRight, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import heroImage from "@/assets/hero-turf.jpg";
 
 const HeroSection = () => {
@@ -17,12 +18,12 @@ const HeroSection = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/60" />
       </div>
 
-      {/* Grid Overlay */}
-      <div className="absolute inset-0 grid-overlay opacity-60" />
+      {/* Grid Overlay - Enhanced */}
+      <div className="absolute inset-0 grid-overlay-intense opacity-70" />
       
       {/* Ambient Glow Effects */}
-      <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/10 rounded-full blur-[120px] animate-glow-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/12 rounded-full blur-[120px] animate-glow-pulse" />
+      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-primary/8 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: '1s' }} />
 
       {/* Content */}
       <div className="container relative z-10 px-4 pt-20">
@@ -97,12 +98,14 @@ const HeroSection = () => {
 
           {/* CTA Buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up opacity-0 stagger-5">
-            <Button variant="hero" size="xl" className="group shadow-glow hover:shadow-elevated transition-all duration-300">
-              Explore Turfs
-              <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            <Button variant="hero" size="xl" className="group shadow-glow hover:shadow-elevated transition-all duration-300" asChild>
+              <Link to="/turfs">
+                Explore Turfs
+                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </Link>
             </Button>
-            <Button variant="glass" size="xl" className="hover:bg-secondary/50 transition-all duration-300">
-              List Your Turf
+            <Button variant="glass" size="xl" className="hover:bg-secondary/50 transition-all duration-300" asChild>
+              <Link to="/register">List Your Turf</Link>
             </Button>
           </div>
         </div>

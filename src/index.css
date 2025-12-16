@@ -156,16 +156,24 @@
   /* Grid background overlay */
   .grid-overlay {
     background-image: 
-      linear-gradient(hsl(82 84% 55% / 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(82 84% 55% / 0.03) 1px, transparent 1px);
-    background-size: 60px 60px;
+      linear-gradient(hsl(82 84% 55% / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(82 84% 55% / 0.06) 1px, transparent 1px);
+    background-size: 50px 50px;
   }
 
   .grid-overlay-dense {
     background-image: 
-      linear-gradient(hsl(82 84% 55% / 0.05) 1px, transparent 1px),
-      linear-gradient(90deg, hsl(82 84% 55% / 0.05) 1px, transparent 1px);
+      linear-gradient(hsl(82 84% 55% / 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(82 84% 55% / 0.08) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+
+  .grid-overlay-intense {
+    background-image: 
+      linear-gradient(hsl(82 84% 55% / 0.1) 1px, transparent 1px),
+      linear-gradient(90deg, hsl(82 84% 55% / 0.1) 1px, transparent 1px),
+      radial-gradient(ellipse at 50% 50%, hsl(82 84% 55% / 0.03) 0%, transparent 70%);
+    background-size: 50px 50px, 50px 50px, 100% 100%;
   }
 
   /* Dot pattern background */
