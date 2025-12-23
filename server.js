@@ -8,8 +8,19 @@ const authRoutes = require("./routes/authRoutes");
 const turfRoutes = require("./routes/turfRoutes");
 const slotRoutes = require("./routes/slotRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
+const tournamentRoutes = require("./routes/tournamentRoutes");
+const chatRoutes = require("./routes/chatRoutes");
+const paymentRoutes = require("./routes/paymentRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 
 const app = express();
+
+// Warn about commonly required environment variables to help local dev
+const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET"];
+const missing = requiredEnvs.filter((k) => !process.env[k]);
+if (missing.length > 0) {
+   console.warn(`⚠️  Missing env vars: ${missing.join(", ")}. See .env.example`);
+}
 
 /* =========================
    GLOBAL MIDDLEWARE
@@ -24,6 +35,10 @@ app.use("/api/auth", authRoutes);
 app.use("/api/turfs", turfRoutes);
 app.use("/api/slots", slotRoutes);
 app.use("/api/bookings", bookingRoutes);
+app.use("/api/tournaments", tournamentRoutes);
+app.use("/api/chat", chatRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/contact", contactRoutes);
 
 /* =========================
    HEALTH CHECK

@@ -9,6 +9,8 @@ import TurfsPage from "./pages/TurfsPage";
 import TurfDetailPage from "./pages/TurfDetailPage";
 import TournamentsPage from "./pages/TournamentsPage";
 import AboutPage from "./pages/AboutPage";
+import ContactPage from "./pages/ContactPage";
+import ComingSoonPage from "./pages/ComingSoonPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import NotFound from "./pages/NotFound";
@@ -19,6 +21,7 @@ import ProtectedRoute from "./routes/ProtectedRoute";
 import TurfSlotsPage from "./pages/client/TurfSlotsPage";
 import AddTurfPage from "./pages/client/AddTurfPage";
 import ClientBookings from "./pages/client/ClientBookings";
+import ChatPage from "./pages/ChatPage";
 
 
 const queryClient = new QueryClient();
@@ -36,6 +39,11 @@ const App = () => (
           <Route path="/turfs/:id" element={<TurfDetailPage />} />
           <Route path="/tournaments" element={<TournamentsPage />} />
           <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/forgot-password" element={<ComingSoonPage />} />
+          <Route path="/partner" element={<ComingSoonPage />} />
+          <Route path="/advertising" element={<ComingSoonPage />} />
+          <Route path="/api-docs" element={<ComingSoonPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route
@@ -88,6 +96,14 @@ const App = () => (
           />
 
           {/* CATCH ALL */}
+          <Route
+            path="/chat"
+            element={
+              <ProtectedRoute>
+                <ChatPage />
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

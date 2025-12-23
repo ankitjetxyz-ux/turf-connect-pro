@@ -33,8 +33,10 @@ const AddTurfPage = () => {
 
       alert("Turf added successfully");
       navigate("/client/dashboard");
-    } catch (err: any) {
-      alert(err.response?.data?.error || "Failed to add turf");
+    } catch (err: unknown) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : "Failed to add turf";
+      alert(message);
     }
   };
 

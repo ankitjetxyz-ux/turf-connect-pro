@@ -38,7 +38,8 @@ const cityFilters = [
 ];
 
 const TournamentsPage = () => {
-  const [tournaments, setTournaments] = useState<any[]>([]);
+  type Tournament = { id: string | number; image?: string; name?: string; date?: string; time?: string; location?: string; entry_fee?: number; spots_left?: number; sport?: string; city?: string; status?: string; already_joined?: boolean };
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSport, setSelectedSport] = useState("All Sports");
   const [selectedCity, setSelectedCity] = useState("All Cities");
@@ -75,8 +76,10 @@ const TournamentsPage = () => {
 
       const res = await api.get("/tournaments");
       setTournaments(res.data || []);
-    } catch (err: any) {
-      alert(err.response?.data?.error || "Join failed");
+    } catch (err: unknown) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : "Join failed";
+      alert(message);
     }
   };
 

@@ -1,11 +1,12 @@
 const express = require("express");
-const { verifyToken } = require("../middleware/authMiddleware");
-const chatController = require("../controllers/chatController");
-
 const router = express.Router();
+const chatController = require("../controllers/chatController");
+const { verifyToken } = require("../middleware/authMiddleware");
 
-router.get("/booking/:bookingId", verifyToken, chatController.getChatByBookingId);
-router.get("/messages/:chatId", verifyToken, chatController.getMessages);
-router.post("/send", verifyToken, chatController.sendMessage);
+// Protected chat routes
+router.post("/create", verifyToken, chatController.createConversation);
+router.get("/conversations/:userId", verifyToken, chatController.listConversations);
+router.get("/:chatId/messages", verifyToken, chatController.getMessages);
+router.post("/:chatId/message", verifyToken, chatController.postMessage);
 
 module.exports = router;

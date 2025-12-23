@@ -3,57 +3,39 @@ import { Button } from "@/components/ui/button";
 import TurfCard from "@/components/turfs/TurfCard";
 import { ArrowRight, Zap } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import api from "@/services/api";
 
-const sampleTurfs = [
-  {
-    id: "1",
-    name: "Green Arena Sports Complex",
-    location: "Andheri West, Mumbai",
-    image: "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800",
-    rating: 4.8,
-    reviews: 245,
-    price: 1200,
-    sports: ["Football", "Cricket", "Badminton"],
-    availableSlots: 5,
-    featured: true,
-  },
-  {
-    id: "2",
-    name: "Champions Turf Hub",
-    location: "Koramangala, Bangalore",
-    image: "https://images.unsplash.com/photo-1551958219-acbc608c6377?w=800",
-    rating: 4.6,
-    reviews: 189,
-    price: 800,
-    sports: ["Football", "Tennis"],
-    availableSlots: 8,
-  },
-  {
-    id: "3",
-    name: "Victory Sports Arena",
-    location: "Bandra East, Mumbai",
-    image: "https://images.unsplash.com/photo-1574629810360-7efbbe195018?w=800",
-    rating: 4.9,
-    reviews: 312,
-    price: 1500,
-    sports: ["Cricket", "Football", "Hockey", "Basketball"],
-    availableSlots: 2,
-    featured: true,
-  },
-  {
-    id: "4",
-    name: "Elite Sports Zone",
-    location: "Indiranagar, Bangalore",
-    image: "https://images.unsplash.com/photo-1459865264687-595d652de67e?w=800",
-    rating: 4.5,
-    reviews: 156,
-    price: 900,
-    sports: ["Football", "Volleyball"],
-    availableSlots: 12,
-  },
-];
+type Turf = {
+  id: string;
+  name: string;
+  location: string;
+  images: string;
+  price_per_slot: number;
+  description?: string;
+  facilities?: string;
+};
 
 const FeaturedTurfs = () => {
+  const [turfs, setTurfs] = useState<Turf[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchTurfs = async () => {
+      try {
+        const res = await api.get("/turfs");
+        // Sort by some logic or just take first 4
+        setTurfs(res.data.slice(0, 4));
+      } catch (error) {
+        console.error("Failed to fetch turfs", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTurfs();
+  }, []);
+
   return (
     <section className="py-24 relative overflow-hidden">
       {/* Background */}
@@ -89,17 +71,47 @@ const FeaturedTurfs = () => {
         </div>
 
         {/* Turf Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-          {sampleTurfs.map((turf, index) => (
-            <div
-              key={turf.id}
-              className="animate-slide-up opacity-0"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <TurfCard {...turf} />
-            </div>
-          ))}
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+             {[1,2,3,4].map(i => (
+               <div key={i} className="h-80 bg-muted/20 animate-pulse rounded-xl" />
+             ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {turfs.map((turf, index) => {
+              // Parse images if stored as comma-separated string
+              const imageList = turf.images ? turf.images.split(',') : [];
+              const displayImage = imageList.length > 0 ? imageList[0] : "https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800"; // Fallback
+
+              return (
+                <div
+                  key={turf.id}
+                  className="animate-slide-up opacity-0"
+                  style={{ animationDelay: `${index * 0.1}s` }}
+                >
+                  <TurfCard 
+                    id={turf.id}
+                    name={turf.name}
+                    location={turf.location}
+                    image={displayImage}
+                    price={turf.price_per_slot}
+                    rating={4.5} // Placeholder as backend might not have ratings yet
+                    reviews={0} // Placeholder
+                    sports={[]} // Placeholder or parse from facilities
+                    availableSlots={5} // Placeholder or fetch
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+        
+        {!loading && turfs.length === 0 && (
+           <div className="text-center py-10 text-muted-foreground">
+             No turfs available at the moment.
+           </div>
+        )}
       </div>
     </section>
   );

@@ -3,13 +3,14 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Clock, MessageCircle } from "lucide-react";
+import { User, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 
 const ClientBookings = () => {
-  const [bookings, setBookings] = useState<any[]>([]);
+  type Booking = { id: string | number; turf_name?: string; player_name?: string; slot_time?: string; status?: string };
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,15 +52,6 @@ const ClientBookings = () => {
                   </div>
 
                   <Badge>{b.status}</Badge>
-
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => navigate(`/chat/${b.id}`)}
-                  >
-                    <MessageCircle className="w-4 h-4 mr-2" />
-                    Chat with Player
-                  </Button>
                 </CardContent>
               </Card>
             ))}

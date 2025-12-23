@@ -22,6 +22,14 @@ router.post(
   bookSlot
 );
 
+// Create booking (pending) and return Razorpay order for payment
+router.post(
+  "/create-and-order",
+  verifyToken,
+  allowRoles("player"),
+  require('../controllers/bookingController').createBookingAndOrder
+);
+
 // Get player's own bookings
 router.get(
   "/my",
@@ -36,6 +44,14 @@ router.post(
   verifyToken,
   allowRoles("player"),
   cancelBooking
+);
+
+// Turf owner cancels a booking (full refund)
+router.post(
+  "/owner-cancel",
+  verifyToken,
+  allowRoles("client"),
+  require('../controllers/bookingController').ownerCancelBooking
 );
 
 /* =========================

@@ -27,6 +27,7 @@ const Navbar = () => {
     { path: "/turfs", label: "Browse Turfs" },
     { path: "/tournaments", label: "Tournaments" },
     { path: "/about", label: "About" },
+    { path: "/contact", label: "Contact" },
   ];
 
   const isActive = (path: string) => location.pathname === path;
@@ -77,6 +78,18 @@ const Navbar = () => {
                 {link.label}
               </Link>
             ))}
+            {isLoggedIn && (
+              <Link
+                to="/chat"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  isActive("/chat")
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                }`}
+              >
+                Chat
+              </Link>
+            )}
           </div>
 
           {/* DESKTOP ACTIONS */}
@@ -140,53 +153,84 @@ const Navbar = () => {
 
         {/* MOBILE MENU */}
         {isOpen && (
-          <div className="md:hidden pb-6 space-y-2">
+          <div className="md:hidden absolute top-16 left-0 right-0 p-4 space-y-2 glass-effect border-b border-border/30 animate-slide-down">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
                 to={link.path}
                 onClick={() => setIsOpen(false)}
-                className="block px-4 py-3 rounded-lg text-muted-foreground hover:bg-secondary"
+                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  isActive(link.path)
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                }`}
               >
                 {link.label}
               </Link>
             ))}
-
-            {!isLoggedIn && (
-              <>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link to="/login">Login</Link>
-                </Button>
-                <Button variant="hero" className="w-full" asChild>
-                  <Link to="/register">Register</Link>
-                </Button>
-              </>
-            )}
-
             {isLoggedIn && (
-              <>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() =>
-                    navigate(
-                      role === "client"
-                        ? "/client/dashboard"
-                        : "/player/dashboard"
-                    )
-                  }
-                >
-                  Dashboard
-                </Button>
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  onClick={handleLogout}
-                >
-                  Logout
-                </Button>
-              </>
+              <Link
+                to="/chat"
+                onClick={() => setIsOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                  isActive("/chat")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                }`}
+              >
+                Chat
+              </Link>
             )}
+
+            <div className="pt-2 space-y-2">
+              {!isLoggedIn && (
+                <>
+                  <Button variant="outline" className="w-full justify-start" asChild>
+                    <Link to="/login">
+                      <LogIn className="w-4 h-4 mr-2" />
+                      Login
+                    </Link>
+                  </Button>
+                  <Button variant="hero" className="w-full justify-start" asChild>
+                    <Link to="/register">
+                      <User className="w-4 h-4 mr-2" />
+                      Register
+                    </Link>
+                  </Button>
+                </>
+              )}
+
+              {isLoggedIn && (
+                <>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate(
+                        role === "client"
+                          ? "/client/dashboard"
+                          : "/player/dashboard"
+                      );
+                    }}
+                  >
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setIsOpen(false);
+                      handleLogout();
+                    }}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Logout
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

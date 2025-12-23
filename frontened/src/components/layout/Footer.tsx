@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { MapPin, Mail, Phone, Facebook, Twitter, Instagram, Youtube, ArrowUpRight } from "lucide-react";
+import { MapPin, Mail, Phone, ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SocialMediaLinks from "@/components/common/SocialMediaLinks";
 
 const Footer = () => {
   return (
@@ -25,23 +26,7 @@ const Footer = () => {
             <p className="text-muted-foreground text-sm leading-relaxed">
               India's leading turf booking platform. Find and book sports turfs near you with ease.
             </p>
-            <div className="flex gap-2">
-              {[
-                { icon: Facebook, label: "Facebook" },
-                { icon: Twitter, label: "Twitter" },
-                { icon: Instagram, label: "Instagram" },
-                { icon: Youtube, label: "Youtube" },
-              ].map(({ icon: Icon, label }) => (
-                <a
-                  key={label}
-                  href="#"
-                  aria-label={label}
-                  className="w-10 h-10 rounded-xl glass-effect flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all duration-300"
-                >
-                  <Icon className="w-4 h-4" />
-                </a>
-              ))}
-            </div>
+            <SocialMediaLinks variant="glass" />
           </div>
 
           {/* Quick Links */}
@@ -51,8 +36,8 @@ const Footer = () => {
               {[
                 { label: "Browse Turfs", href: "/turfs" },
                 { label: "Tournaments", href: "/tournaments" },
-                { label: "Collaborative Play", href: "#" },
-                { label: "Offers & Deals", href: "#" },
+                { label: "About Us", href: "/about" },
+                { label: "Contact", href: "/contact" },
               ].map((item) => (
                 <li key={item.label}>
                   <Link 
@@ -72,19 +57,19 @@ const Footer = () => {
             <h4 className="font-heading font-semibold text-foreground mb-5">For Business</h4>
             <ul className="space-y-3">
               {[
-                { label: "List Your Turf", href: "#" },
-                { label: "Partner Program", href: "#" },
-                { label: "Advertising", href: "#" },
-                { label: "API Access", href: "#" },
+                { label: "List Your Turf", href: "/register?role=client" },
+                { label: "Partner Program", href: "/partner" },
+                { label: "Advertising", href: "/advertising" },
+                { label: "API Access", href: "/api-docs" },
               ].map((item) => (
                 <li key={item.label}>
-                  <a 
-                    href={item.href} 
+                  <Link 
+                    to={item.href} 
                     className="text-muted-foreground hover:text-primary text-sm transition-colors inline-flex items-center gap-1 group"
                   >
                     {item.label}
                     <ArrowUpRight className="w-3 h-3 opacity-0 -translate-y-1 translate-x-1 group-hover:opacity-100 group-hover:translate-y-0 group-hover:translate-x-0 transition-all" />
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

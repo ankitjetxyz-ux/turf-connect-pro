@@ -53,8 +53,8 @@ const AboutPage = () => {
     "Collaborative play to find teammates",
     "Exclusive offers and discounts",
     "Booking history and easy rebooking",
-    "Direct chat with turf owners",
     "Tournament participation opportunities",
+    "24/7 customer support",
   ];
 
   const ownerBenefits = [
@@ -63,9 +63,9 @@ const AboutPage = () => {
     "Automated booking system",
     "Real-time analytics dashboard",
     "Host tournaments and events",
-    "Direct player communication",
     "Secure and timely payments",
     "Marketing support from platform",
+    "Detailed booking reports",
   ];
 
   const stats = [

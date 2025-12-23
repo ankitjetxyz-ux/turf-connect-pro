@@ -5,8 +5,7 @@ import {
   CreditCard, 
   Clock, 
   Users, 
-  Trophy, 
-  MessageCircle,
+  Trophy,
   Sparkles
 } from "lucide-react";
 
@@ -42,9 +41,9 @@ const features = [
     gradient: "from-yellow-500/20 to-primary/20",
   },
   {
-    icon: MessageCircle,
-    title: "Direct Chat",
-    description: "Chat directly with turf owners for queries",
+    icon: Sparkles,
+    title: "Premium Features",
+    description: "Access exclusive features and priority support",
     gradient: "from-pink-500/20 to-primary/20",
   },
 ];

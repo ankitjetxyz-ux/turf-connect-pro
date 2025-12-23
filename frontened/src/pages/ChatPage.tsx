@@ -1,154 +1,87 @@
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Send } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useEffect, useState, useCallback } from "react";
 import api from "@/services/api";
-import { supabaseRealtime } from "@/services/chatRealtime";
+import ChatList from "@/components/chat/ChatList";
+import MessageWindow from "@/components/chat/MessageWindow";
+
+export type Conversation = {
+  id: string;
+  owner_id: string;
+  player_id: string;
+  last_message?: string;
+  updated_at?: string;
+  other_user?: {
+    name: string;
+    email: string;
+  };
+};
 
 const ChatPage = () => {
-  const { bookingId } = useParams<{ bookingId: string }>();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeChat, setActiveChat] = useState<string | null>(null);
 
-  const [messages, setMessages] = useState<any[]>([]);
-  const [text, setText] = useState("");
-  const [chatId, setChatId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const userId = localStorage.getItem("user_id");
 
-  const bottomRef = useRef<HTMLDivElement>(null);
-  const userId = Number(localStorage.getItem("user_id"));
-
-  /* LOAD CHAT */
-  useEffect(() => {
-    const loadChat = async () => {
-      try {
-        const chatRes = await api.get(`/chats/booking/${bookingId}`);
-        setChatId(String(chatRes.data.id));
-
-        const msgRes = await api.get(`/chats/messages/${chatRes.data.id}`);
-        setMessages(msgRes.data);
-      } catch {
-        alert("Failed to load chat");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadChat();
-  }, [bookingId]);
-
-  /* REALTIME */
-  useEffect(() => {
-    if (!chatId) return;
-
-    const channel = supabaseRealtime
-      .channel(`chat-${chatId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "messages",
-          filter: `chat_id=eq.${chatId}`,
-        },
-        (payload) => {
-          setMessages((prev) =>
-            prev.some((m) => m.id === payload.new.id)
-              ? prev
-              : [...prev, payload.new]
-          );
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabaseRealtime.removeChannel(channel);
-    };
-  }, [chatId]);
-
-  /* AUTO SCROLL */
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
-
-  /* SEND */
-  const sendMessage = async () => {
-    if (!text.trim() || !chatId) return;
-
+  const loadConversations = useCallback(async () => {
+    if (!userId) return;
     try {
-      await api.post("/chats/send", {
-        chat_id: chatId,
-        content: text,
-      });
-      setText("");
-    } catch (err: any) {
-      alert(err.response?.data?.error || "Send failed");
+      const res = await api.get(`/chat/conversations/${userId}`);
+      setConversations(res.data || []);
+    } catch (error) {
+      console.error("Failed to load conversations", error);
     }
-  };
+  }, [userId]);
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Navbar />
-        <div className="pt-32 text-center">Loading chat...</div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    // if URL contains ?chat=xxx, set active chat
+    const params = new URLSearchParams(window.location.search);
+    const chatParam = params.get("chat");
+    if (chatParam) setActiveChat(chatParam);
+
+    loadConversations();
+    const iv = setInterval(loadConversations, 5000);
+    return () => clearInterval(iv);
+  }, [loadConversations]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="flex flex-col min-h-screen bg-background text-foreground relative overflow-hidden">
+      <div className="absolute inset-0 grid-overlay opacity-20" />
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+
       <Navbar />
 
-      <main className="pt-24 flex-1">
-        <div className="container max-w-3xl h-full flex flex-col">
-          <Card className="flex-1">
-            <CardContent className="flex flex-col h-full p-4">
-              <div className="flex-1 overflow-y-auto space-y-3">
-                {messages.length === 0 && (
-                  <div className="text-center text-muted-foreground pt-10">
-                    No messages yet
-                  </div>
-                )}
+      <main className="flex-1 flex flex-col pt-20 pb-6 container mx-auto px-4 h-[calc(100vh-80px)] relative z-10">
+        <div className="flex-1 glass-card border border-white/10 rounded-xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 animate-in fade-in duration-500 backdrop-blur-md">
+          
+          {/* Chat List Sidebar */}
+          <div className={`md:col-span-1 lg:col-span-1 border-r border-white/10 bg-secondary/20 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
+             <ChatList 
+               conversations={conversations} 
+               onSelect={(id) => setActiveChat(id)} 
+               activeId={activeChat} 
+             />
+          </div>
 
-                {messages.map((msg) => {
-                  const mine = msg.sender_id === userId;
-                  return (
-                    <div
-                      key={msg.id}
-                      className={`flex ${
-                        mine ? "justify-end" : "justify-start"
-                      }`}
-                    >
-                      <div
-                        className={`px-4 py-2 rounded-2xl max-w-[70%] ${
-                          mine
-                            ? "bg-primary text-white"
-                            : "bg-secondary"
-                        }`}
-                      >
-                        {msg.content}
-                      </div>
-                    </div>
-                  );
-                })}
-                <div ref={bottomRef} />
+          {/* Message Window */}
+          <div className={`md:col-span-2 lg:col-span-3 flex flex-col bg-background/40 backdrop-blur-sm ${!activeChat ? 'hidden md:flex' : 'flex'}`}>
+            {activeChat ? (
+              <MessageWindow 
+                chatId={activeChat} 
+                onBack={() => setActiveChat(null)}
+                conversation={conversations.find(c => c.id === activeChat)}
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center animate-fade-in">
+                <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center mb-6 shadow-glow-sm">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-primary opacity-80"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </div>
+                <h3 className="text-2xl font-heading font-bold mb-2 text-foreground">Select a conversation</h3>
+                <p className="text-muted-foreground max-w-sm">Choose a chat from the left sidebar to start messaging with turf owners or players.</p>
               </div>
-
-              <div className="pt-4 flex gap-2 border-t">
-                <input
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder="Type a message..."
-                  className="flex-1 px-4 py-3 rounded-full border"
-                  onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-                />
-                <Button onClick={sendMessage} disabled={!text.trim()}>
-                  <Send size={18} />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            )}
+          </div>
         </div>
       </main>
 

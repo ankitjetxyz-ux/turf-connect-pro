@@ -10,7 +10,8 @@ import { getSlotsByTurf, createSlot } from "@/services/slotService";
 
 const TurfSlotsPage = () => {
   const { turfId } = useParams();
-  const [slots, setSlots] = useState<any[]>([]);
+  type Slot = { id: number | string; start_time?: string; end_time?: string; price?: number; is_available?: boolean };
+  const [slots, setSlots] = useState<Slot[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [form, setForm] = useState({

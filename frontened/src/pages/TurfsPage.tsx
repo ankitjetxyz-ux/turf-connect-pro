@@ -33,7 +33,8 @@ const priceFilters = [
 ];
 
 const TurfsPage = () => {
-  const [turfs, setTurfs] = useState<any[]>([]);
+  type TurfItem = { id: string | number; name?: string; location?: string; images?: string; price_per_slot?: number; facilities?: string; sports?: string[] };
+  const [turfs, setTurfs] = useState<TurfItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSport, setSelectedSport] = useState("All Sports");
   const [selectedPrice, setSelectedPrice] = useState("Any Price");
@@ -86,28 +87,28 @@ const TurfsPage = () => {
           </div>
 
           {/* Search & Filters */}
-          <Card className="mb-8">
+          <Card className="mb-8 glass-card border-white/10 shadow-lg">
             <CardContent className="p-4">
               <div className="flex flex-col lg:flex-row gap-4">
                 {/* Search */}
-                <div className="flex-1 flex items-center gap-3 bg-secondary/50 rounded-xl px-4 py-3">
-                  <Search className="w-5 h-5 text-primary" />
+                <div className="flex-1 flex items-center gap-3 bg-secondary/30 rounded-xl px-4 py-3 border border-white/5 focus-within:border-primary/50 transition-all">
+                  <Search className="w-5 h-5 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Search by name or location..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="flex-1 bg-transparent outline-none"
+                    className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/50"
                   />
                 </div>
 
                 {/* Location */}
-                <div className="flex items-center gap-3 bg-secondary/50 rounded-xl px-4 py-3 lg:w-64">
-                  <MapPin className="w-5 h-5 text-primary" />
+                <div className="flex items-center gap-3 bg-secondary/30 rounded-xl px-4 py-3 lg:w-64 border border-white/5 focus-within:border-primary/50 transition-all">
+                  <MapPin className="w-5 h-5 text-muted-foreground" />
                   <input
                     type="text"
                     placeholder="Location..."
-                    className="flex-1 bg-transparent outline-none"
+                    className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/50"
                   />
                 </div>
 

@@ -35,6 +35,9 @@ const LoginPage = () => {
 
       localStorage.setItem("token", res.data.token);
       localStorage.setItem("role", res.data.user.role);
+      localStorage.setItem("user_id", res.data.user.id);
+      localStorage.setItem("name", res.data.user.name || "");
+      localStorage.setItem("email", res.data.user.email || formData.email);
 
       const role = res.data.user.role;
 
@@ -43,76 +46,93 @@ const LoginPage = () => {
       } else if (role === "client") {
         navigate("/client/dashboard");
       }
-    } catch (err: any) {
-      alert(err.response?.data?.error || "Login failed");
+    } catch (err: unknown) {
+      console.error(err);
+      const message = err instanceof Error ? err.message : "Login failed";
+      alert(message);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      <div className="absolute inset-0 grid-overlay opacity-20" />
+      <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] animate-pulse" />
+      
       <Navbar />
 
-      <main className="pt-24 pb-12 flex items-center justify-center min-h-screen">
+      <main className="pt-24 pb-12 flex items-center justify-center min-h-screen relative z-10">
         <div className="container px-4 max-w-md">
-          <Card>
-            <CardHeader className="text-center">
-              <Badge className="mx-auto mb-4">Welcome Back</Badge>
-              <CardTitle className="text-2xl">Sign In</CardTitle>
-              <CardDescription>
+          <Card className="glass-card border-white/10 shadow-elevated animate-slide-up">
+            <CardHeader className="text-center pb-2">
+              <div className="w-12 h-12 mx-auto mb-4 rounded-xl gradient-primary flex items-center justify-center shadow-glow">
+                <Lock className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <Badge variant="outline" className="mx-auto mb-2 border-primary/20 text-primary">Welcome Back</Badge>
+              <CardTitle className="text-3xl font-heading font-bold">Sign In</CardTitle>
+              <CardDescription className="text-muted-foreground">
                 Enter your credentials to access your account
               </CardDescription>
             </CardHeader>
 
-            <CardContent>
+            <CardContent className="pt-6">
               <form onSubmit={handleSubmit} className="space-y-4">
                 {/* Email */}
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Email Address"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    className="w-full h-12 pl-12 pr-4 border rounded-xl"
-                    required
-                  />
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-muted-foreground ml-1">Email Address</label>
+                  <div className="relative group">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="name@example.com"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      className="w-full h-12 pl-12 pr-4 bg-secondary/30 border border-white/10 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50"
+                      required
+                    />
+                  </div>
                 </div>
 
                 {/* Password */}
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="password"
-                    placeholder="Password"
-                    value={formData.password}
-                    onChange={handleInputChange}
-                    className="w-full h-12 pl-12 pr-12 border rounded-xl"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-5 h-5" />
-                    ) : (
-                      <Eye className="w-5 h-5" />
-                    )}
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center ml-1">
+                    <label className="text-sm font-medium text-muted-foreground">Password</label>
+                    <Link to="/forgot-password" className="text-xs text-primary hover:underline">Forgot password?</Link>
+                  </div>
+                  <div className="relative group">
+                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      placeholder="••••••••"
+                      value={formData.password}
+                      onChange={handleInputChange}
+                      className="w-full h-12 pl-12 pr-12 bg-secondary/30 border border-white/10 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showPassword ? (
+                        <EyeOff className="w-5 h-5" />
+                      ) : (
+                        <Eye className="w-5 h-5" />
+                      )}
+                    </button>
+                  </div>
                 </div>
 
-                <Button type="submit" className="w-full">
+                <Button type="submit" variant="hero" size="lg" className="w-full mt-2 shadow-glow hover:shadow-glow-lg transition-all">
                   Sign In
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </form>
 
-              <p className="text-center mt-6 text-muted-foreground">
+              <p className="text-center mt-8 text-muted-foreground text-sm">
                 Don't have an account?{" "}
-                <Link to="/register" className="text-primary font-semibold">
+                <Link to="/register" className="text-primary font-semibold hover:underline">
                   Sign up
                 </Link>
               </p>
