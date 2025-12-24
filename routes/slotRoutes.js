@@ -4,7 +4,7 @@ const router = express.Router();
 const { createSlot, getSlotsByTurf } = require("../controllers/slotController");
 const { verifyToken, allowRoles } = require("../middleware/authMiddleware");
 
-router.get("/:turfId", verifyToken, getSlotsByTurf);
+router.get("/:turfId", getSlotsByTurf);
 
 router.post(
   "/",

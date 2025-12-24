@@ -3,13 +3,13 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, XCircle } from "lucide-react";
+import { MapPin, Clock, XCircle, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 
 const PlayerDashboard = () => {
-  type Booking = { id: number | string; turf_name?: string; location?: string; slot_time?: string; status?: string };
+  type Booking = { id: number | string; turf_name?: string; location?: string; slot_time?: string; status?: string; turf_owner_name?: string; turf_owner_email?: string };
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
@@ -128,6 +128,12 @@ const PlayerDashboard = () => {
                         <Clock className="w-4 h-4 text-primary" />
                         <span>{booking.slot_time ? new Date(booking.slot_time).toLocaleString() : "Time not set"}</span>
                       </div>
+                      {booking.turf_owner_name && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <User className="w-4 h-4 text-primary" />
+                          <span>Owner: {booking.turf_owner_name}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

@@ -3,23 +3,62 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { User, Clock } from "lucide-react";
+import { User, Clock, MessageSquare, XCircle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
+import { useToast } from "@/components/ui/use-toast";
 
 const ClientBookings = () => {
-  type Booking = { id: string | number; turf_name?: string; player_name?: string; slot_time?: string; status?: string };
+  type Booking = { id: string | number; turf_name?: string; player_name?: string; player_id?: string; slot_time?: string; status?: string };
   const [bookings, setBookings] = useState<Booking[]>([]);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const fetchBookings = async () => {
+    try {
+      const res = await api.get("/bookings/client");
+      const bookingData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setBookings(bookingData);
+    } catch (err) {
+      console.error("Failed to fetch bookings", err);
+      setBookings([]);
+    }
+  };
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      const res = await api.get("/bookings/client");
-      setBookings(res.data);
-    };
     fetchBookings();
   }, []);
+
+  const handleChat = async (playerId: string) => {
+    if (!playerId) return;
+    try {
+      const ownerId = localStorage.getItem("user_id");
+      const res = await api.post("/chat/conversation", { 
+        owner_id: ownerId, 
+        player_id: playerId 
+      });
+      if (res.data && res.data.id) {
+        navigate(`/chat?chat=${res.data.id}`);
+      }
+    } catch (err) {
+      console.error("Failed to start chat", err);
+      toast({ title: "Error", description: "Failed to start chat", variant: "destructive" });
+    }
+  };
+
+  const handleCancel = async (bookingId: string | number) => {
+    if (!confirm("Are you sure you want to cancel this booking? This will refund the user.")) return;
+    
+    try {
+      await api.post("/bookings/owner-cancel", { booking_id: bookingId });
+      toast({ title: "Success", description: "Booking cancelled", variant: "default" });
+      fetchBookings();
+    } catch (err: any) {
+      console.error("Cancel failed", err);
+      toast({ title: "Error", description: err.response?.data?.error || "Failed to cancel booking", variant: "destructive" });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -51,7 +90,22 @@ const ClientBookings = () => {
                     {b.slot_time}
                   </div>
 
-                  <Badge>{b.status}</Badge>
+                  <div className="flex justify-between items-center">
+                    <Badge>{b.status}</Badge>
+                    
+                    <div className="flex gap-2">
+                       {b.player_id && (
+                         <Button size="sm" variant="outline" onClick={() => handleChat(b.player_id!)}>
+                           <MessageSquare className="w-4 h-4" />
+                         </Button>
+                       )}
+                       {b.status === "confirmed" && (
+                         <Button size="sm" variant="destructive" onClick={() => handleCancel(b.id)}>
+                           <XCircle className="w-4 h-4" />
+                         </Button>
+                       )}
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             ))}

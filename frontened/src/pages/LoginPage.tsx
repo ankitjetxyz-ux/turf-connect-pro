@@ -46,9 +46,11 @@ const LoginPage = () => {
       } else if (role === "client") {
         navigate("/client/dashboard");
       }
-    } catch (err: unknown) {
+    } catch (err: any) {
       console.error(err);
-      const message = err instanceof Error ? err.message : "Login failed";
+      // Extract backend error message if available
+      const backendError = err.response?.data?.error;
+      const message = backendError || (err instanceof Error ? err.message : "Login failed");
       alert(message);
     }
   };

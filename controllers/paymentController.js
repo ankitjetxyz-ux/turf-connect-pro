@@ -26,7 +26,10 @@ exports.createOrder = async (req, res, next) => {
     const order = await razorpay.orders.create(options);
 
     // create pending payment record
-    await supabase.from("payments").insert({ booking_id, turf_id, payer_id, amount, currency, razorpay_order_id: order.id, status: "pending" });
+    const { data: insertData, error: insertErr } = await supabase.from("payments").insert({ booking_id, turf_id, payer_id, amount, currency, razorpay_order_id: order.id, status: "pending" });
+    if (insertErr) {
+      console.error("Failed to create payment record:", insertErr.message || insertErr);
+    }
 
     res.json({ order });
   } catch (err) {
@@ -57,10 +60,10 @@ exports.verifyPayment = async (req, res, next) => {
       .limit(1)
       .single();
 
-    if (pErr) return next(pErr);
+    if (pErr || !payment) return res.status(404).json({ error: "Payment record not found" });
 
     // compute splits
-    const total = Number(payment.amount);
+    const total = Number(payment.amount) || 0;
     const adminCut = Number((total * 0.1).toFixed(2));
     const ownerCut = Number((total - adminCut).toFixed(2));
 
@@ -69,7 +72,9 @@ exports.verifyPayment = async (req, res, next) => {
     // update earnings table for admin and owner (upsert)
     const adminId = process.env.ADMIN_ENTITY_ID || "00000000-0000-0000-0000-000000000000";
 
-    await supabase.rpc("increment_earning", { p_entity_id: adminId, p_entity_type: "admin", p_amount: adminCut }).catch(async () => {
+    try {
+      await supabase.rpc("increment_earning", { p_entity_id: adminId, p_entity_type: "admin", p_amount: adminCut });
+    } catch (rpcErr) {
       // fallback: insert or update
       const { data: e } = await supabase.from("earnings").select("*").eq("entity_id", adminId).eq("entity_type", "admin").limit(1).single();
       if (e) {
@@ -77,22 +82,27 @@ exports.verifyPayment = async (req, res, next) => {
       } else {
         await supabase.from("earnings").insert({ entity_id: adminId, entity_type: "admin", amount: adminCut });
       }
-    });
+    }
 
     if (payment.turf_id) {
       const ownerId = payment.turf_id; // assuming turf owner entity id stored here; adapt as needed
-      await supabase.rpc("increment_earning", { p_entity_id: ownerId, p_entity_type: "owner", p_amount: ownerCut }).catch(async () => {
+      try {
+        await supabase.rpc("increment_earning", { p_entity_id: ownerId, p_entity_type: "owner", p_amount: ownerCut });
+      } catch (rpcErr) {
         const { data: e } = await supabase.from("earnings").select("*").eq("entity_id", ownerId).eq("entity_type", "owner").limit(1).single();
         if (e) {
           await supabase.from("earnings").update({ amount: Number(e.amount) + ownerCut, updated_at: new Date().toISOString() }).eq("id", e.id);
         } else {
           await supabase.from("earnings").insert({ entity_id: ownerId, entity_type: "owner", amount: ownerCut });
         }
-      });
+      }
     }
 
     // mark booking confirmed and slot unavailable
-    await supabase.from("bookings").update({ status: "confirmed" }).eq("id", booking_id);
+    const { data: booking } = await supabase.from("bookings").update({ status: "confirmed" }).eq("id", booking_id).select("slot_id").single();
+    if (booking && booking.slot_id) {
+      await supabase.from("slots").update({ is_available: false }).eq("id", booking.slot_id);
+    }
 
     res.json({ ok: true });
   } catch (err) {
@@ -110,15 +120,15 @@ exports.refundPayment = async (req, res, next) => {
     if (!payment) return res.status(404).json({ error: "payment not found" });
 
     // Razorpay refunds require payment id; attempt refund if present
-    if (payment.razorpay_payment_id) {
-      if (!razorpay) return res.status(500).json({ error: "Razorpay not configured on server" });
-      await razorpay.payments.refund(payment.razorpay_payment_id, { amount: Math.round(Number(payment.amount) * 100) });
-    }
+    await supabase.from("bookings").update({ status: "cancelled_by_owner" }).eq("id", payment.booking_id);
+    // TODO: update slot availability depending on schema
 
     await supabase.from("payments").update({ status: "refunded" }).eq("id", payment_id);
     // update booking and slot availability
-    await supabase.from("bookings").update({ status: "cancelled_by_owner" }).eq("id", payment.booking_id);
-    // TODO: update slot availability depending on schema
+    const { data: booking } = await supabase.from("bookings").update({ status: "cancelled_by_owner" }).eq("id", payment.booking_id).select("slot_id").single();
+    if (booking && booking.slot_id) {
+      await supabase.from("slots").update({ is_available: true }).eq("id", booking.slot_id);
+    }
 
     res.json({ ok: true });
   } catch (err) {

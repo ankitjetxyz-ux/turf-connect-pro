@@ -34,6 +34,7 @@ exports.getAllTournaments = async (req, res) => {
       id: t.id,
       name: t.name,
       sport: t.sport,
+      city: t.city,
       date: t.date,
       time: t.time,
       location: t.location,

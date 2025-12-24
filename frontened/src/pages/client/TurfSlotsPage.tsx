@@ -23,9 +23,11 @@ const TurfSlotsPage = () => {
   const loadSlots = async () => {
     try {
       const res = await getSlotsByTurf(turfId!);
-      setSlots(res.data);
+      const slotData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setSlots(slotData);
     } catch {
       alert("Failed to load slots");
+      setSlots([]);
     } finally {
       setLoading(false);
     }

@@ -36,6 +36,7 @@ const TurfsPage = () => {
   type TurfItem = { id: string | number; name?: string; location?: string; images?: string; price_per_slot?: number; facilities?: string; sports?: string[] };
   const [turfs, setTurfs] = useState<TurfItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [locationQuery, setLocationQuery] = useState("");
   const [selectedSport, setSelectedSport] = useState("All Sports");
   const [selectedPrice, setSelectedPrice] = useState("Any Price");
   const [showFilters, setShowFilters] = useState(false);
@@ -44,27 +45,43 @@ const TurfsPage = () => {
   useEffect(() => {
     const fetchTurfs = async () => {
       try {
-        const res = await api.get("/turfs");
-        setTurfs(res.data);
+        const params: any = {};
+        if (searchQuery) params.search = searchQuery;
+        if (locationQuery) params.location = locationQuery;
+
+        const res = await api.get("/turfs", { params });
+        const turfData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setTurfs(turfData);
       } catch (err) {
         console.error("Failed to fetch turfs");
+        setTurfs([]);
       }
     };
 
-    fetchTurfs();
-  }, []);
+    // Debounce the API call
+    const timeoutId = setTimeout(() => {
+      fetchTurfs();
+    }, 500);
 
-  // 🔹 FILTER LOGIC (FRONTEND ONLY)
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, locationQuery]);
+
+  // 🔹 FILTER LOGIC (FRONTEND ONLY FOR SPORT & PRICE)
   const filteredTurfs = turfs.filter((turf) => {
-    const matchesSearch =
-      turf.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      turf.location.toLowerCase().includes(searchQuery.toLowerCase());
-
     const matchesSport =
       selectedSport === "All Sports" ||
       turf.sports?.includes(selectedSport);
 
-    return matchesSearch && matchesSport;
+    let matchesPrice = true;
+    if (selectedPrice !== "Any Price") {
+      const price = turf.price_per_slot || 0;
+      if (selectedPrice === "Under ₹500") matchesPrice = price < 500;
+      else if (selectedPrice === "₹500 - ₹1000") matchesPrice = price >= 500 && price <= 1000;
+      else if (selectedPrice === "₹1000 - ₹1500") matchesPrice = price > 1000 && price <= 1500;
+      else if (selectedPrice === "Above ₹1500") matchesPrice = price > 1500;
+    }
+
+    return matchesSport && matchesPrice;
   });
 
   return (
@@ -95,7 +112,7 @@ const TurfsPage = () => {
                   <Search className="w-5 h-5 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder="Search by name or location..."
+                    placeholder="Search by name..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/50"
@@ -108,6 +125,8 @@ const TurfsPage = () => {
                   <input
                     type="text"
                     placeholder="Location..."
+                    value={locationQuery}
+                    onChange={(e) => setLocationQuery(e.target.value)}
                     className="flex-1 bg-transparent outline-none placeholder:text-muted-foreground/50"
                   />
                 </div>
@@ -189,7 +208,7 @@ const TurfsPage = () => {
                 style={{ animationDelay: `${index * 0.05}s` }}
               >
                 <TurfCard
-                  id={turf.id}
+                  id={String(turf.id)}
                   name={turf.name}
                   location={turf.location}
                   image={turf.images?.split(",")[0]}

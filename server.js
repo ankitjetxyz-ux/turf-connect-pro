@@ -16,7 +16,7 @@ const contactRoutes = require("./routes/contactRoutes");
 const app = express();
 
 // Warn about commonly required environment variables to help local dev
-const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET"];
+const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"];
 const missing = requiredEnvs.filter((k) => !process.env[k]);
 if (missing.length > 0) {
    console.warn(`⚠️  Missing env vars: ${missing.join(", ")}. See .env.example`);
@@ -28,9 +28,26 @@ if (missing.length > 0) {
 app.use(cors());
 app.use(express.json());
 
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} [${req.method}] ${req.path}`, req.body);
+  next();
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
 /* =========================
    API ROUTES
 ========================= */
+app.get("/api/test", (req, res) => {
+  res.json({ message: "Backend is working", frontend: "http://localhost:3000" });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/turfs", turfRoutes);
 app.use("/api/slots", slotRoutes);
@@ -65,8 +82,11 @@ app.use((err, req, res, next) => {
 /* =========================
    START SERVER
 ========================= */
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
 
 app.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
 });
+
+// FORCE KEEP ALIVE (Debug for premature exit)
+setInterval(() => {}, 10000);

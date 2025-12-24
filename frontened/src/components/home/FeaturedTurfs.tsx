@@ -24,10 +24,12 @@ const FeaturedTurfs = () => {
     const fetchTurfs = async () => {
       try {
         const res = await api.get("/turfs");
-        // Sort by some logic or just take first 4
-        setTurfs(res.data.slice(0, 4));
+        // Ensure data is an array before slicing
+        const turfData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setTurfs(turfData.slice(0, 4));
       } catch (error) {
         console.error("Failed to fetch turfs", error);
+        setTurfs([]);
       } finally {
         setLoading(false);
       }

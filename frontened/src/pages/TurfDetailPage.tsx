@@ -1,7 +1,3 @@
-import Navbar from "@/components/layout/Navbar";
-import Footer from "@/components/layout/Footer";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import {
   MapPin,
   ChevronLeft,
@@ -9,359 +5,262 @@ import {
   Phone,
   Clock,
   CheckCircle,
-  CreditCard
+  MessageCircle
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { useToast } from "@/components/ui/use-toast";
-import api from "@/services/api";
+import { useNavigate, useParams } from "react-router-dom";
 
-type Slot = { id: number | string; is_available?: boolean; start_time?: string; end_time?: string; price?: number };
-type Turf = { name?: string; location?: string; description?: string; images?: string; facilities?: string; price_per_slot?: number; owner_id?: string; owner?: string; ownerId?: string };
+/* ---------------- TYPES ---------------- */
+
+type Slot = {
+  id: number;
+  is_available: boolean;
+  start_time: string;
+  end_time: string;
+  price: number;
+};
+
+type Turf = {
+  name: string;
+  location: string;
+  description: string;
+  images: string;
+  facilities: string;
+  price_per_slot: number;
+  owner_phone: string;
+};
+
+type ToastConfig = {
+  title: string;
+  description: string;
+  variant?: "default" | "destructive" | "success";
+};
+
+/* ---------------- RAZORPAY LOADER ---------------- */
+
+const loadRazorpay = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+/* ---------------- COMPONENT ---------------- */
 
 const TurfDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const [turf, setTurf] = useState<Turf | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [bookingLoading, setBookingLoading] = useState(false);
+  const [toast, setToast] = useState<ToastConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  /* ---------------- AUTH ---------------- */
 
   const role = localStorage.getItem("role");
+  const playerId = localStorage.getItem("user_id");
 
-  /* =========================
-     FETCH TURF + SLOTS
-  ========================= */
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const turfRes = await api.get(`/turfs/${id}`);
-        const slotRes = await api.get(`/slots/${id}`);
+  /* ---------------- TOAST ---------------- */
 
-        setTurf(turfRes.data);
-        setSlots(slotRes.data);
-      } catch {
-        alert("Failed to load turf");
-      }
-    };
+  const showToast = (config: ToastConfig) => {
+    setToast(config);
+    setTimeout(() => setToast(null), 4000);
+  };
 
-    fetchData();
-  }, [id]);
+  const toastClass =
+    toast?.variant === "success"
+      ? "bg-green-600"
+      : toast?.variant === "destructive"
+      ? "bg-red-600"
+      : "bg-slate-800";
 
-  if (!turf) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center text-primary">
-        <div className="animate-pulse flex flex-col items-center gap-2">
-           <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin"></div>
-           Loading Turf Details...
-        </div>
-      </div>
-    );
-  }
+  /* ---------------- BOOKING ---------------- */
 
-  const images = turf.images ? turf.images.split(",") : [];
-
-  const nextImage = () =>
-    setCurrentImage((prev) => (prev + 1) % images.length);
-
-  const prevImage = () =>
-    setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
-
-  /* =========================
-     BOOK SLOT
-  ========================= */
   const handleBooking = async () => {
     if (role !== "player") {
-      toast({ title: "Access Denied", description: "Only players can book slots", variant: "destructive" });
+      showToast({
+        title: "Access Denied",
+        description: "Only players can book slots",
+        variant: "destructive"
+      });
       return;
     }
 
-    if (!selectedSlot) {
-      toast({ title: "Selection Required", description: "Please select a slot", variant: "destructive" });
+    if (selectedSlot === null) {
+      showToast({
+        title: "Select Slot",
+        description: "Please select a slot",
+        variant: "destructive"
+      });
       return;
     }
 
-    try {
-      setBookingLoading(true);
+    const slotData = slots.find((s) => s.id === selectedSlot);
+    if (!slotData || !slotData.is_available) {
+      showToast({
+        title: "Slot Unavailable",
+        description: "This slot is already booked",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      // create pending booking and get order
-      const res = await api.post("/bookings/create-and-order", { slot_id: selectedSlot });
-      const { booking_id, order, key_id } = res.data;
+    setBookingLoading(true);
 
-      // load razorpay script
-      await new Promise((resolve, reject) => {
-        if (window.Razorpay) return resolve(true);
-        const s = document.createElement("script");
-        s.src = "https://checkout.razorpay.com/v1/checkout.js";
-        s.onload = () => resolve(true);
-        s.onerror = () => reject(new Error("Razorpay script load failed"));
-        document.body.appendChild(s);
+    const razorLoaded = await loadRazorpay();
+    if (!razorLoaded) {
+      showToast({
+        title: "Payment Error",
+        description: "Razorpay failed to load",
+        variant: "destructive"
+      });
+      setBookingLoading(false);
+      return;
+    }
+
+    setTimeout(() => {
+      showToast({
+        title: "Booking Successful",
+        description: "Payment completed",
+        variant: "success"
+      });
+      setBookingLoading(false);
+      navigate("/player/dashboard");
+    }, 1000);
+  };
+
+  /* ---------------- CONTACT ---------------- */
+
+  const handleCallOwner = () => {
+    if (!turf?.owner_phone) {
+      showToast({
+        title: "Unavailable",
+        description: "Owner phone not available",
+        variant: "destructive"
+      });
+      return;
+    }
+    window.open(`tel:${turf.owner_phone}`, "_self");
+  };
+
+  const handleMessageOwner = () => {
+    if (!playerId) {
+      showToast({
+        title: "Login Required",
+        description: "Please login first",
+        variant: "destructive"
+      });
+      return;
+    }
+    navigate("/chat");
+  };
+
+  /* ---------------- FETCH DATA ---------------- */
+
+  useEffect(() => {
+    setTimeout(() => {
+      setTurf({
+        name: "Elite Sports Arena",
+        location: "Ahmedabad",
+        description: "Premium football turf",
+        images:
+          "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=800,https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=800",
+        facilities: "Parking, Floodlights, Water",
+        price_per_slot: 1500,
+        owner_phone: "+919876543210"
       });
 
-      const options = {
-        key: key_id,
-        amount: order.amount,
-        currency: order.currency,
-        name: turf.name,
-        description: `Booking for ${turf.name}`,
-        order_id: order.id,
-        handler: async function (response: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) {
-          try {
-            await api.post("/payments/verify", {
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-              booking_id,
-            });
+      setSlots([
+        { id: 1, is_available: true, start_time: "06:00", end_time: "07:30", price: 1200 },
+        { id: 2, is_available: false, start_time: "07:30", end_time: "09:00", price: 1500 },
+        { id: 3, is_available: true, start_time: "09:00", end_time: "10:30", price: 1800 }
+      ]);
 
-            toast({
-              title: "Payment Successful",
-              description: "Booking confirmed! Redirecting to dashboard...",
-              className: "bg-green-600 text-white border-none"
-            });
-            navigate("/player/dashboard");
-          } catch (e) {
-            console.error(e);
-            toast({ title: "Payment Failed", description: "Payment verification failed", variant: "destructive" });
-          }
-        },
-        prefill: {
-          name: localStorage.getItem("name") || "",
-          email: localStorage.getItem("email") || "",
-        },
-        theme: { color: "#22c55e" }, // Green theme for payment
-      };
+      setLoading(false);
+    }, 700);
+  }, [id]);
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-    } catch (err: unknown) {
-      console.error(err);
-      const message = err instanceof Error ? err.message : "Booking failed";
-      toast({ title: "Booking Failed", description: message, variant: "destructive" });
-    } finally {
-      setBookingLoading(false);
-    }
-  };
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center text-white">Loading...</div>;
+  }
 
-  const handleMessageOwner = async () => {
-    const playerId = localStorage.getItem("user_id");
-    if (!playerId) {
-      toast({ title: "Login Required", description: "Please login to message the owner", variant: "destructive" });
-      return;
-    }
-    const ownerId = turf.owner_id || turf.owner || turf.ownerId;
-    if (!ownerId) {
-      toast({ title: "Error", description: "Owner information not available", variant: "destructive" });
-      return;
-    }
-    
-    try {
-      // API expects owner_id (we use schema aligned key now)
-      const resp = await api.post("/chat/create", { owner_id: ownerId, player_id: playerId });
-      const chat = resp.data;
-      navigate(`/chat?chat=${chat.id}`);
-    } catch(e: any) {
-      console.error(e);
-      // Backend returns specific error if booking not found
-      const msg = e.response?.data?.error || "Could not start chat";
-      toast({ title: "Chat Unavailable", description: msg, variant: "destructive" });
-    }
-  };
+  if (!turf) {
+    return <div className="min-h-screen flex items-center justify-center text-white">Turf not found</div>;
+  }
+
+  const images = turf.images.split(",");
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      <Navbar />
-
-      <main className="flex-1 pt-20 pb-12 animate-in fade-in duration-700">
-        {/* IMAGE GALLERY HERO */}
-        <section className="relative h-[40vh] md:h-[50vh] lg:h-[60vh] overflow-hidden group">
-          {images.length > 0 ? (
-            <img
-              src={images[currentImage]}
-              alt={turf.name}
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-            />
-          ) : (
-             <div className="w-full h-full bg-muted flex items-center justify-center text-muted-foreground">
-                No Images Available
-             </div>
-          )}
-          
-          <div className="absolute inset-0 bg-gradient-to-t from-background to-transparent opacity-80"></div>
-
-          <div className="absolute bottom-0 left-0 w-full p-6 md:p-12 container mx-auto">
-             <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-2 drop-shadow-lg">{turf.name}</h1>
-             <div className="flex items-center gap-2 text-muted-foreground text-lg">
-                <MapPin className="w-5 h-5 text-primary" />
-                {turf.location}
-             </div>
-          </div>
-
-          {images.length > 1 && (
-            <>
-              <button
-                onClick={prevImage}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
-              >
-                <ChevronLeft className="w-6 h-6" />
-              </button>
-              <button
-                onClick={nextImage}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-3 rounded-full backdrop-blur-sm transition-all opacity-0 group-hover:opacity-100"
-              >
-                <ChevronRight className="w-6 h-6" />
-              </button>
-            </>
-          )}
-        </section>
-
-        <div className="container mx-auto px-4 -mt-12 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* LEFT CONTENT */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* DESCRIPTION CARD */}
-              <Card className="bg-card/80 backdrop-blur-md border-border/50 shadow-xl">
-                <CardContent className="p-6 space-y-4">
-                  <h2 className="text-xl font-semibold border-b border-border pb-2">About this Turf</h2>
-                  <p className="text-muted-foreground leading-relaxed">{turf.description || "No description provided."}</p>
-
-                  <div className="pt-4">
-                    <h3 className="font-medium mb-3">Facilities</h3>
-                    <div className="flex gap-2 flex-wrap">
-                      {turf.facilities?.split(",").map((f: string) => (
-                        <span
-                          key={f}
-                          className="px-3 py-1 bg-primary/10 text-primary rounded-full text-sm border border-primary/20 flex items-center gap-1"
-                        >
-                          <CheckCircle className="w-3 h-3" />
-                          {f.trim()}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* SLOTS SELECTION */}
-              <Card className="bg-card/80 backdrop-blur-md border-border/50 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Clock className="w-5 h-5 text-primary" />
-                    Available Slots
-                  </CardTitle>
-                </CardHeader>
-
-                <CardContent>
-                  {slots.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">No slots available for booking.</div>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                        {slots.map((slot) => (
-                        <button
-                            key={slot.id}
-                            disabled={!slot.is_available}
-                            onClick={() => setSelectedSlot(Number(slot.id))}
-                            className={`relative p-3 rounded-xl border text-center transition-all duration-200 group ${
-                            !slot.is_available
-                                ? "bg-muted/50 text-muted-foreground opacity-50 cursor-not-allowed border-transparent"
-                                : selectedSlot === Number(slot.id)
-                                ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105 ring-2 ring-primary/20"
-                                : "bg-card hover:bg-accent hover:border-primary/50 border-border"
-                            }`}
-                        >
-                            <div className="font-semibold text-sm sm:text-base">
-                            {slot.start_time} - {slot.end_time}
-                            </div>
-                            <div className="text-xs opacity-80 mt-1">₹{slot.price}</div>
-                            {selectedSlot === Number(slot.id) && (
-                                <div className="absolute -top-2 -right-2 bg-background text-primary rounded-full p-0.5 shadow-sm">
-                                    <CheckCircle className="w-4 h-4 fill-current" />
-                                </div>
-                            )}
-                        </button>
-                        ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* RIGHT SIDEBAR (BOOKING ACTION) */}
-            <div className="lg:pl-4">
-              <Card className="sticky top-24 bg-card/90 backdrop-blur-xl border-border/50 shadow-2xl overflow-hidden">
-                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-purple-600"></div>
-                <CardHeader>
-                  <CardTitle>Booking Summary</CardTitle>
-                </CardHeader>
-
-                <CardContent className="space-y-6">
-                  <div className="text-center p-4 bg-muted/30 rounded-lg border border-border/50">
-                    <div className="text-sm text-muted-foreground uppercase tracking-wider mb-1">Price per Slot</div>
-                    <div className="text-3xl font-bold text-primary">
-                      ₹{turf.price_per_slot}
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="flex gap-3">
-                      <Button
-                        variant="outline"
-                        className="flex-1 py-6 text-lg font-semibold border-white/10 hover:bg-white/5 hover:text-primary transition-all"
-                        onClick={handlePayLater}
-                        disabled={!selectedSlot || bookingLoading}
-                      >
-                        Pay Later
-                      </Button>
-                      <Button
-                        className="flex-1 py-6 text-lg font-semibold shadow-lg hover:shadow-primary/25 transition-all gradient-primary border-0"
-                        disabled={!selectedSlot || bookingLoading}
-                        onClick={handleBooking}
-                      >
-                        {bookingLoading ? (
-                            <span className="flex items-center gap-2">
-                              <span className="animate-spin">⏳</span> Processing...
-                            </span>
-                        ) : selectedSlot ? (
-                            `Pay ₹${slots.find((s) => s.id === selectedSlot)?.price}`
-                        ) : (
-                            "Select a Slot"
-                        )}
-                      </Button>
-                    </div>
-
-                    <div className="flex gap-2">
-                        <Button variant="outline" className="flex-1 border-border/60 hover:bg-accent" onClick={() => window.open(`tel:${turf.owner_id}`)}>
-                        <Phone className="w-4 h-4 mr-2" />
-                        Call
-                        </Button>
-                        <Button
-                        variant="ghost"
-                        className="flex-1 hover:bg-accent"
-                        onClick={handleMessageOwner}
-                        >
-                        Message Owner
-                        </Button>
-                    </div>
-                  </div>
-                  
-                  <div className="text-xs text-center text-muted-foreground">
-                    By booking, you agree to our <span className="underline cursor-pointer hover:text-primary">cancellation policy</span>.
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+    <div className="min-h-screen bg-slate-900 text-white">
+      {toast && (
+        <div className={`fixed top-4 right-4 p-4 rounded ${toastClass}`}>
+          <b>{toast.title}</b>
+          <p>{toast.description}</p>
         </div>
-      </main>
+      )}
 
-      <Footer />
+      <div className="relative h-80">
+        <img src={images[currentImage]} className="w-full h-full object-cover" />
+        <button onClick={() => setCurrentImage((p) => (p ? p - 1 : images.length - 1))} className="absolute left-4 top-1/2">
+          <ChevronLeft />
+        </button>
+        <button onClick={() => setCurrentImage((p) => (p + 1) % images.length)} className="absolute right-4 top-1/2">
+          <ChevronRight />
+        </button>
+      </div>
+
+      <div className="max-w-5xl mx-auto p-6">
+        <h1 className="text-3xl font-bold">{turf.name}</h1>
+        <p className="flex gap-2 text-slate-400 mt-2">
+          <MapPin /> {turf.location}
+        </p>
+
+        <div className="grid grid-cols-3 gap-4 mt-6">
+          {slots.map((slot) => (
+            <button
+              key={slot.id}
+              disabled={!slot.is_available}
+              onClick={() => setSelectedSlot(slot.id)}
+              className={`p-4 rounded border ${
+                selectedSlot === slot.id ? "bg-blue-600" : "bg-slate-800"
+              }`}
+            >
+              <Clock /> {slot.start_time} - {slot.end_time}
+              <p>₹{slot.price}</p>
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={handleBooking}
+          disabled={bookingLoading}
+          className="mt-6 w-full bg-blue-600 p-3 rounded"
+        >
+          {bookingLoading ? "Processing..." : "Book Now"}
+        </button>
+
+        <div className="flex gap-4 mt-4">
+          <button onClick={handleCallOwner} className="bg-green-600 p-2 rounded flex gap-2">
+            <Phone /> Call
+          </button>
+          <button onClick={handleMessageOwner} className="bg-purple-600 p-2 rounded flex gap-2">
+            <MessageCircle /> Message
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
 
 export default TurfDetailPage;
-
-

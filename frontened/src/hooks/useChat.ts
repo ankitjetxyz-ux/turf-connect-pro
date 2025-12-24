@@ -44,10 +44,14 @@ export const useChat = (chatId: string | null | undefined) => {
   const sendMessage = async (content: string) => {
     if (!chatId || !content.trim()) return;
 
+    if (!currentUserId) {
+      setError("User ID not found. Please log in again.");
+      return false;
+    }
+
     setSending(true);
     const payload = { 
       sender_id: currentUserId, 
-      sender_role: currentUserRole, 
       content 
     };
 

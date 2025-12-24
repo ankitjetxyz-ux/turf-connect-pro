@@ -141,7 +141,12 @@ exports.getMyBookings = async (req, res, next) => {
         end_time,
         turfs (
           name,
-          location
+          location,
+          owner_id,
+          users (
+            name,
+            email
+          )
         )
       )
     `)
@@ -159,6 +164,8 @@ exports.getMyBookings = async (req, res, next) => {
         ? `${b.slots.start_time} - ${b.slots.end_time}`
         : "N/A",
       turf_owner_id: b.slots?.turfs?.owner_id || null,
+      turf_owner_name: b.slots?.turfs?.users?.name || "Unknown Owner",
+      turf_owner_email: b.slots?.turfs?.users?.email || "N/A",
     }));
 
     res.json(formatted);
@@ -222,19 +229,19 @@ exports.cancelBooking = async (req, res, next) => {
       // adjust payments record
       await supabase.from("payments").update({ status: "refunded" }).eq("id", payment.id);
 
-      // adjust earnings: subtract proportional amounts of refunded portion from owner and admin
+      // adjust earnings: FULL REVERSAL of original distribution
       const adminCut = Number(payment.admin_cut || 0);
       const ownerCut = Number(payment.owner_cut || 0);
-      const refundedPortion = refundAmount / total || 0;
-      const adminSubtract = Number((adminCut * refundedPortion).toFixed(2));
-      const ownerSubtract = Number((ownerCut * refundedPortion).toFixed(2));
 
-      // Apply negative adjustments (Reverse original earnings)
-      if (payment.turf_id) {
-        await adjustEarnings(payment.turf_id, "owner", -ownerSubtract);
-      }
       const adminId = process.env.ADMIN_ENTITY_ID || "00000000-0000-0000-0000-000000000000";
-      await adjustEarnings(adminId, "admin", -adminSubtract);
+      
+      // Reverse Admin
+      await adjustEarnings(adminId, "admin", -adminCut);
+
+      // Reverse Owner
+      if (payment.turf_id) {
+        await adjustEarnings(payment.turf_id, "owner", -ownerCut);
+      }
 
       // Add penalty distribution (New earnings)
       if (payment.turf_id) {
@@ -318,15 +325,16 @@ exports.getClientBookings = async (req, res, next) => {
       .from("bookings")
       .select(`
       id,
+      user_id,
       status,
       users (
         name,
         email
       ),
-      slots (
+      slots!inner (
         start_time,
         end_time,
-        turfs (
+        turfs!inner (
           name,
           owner_id
         )
@@ -340,6 +348,7 @@ exports.getClientBookings = async (req, res, next) => {
     const formatted = (data || []).map(b => ({
       id: b.id,
       status: b.status,
+      player_id: b.user_id,
       player_name: b.users?.name || "Unknown",
       player_email: b.users?.email || "N/A",
       turf_name: b.slots?.turfs?.name || "Unknown Turf",

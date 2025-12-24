@@ -52,7 +52,10 @@ exports.createConversation = async (req, res, next) => {
     if (existing && existing.length > 0) return res.json(existing[0]);
 
     const { data, error } = await supabase.from("chats").insert({ owner_id: targetOwnerId, player_id }).select().single();
-    if (error) return next(error);
+    if (error) {
+      console.error("Supabase error fetching conversations:", error);
+      return next(error);
+    }
     res.json(data);
   } catch (err) {
     next(err);
@@ -63,6 +66,10 @@ exports.listConversations = async (req, res, next) => {
   try {
     const { userId } = req.params;
     
+    if (!userId || userId === "undefined" || userId === "null") {
+        return res.status(400).json({ error: "Invalid userId" });
+    }
+
     // Fetch conversations where user is owner or player
     const { data: conversations, error } = await supabase
       .from("chats")
@@ -70,7 +77,10 @@ exports.listConversations = async (req, res, next) => {
       .or(`owner_id.eq.${userId},player_id.eq.${userId}`)
       .order("updated_at", { ascending: false });
 
-    if (error) return next(error);
+    if (error) {
+      console.error("Supabase error listing conversations:", error);
+      return next(error);
+    }
 
     // Fetch user details for each conversation
     const enrichedConversations = await Promise.all(
@@ -81,6 +91,10 @@ exports.listConversations = async (req, res, next) => {
           .select("name, email")
           .eq("id", otherUserId)
           .single();
+          
+        if (userError) {
+          console.warn(`User fetch warning for ${otherUserId}:`, userError.message);
+        }
         
         return {
           ...chat,
@@ -124,22 +138,48 @@ exports.getMessages = async (req, res, next) => {
 exports.postMessage = async (req, res, next) => {
   try {
     const { chatId } = req.params;
-    const { sender_id, sender_role, content, metadata } = req.body;
-    if (!sender_id || !sender_role || !content) return res.status(400).json({ error: "missing fields" });
+    const { sender_id, content, metadata } = req.body;
+    
+    // Validation
+    if (!sender_id) {
+      console.error("Missing sender_id");
+      return res.status(400).json({ error: "sender_id is required" });
+    }
+    if (!content) {
+      console.error("Missing content");
+      return res.status(400).json({ error: "content is required" });
+    }
+    if (!chatId) {
+      console.error("Missing chatId");
+      return res.status(400).json({ error: "chatId is required" });
+    }
+
+    console.log(`Inserting message for chat ${chatId}:`, { sender_id, content });
 
     const { data: message, error: insertErr } = await supabase
       .from("messages")
-      .insert({ chat_id: chatId, sender_id, sender_role, content, metadata })
+      .insert({ chat_id: chatId, sender_id, content, metadata })
       .select()
       .single();
 
-    if (insertErr) return next(insertErr);
+    if (insertErr) {
+      console.error("Message insert error:", insertErr);
+      return res.status(500).json({ error: "Failed to insert message", details: insertErr.message });
+    }
 
     // update chat last_message and updated_at
-    await supabase.from("chats").update({ last_message: content, updated_at: new Date().toISOString() }).eq("id", chatId);
+    const { error: updateErr } = await supabase
+      .from("chats")
+      .update({ last_message: content, updated_at: new Date().toISOString() })
+      .eq("id", chatId);
+
+    if (updateErr) {
+      console.error("Chat update error:", updateErr);
+    }
 
     res.json(message);
   } catch (err) {
-    next(err);
+    console.error("postMessage error:", err);
+    res.status(500).json({ error: "Internal server error", details: err.message });
   }
 };

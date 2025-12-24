@@ -13,13 +13,13 @@ const { verifyToken, allowRoles } = require("../middleware/authMiddleware");
 // Create turf (client only)
 router.post("/", verifyToken, allowRoles("client"), createTurf);
 
-// Get all turfs
-router.get("/", verifyToken, getAllTurfs);
+// Get all turfs (Public access, no token required for viewing)
+router.get("/", getAllTurfs);
 
 // ✅ CLIENT'S TURFS
 router.get("/my", verifyToken, allowRoles("client"), getMyTurfs);
 
-// Get turf by ID (KEEP LAST)
-router.get("/:id", verifyToken, getTurfById);
+// Get turf by ID (Public access)
+router.get("/:id", getTurfById);
 
 module.exports = router;

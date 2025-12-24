@@ -43,6 +43,7 @@ const TournamentsPage = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSport, setSelectedSport] = useState("All Sports");
   const [selectedCity, setSelectedCity] = useState("All Cities");
+  const [filterType, setFilterType] = useState<"all" | "joined">("all");
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
 
@@ -52,9 +53,11 @@ const TournamentsPage = () => {
     const fetchTournaments = async () => {
       try {
         const res = await api.get("/tournaments");
-        setTournaments(res.data || []);
+        const tournamentData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        setTournaments(tournamentData);
       } catch {
         alert("Failed to load tournaments");
+        setTournaments([]);
       } finally {
         setLoading(false);
       }
@@ -75,7 +78,8 @@ const TournamentsPage = () => {
       });
 
       const res = await api.get("/tournaments");
-      setTournaments(res.data || []);
+      const tournamentData = Array.isArray(res.data) ? res.data : res.data?.data || [];
+      setTournaments(tournamentData);
     } catch (err: unknown) {
       console.error(err);
       const message = err instanceof Error ? err.message : "Join failed";
@@ -84,32 +88,69 @@ const TournamentsPage = () => {
   };
 
   const filteredTournaments = tournaments.filter((t) => {
+    const name = (t.name || "").toLowerCase();
+    const location = (t.location || "").toLowerCase();
+    const search = searchQuery.toLowerCase();
+
     const matchSport =
       selectedSport === "All Sports" || t.sport === selectedSport;
     const matchCity =
       selectedCity === "All Cities" || t.city === selectedCity;
     const matchSearch =
-      t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.location.toLowerCase().includes(searchQuery.toLowerCase());
+      name.includes(search) ||
+      location.includes(search);
+    
+    const matchType = filterType === "all" || (filterType === "joined" && t.already_joined);
 
-    return matchSport && matchCity && matchSearch;
+    return matchSport && matchCity && matchSearch && matchType;
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative">
       <Navbar />
 
-      <main className="pt-24 pb-16">
+      <main className="pt-24 pb-12 relative z-10">
         <div className="container px-4">
-          <div className="text-center mb-12">
-            <Badge variant="featured" className="mb-4">
-              <Trophy className="w-4 h-4 mr-2" />
-              Tournaments
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <Badge variant="outline" className="mb-4 bg-primary/10 text-primary border-primary/20">
+              Compete & Win
             </Badge>
-            <h1 className="text-4xl font-bold">
-              Compete & <span className="text-primary">Win Big</span>
+            <h1 className="font-heading text-3xl md:text-4xl font-bold mb-2">
+              Upcoming <span className="text-gradient">Tournaments</span>
             </h1>
+            <p className="text-muted-foreground">
+              Join local tournaments and showcase your skills
+            </p>
           </div>
+
+          {/* Tabs for My Tournaments */}
+          {role === "player" && (
+            <div className="flex justify-center mb-6">
+              <div className="bg-secondary/50 p-1 rounded-xl flex gap-1">
+                <button
+                  onClick={() => setFilterType("all")}
+                  className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filterType === "all"
+                      ? "bg-primary text-white shadow-lg"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All Tournaments
+                </button>
+                <button
+                  onClick={() => setFilterType("joined")}
+                  className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filterType === "joined"
+                      ? "bg-primary text-white shadow-lg"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  My Tournaments
+                </button>
+              </div>
+            </div>
+          )}
 
           <Card className="mb-8">
             <CardContent className="p-4">
@@ -169,6 +210,13 @@ const TournamentsPage = () => {
 
           {loading && <p>Loading tournaments...</p>}
 
+          {!loading && filteredTournaments.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
+              <p className="text-lg">No tournaments found matching your criteria.</p>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredTournaments.map((t) => (
               <Card key={t.id}>
@@ -208,7 +256,7 @@ const TournamentsPage = () => {
                       t.status !== "Registering" ||
                       t.already_joined
                     }
-                    onClick={() => handleJoin(t.id)}
+                    onClick={() => handleJoin(String(t.id))}
                   >
                     {t.already_joined
                       ? "Already Joined"

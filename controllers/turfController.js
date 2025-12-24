@@ -42,16 +42,44 @@ exports.createTurf = async (req, res) => {
    GET ALL TURFS (PUBLIC)
 ======================= */
 exports.getAllTurfs = async (req, res) => {
-  const { data, error } = await supabase
+  const { search, location } = req.query;
+
+  let query = supabase
     .from("turfs")
     .select("*")
     .eq("is_active", true);
 
-  if (error) {
-    return res.status(400).json({ error: error.message });
+  if (search) {
+    query = query.ilike("name", `%${search}%`);
   }
 
-  res.json(data);
+  if (location) {
+    query = query.ilike("location", `%${location}%`);
+  }
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("Supabase error fetching turfs:", error);
+    return res.status(400).json({ error: "Failed to fetch turfs: " + error.message });
+  }
+
+  if (!data || data.length === 0) {
+    return res.json([]);
+  }
+
+  // Enrich with sports derived from text
+  const keywords = ["Football", "Cricket", "Badminton", "Tennis", "Basketball", "Hockey"];
+  const enriched = data.map(t => {
+    const text = `${t.name} ${t.description} ${t.facilities}`.toLowerCase();
+    const sports = keywords.filter(k => text.includes(k.toLowerCase()));
+    return {
+      ...t,
+      sports: sports.length > 0 ? sports : ["Football", "Cricket"] // Default fallback
+    };
+  });
+
+  res.json(enriched);
 };
 
 /* =======================
