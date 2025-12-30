@@ -10,16 +10,6 @@ const TurfPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const getPrimaryImage = (images: any): string | undefined => {
-    if (Array.isArray(images) && images.length > 0) {
-      return images[0];
-    }
-    if (typeof images === "string") {
-      return images.split(",")[0];
-    }
-    return undefined;
-  };
-
   useEffect(() => {
     (async () => {
       try {
@@ -40,9 +30,13 @@ const TurfPage = () => {
       <Navbar />
 
       <main className="pt-24 pb-12 container mx-auto px-4">
-        <div className="text-center mb-10">
+        <div className="text-center mb-10 space-y-2">
           <Badge variant="success">Available Turfs</Badge>
           <h1 className="text-3xl font-bold mt-2">Browse Turfs</h1>
+          <p className="text-sm text-muted-foreground max-w-xl mx-auto">
+            Discover active turfs along with how many tournaments they host and
+            how often they are played on.
+          </p>
         </div>
 
         {loading && (
@@ -54,7 +48,9 @@ const TurfPage = () => {
         )}
 
         {!loading && !error && turfs.length === 0 && (
-          <p className="text-center text-muted-foreground">No turfs available yet.</p>
+          <p className="text-center text-muted-foreground">
+            No turfs available yet.
+          </p>
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -62,14 +58,18 @@ const TurfPage = () => {
             const images = Array.isArray(turf.images)
               ? turf.images
               : typeof turf.images === "string"
-                ? turf.images.split(",")
-                : [];
+              ? turf.images.split(",")
+              : [];
             const displayImage = images[0] || undefined;
-            const sports = Array.isArray(turf.facilities)
-              ? turf.facilities
-              : typeof turf.facilities === "string"
-                ? turf.facilities.split(",")
-                : [];
+            const sports = Array.isArray(turf.sports)
+              ? turf.sports
+              : typeof turf.sports === "string"
+              ? turf.sports.split(",")
+              : [];
+
+            const tournamentsHosted = turf.tournaments_hosted ?? 0;
+            const matchesPlayed = turf.matches_played ?? 0;
+            const isPopular = Boolean(turf.is_popular);
 
             return (
               <div
@@ -84,9 +84,12 @@ const TurfPage = () => {
                   image={displayImage}
                   price={turf.price_per_slot}
                   rating={4.5}
-                  reviews={sports.length}
+                  reviews={matchesPlayed}
                   sports={sports}
                   availableSlots={0}
+                  featured={isPopular}
+                  tournamentsHosted={tournamentsHosted}
+                  matchesPlayed={matchesPlayed}
                 />
               </div>
             );

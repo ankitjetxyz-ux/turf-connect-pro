@@ -7,12 +7,15 @@ import { MapPin, Clock, XCircle, User } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const PlayerDashboard = () => {
   type Booking = { id: number | string; turf_name?: string; location?: string; slot_time?: string; status?: string; turf_owner_name?: string; turf_owner_email?: string };
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+
+  const [profile, setProfile] = useState<{ name: string; email: string; profile_image_url?: string | null } | null>(null);
   type Conversation = { id: string; owner_id: string; player_id: string; last_message?: string; updated_at?: string };
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
@@ -55,10 +58,25 @@ const PlayerDashboard = () => {
     }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const res = await api.get("/profile/me");
+      const { user } = res.data;
+      setProfile(user);
+      if (user?.name) localStorage.setItem("name", user.name);
+      if (user?.profile_image_url) {
+        localStorage.setItem("profile_image_url", user.profile_image_url);
+      }
+    } catch (e) {
+      console.warn("Failed to load profile for dashboard");
+    }
+  };
+
   useEffect(() => {
     fetchBookings();
     loadConversations();
     fetchTournamentStats();
+    fetchProfile();
   }, []);
 
   const cancelBooking = async (bookingId: number | string) => {
@@ -83,6 +101,32 @@ const PlayerDashboard = () => {
 
       <main className="pt-24 pb-12 relative z-10">
         <div className="container px-4">
+
+          {/* PROFILE HEADER */}
+          {profile && (
+            <div className="flex items-center gap-4 mb-6 animate-fade-in">
+              <Avatar className="h-12 w-12">
+                {profile.profile_image_url && (
+                  <AvatarImage
+                    src={profile.profile_image_url}
+                    alt={profile.name}
+                  />
+                )}
+                <AvatarFallback>
+                  {profile.name
+                    .split(" ")
+                    .map((n) => n[0])
+                    .join("")
+                    .toUpperCase()
+                    .slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <p className="text-sm text-muted-foreground">Welcome back,</p>
+                <h1 className="text-xl font-heading font-bold">{profile.name}</h1>
+              </div>
+            </div>
+          )}
 
           {/* STATS SECTION */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">

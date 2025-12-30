@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
 
 /* ROUTE IMPORTS */
 const authRoutes = require("./routes/authRoutes");
@@ -12,6 +13,7 @@ const tournamentRoutes = require("./routes/tournamentRoutes");
 const chatRoutes = require("./routes/chatRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const contactRoutes = require("./routes/contactRoutes");
+const profileRoutes = require("./routes/profileRoutes");
 
 const app = express();
 
@@ -32,6 +34,12 @@ app.use((req, res, next) => {
 });
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// Static file serving for profile uploads
+app.use(
+  "/uploads",
+  express.static(path.join(__dirname, "uploads")),
+);
 app.use((req, res, next) => {
   console.log(`[DEBUG] Body Parsed:`, req.body);
   next();
@@ -72,6 +80,7 @@ app.use("/api/tournaments", tournamentRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/contact", contactRoutes);
+app.use("/api/profile", profileRoutes);
 
 /* =========================
    HEALTH CHECK

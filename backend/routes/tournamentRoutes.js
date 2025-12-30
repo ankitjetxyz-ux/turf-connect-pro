@@ -5,18 +5,37 @@ const {
   getAllTournaments,
   getTournamentById,
   joinTournament,
+  joinTournamentWithOrder,
+  verifyTournamentPayment,
   createTournament,
   getMyTournaments,
   deleteTournament,
   updateTournament,
-  getPlayerTournaments
+  getPlayerTournaments,
+  getTournamentParticipants,
 } = require("../controllers/tournamentController");
 
 const { verifyToken, allowRoles, optionalVerifyToken } = require("../middleware/authMiddleware");
 
+// Public / auth-aware routes
 router.get("/", optionalVerifyToken, getAllTournaments);
 router.get("/:id", optionalVerifyToken, getTournamentById); // Public/Auth details
-router.post("/join", verifyToken, allowRoles("player"), joinTournament);
+router.get("/:id/participants", optionalVerifyToken, getTournamentParticipants);
+
+// Player join routes
+router.post("/join", verifyToken, allowRoles("player"), joinTournament); // legacy free join
+router.post(
+  "/join-and-order",
+  verifyToken,
+  allowRoles("player"),
+  joinTournamentWithOrder,
+);
+router.post(
+  "/verify-payment",
+  verifyToken,
+  allowRoles("player"),
+  verifyTournamentPayment,
+);
 
 // Client Routes
 router.post("/", verifyToken, allowRoles("client"), createTournament);

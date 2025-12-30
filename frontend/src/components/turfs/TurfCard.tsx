@@ -16,6 +16,8 @@ interface TurfCardProps {
   sports?: string[];
   availableSlots?: number;
   featured?: boolean;
+  tournamentsHosted?: number;
+  matchesPlayed?: number;
 }
 
 const TurfCard = ({
@@ -29,6 +31,8 @@ const TurfCard = ({
   sports = [],
   availableSlots = 0,
   featured = false,
+  tournamentsHosted = 0,
+  matchesPlayed = 0,
 }: TurfCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
 
@@ -50,7 +54,7 @@ const TurfCard = ({
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
 
         <div className="absolute top-3 left-3 flex gap-2">
-          {featured && <Badge variant="featured">⭐ Featured</Badge>}
+          {featured && <Badge variant="featured">⭐ Popular Turf</Badge>}
           {availableSlots <= 3 && (
             <Badge variant="destructive">Only {availableSlots} slots!</Badge>
           )}
@@ -58,8 +62,9 @@ const TurfCard = ({
 
         <button
           onClick={() => setIsLiked(!isLiked)}
-          className={`absolute top-3 right-3 w-10 h-10 rounded-full glass-effect flex items-center justify-center ${isLiked ? "text-destructive bg-destructive/20" : ""
-            }`}
+          className={`absolute top-3 right-3 w-10 h-10 rounded-full glass-effect flex items-center justify-center ${
+            isLiked ? "text-destructive bg-destructive/20" : ""
+          }`}
         >
           <Heart className={`w-5 h-5 ${isLiked ? "fill-destructive" : ""}`} />
         </button>
@@ -79,14 +84,16 @@ const TurfCard = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-lg">
-            <Star className="w-4 h-4 text-primary fill-primary" />
-            <span className="font-semibold text-primary">{rating}</span>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-lg">
+              <Star className="w-4 h-4 text-primary fill-primary" />
+              <span className="font-semibold text-primary">{rating}</span>
+            </div>
+            <span className="text-muted-foreground text-sm">
+              ({reviews} matches)
+            </span>
           </div>
-          <span className="text-muted-foreground text-sm">
-            ({reviews} reviews)
-          </span>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -100,6 +107,11 @@ const TurfCard = ({
               +{sports.length - 3} more
             </Badge>
           )}
+        </div>
+
+        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
+          <span>Tournaments: {tournamentsHosted}</span>
+          <span>Matches: {matchesPlayed}</span>
         </div>
 
         <div className="flex items-center justify-between pt-3 border-t">

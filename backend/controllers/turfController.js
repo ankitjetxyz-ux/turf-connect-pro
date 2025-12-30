@@ -60,6 +60,7 @@ exports.createTurf = async (req, res) => {
 
 /* =======================
    GET ALL TURFS (PUBLIC)
+   - Includes lightweight stats for tournaments and matches
 ======================= */
 exports.getAllTurfs = async (req, res) => {
   const { search, location } = req.query;
@@ -71,7 +72,9 @@ exports.getAllTurfs = async (req, res) => {
 
   if (search) {
     // Broaden search to name, location, facilities
-    query = query.or(`name.ilike.%${search}%,location.ilike.%${search}%,facilities.ilike.%${search}%`);
+    query = query.or(
+      `name.ilike.%${search}%,location.ilike.%${search}%,facilities.ilike.%${search}%`,
+    );
   }
 
   if (location) {
@@ -83,21 +86,90 @@ exports.getAllTurfs = async (req, res) => {
 
   if (error) {
     console.error("Supabase error fetching turfs:", error);
-    return res.status(400).json({ error: "Failed to fetch turfs: " + error.message });
+    return res
+      .status(400)
+      .json({ error: "Failed to fetch turfs: " + error.message });
   }
 
   if (!data || data.length === 0) {
     return res.json([]);
   }
 
-  // Enrich with sports derived from text
-  const keywords = ["Football", "Cricket", "Badminton", "Tennis", "Basketball", "Hockey"];
-  const enriched = data.map(t => {
+  const turfIds = data.map((t) => t.id);
+
+  // 1) Tournaments per turf
+  const { data: tournaments, error: tErr } = await supabase
+    .from("tournaments")
+    .select("id, turf_id")
+    .in("turf_id", turfIds);
+
+  if (tErr) {
+    console.warn("Failed to load tournaments for turf stats", tErr);
+  }
+
+  const tournamentsByTurf = {};
+  (tournaments || []).forEach((t) => {
+    tournamentsByTurf[t.turf_id] = (tournamentsByTurf[t.turf_id] || 0) + 1;
+  });
+
+  // 2) Matches played: count bookings per turf via slots
+  const { data: slots, error: sErr } = await supabase
+    .from("slots")
+    .select("id, turf_id")
+    .in("turf_id", turfIds);
+
+  if (sErr) {
+    console.warn("Failed to load slots for turf stats", sErr);
+  }
+
+  const slotToTurf = {};
+  const slotIds = [];
+  (slots || []).forEach((s) => {
+    slotToTurf[s.id] = s.turf_id;
+    slotIds.push(s.id);
+  });
+
+  let bookingsByTurf = {};
+  if (slotIds.length > 0) {
+    const { data: bookings, error: bErr } = await supabase
+      .from("bookings")
+      .select("slot_id")
+      .in("slot_id", slotIds);
+
+    if (bErr) {
+      console.warn("Failed to load bookings for turf stats", bErr);
+    } else {
+      (bookings || []).forEach((b) => {
+        const turfId = slotToTurf[b.slot_id];
+        if (!turfId) return;
+        bookingsByTurf[turfId] = (bookingsByTurf[turfId] || 0) + 1;
+      });
+    }
+  }
+
+  // Enrich with sports derived from text + stats
+  const keywords = [
+    "Football",
+    "Cricket",
+    "Badminton",
+    "Tennis",
+    "Basketball",
+    "Hockey",
+  ];
+  const enriched = data.map((t) => {
     const text = `${t.name} ${t.description} ${t.facilities}`.toLowerCase();
-    const sports = keywords.filter(k => text.includes(k.toLowerCase()));
+    const sports = keywords.filter((k) => text.includes(k.toLowerCase()));
+
+    const tournamentsHosted = tournamentsByTurf[t.id] || 0;
+    const matchesPlayed = bookingsByTurf[t.id] || 0;
+    const isPopular = tournamentsHosted >= 5 || matchesPlayed >= 20;
+
     return {
       ...t,
-      sports: sports.length > 0 ? sports : ["Football", "Cricket"] // Default fallback
+      sports: sports.length > 0 ? sports : ["Football", "Cricket"], // Default fallback
+      tournaments_hosted: tournamentsHosted,
+      matches_played: matchesPlayed,
+      is_popular: isPopular,
     };
   });
 

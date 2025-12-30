@@ -10,13 +10,14 @@ import {
   Building2,
   User,
   Trophy,
-  Calendar
+  Calendar,
 } from "lucide-react";
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import { io, Socket } from "socket.io-client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const ClientDashboard = () => {
   type TurfItem = {
@@ -40,21 +41,35 @@ const ClientDashboard = () => {
   const [myTournaments, setMyTournaments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  const [profile, setProfile] = useState<{ name: string; email: string; profile_image_url?: string | null } | null>(null);
+
   const navigate = useNavigate();
   const { toast } = useToast();
   const socketRef = useRef<Socket | null>(null);
 
   const fetchData = async () => {
     try {
-      const [turfsRes, bookingsRes, tournamentsRes] = await Promise.all([
-        api.get("/turfs/my"),
-        api.get("/bookings/client"),
-        api.get("/tournaments/my")
-      ]);
+      const [turfsRes, bookingsRes, tournamentsRes, profileRes] =
+        await Promise.all([
+          api.get("/turfs/my"),
+          api.get("/bookings/client"),
+          api.get("/tournaments/my"),
+          api.get("/profile/me"),
+        ]);
 
       setTurfs(Array.isArray(turfsRes.data) ? turfsRes.data : []);
       setBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
-      setMyTournaments(Array.isArray(tournamentsRes.data) ? tournamentsRes.data : []);
+      setMyTournaments(
+        Array.isArray(tournamentsRes.data) ? tournamentsRes.data : [],
+      );
+      const user = profileRes.data?.user;
+      if (user) {
+        setProfile(user);
+        if (user.name) localStorage.setItem("name", user.name);
+        if (user.profile_image_url) {
+          localStorage.setItem("profile_image_url", user.profile_image_url);
+        }
+      }
     } catch (err: any) {
       console.error("Client dashboard error:", err?.response?.data || err);
       // alert(err?.response?.data?.error || "Failed to load client data");
@@ -114,11 +129,31 @@ const ClientDashboard = () => {
 
           {/* HEADER */}
           <div className="flex justify-between items-center mb-8">
-            <div>
-              <h1 className="text-3xl font-bold">Client Dashboard</h1>
-              <p className="text-muted-foreground">
-                Manage your turfs, slots & bookings
-              </p>
+            <div className="flex items-center gap-3">
+              {profile && (
+                <Avatar className="h-10 w-10">
+                  {profile.profile_image_url && (
+                    <AvatarImage
+                      src={profile.profile_image_url}
+                      alt={profile.name}
+                    />
+                  )}
+                  <AvatarFallback>
+                    {profile.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </AvatarFallback>
+                </Avatar>
+              )}
+              <div>
+                <h1 className="text-3xl font-bold">Client Dashboard</h1>
+                <p className="text-muted-foreground">
+                  Manage your turfs, slots & bookings
+                </p>
+              </div>
             </div>
 
             <Button

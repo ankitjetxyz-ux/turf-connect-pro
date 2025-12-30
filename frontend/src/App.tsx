@@ -23,6 +23,7 @@ import AddTurfPage from "./pages/client/AddTurfPage";
 import AddTournamentPage from "./pages/client/AddTournamentPage";
 import ClientBookings from "./pages/client/ClientBookings";
 import ChatPage from "./pages/ChatPage";
+import ProfilePage from "./pages/ProfilePage";
 
 
 const queryClient = new QueryClient();
@@ -81,8 +82,14 @@ const App = () => (
             }
           />
 
-
-
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
 
           {/* PLAYER DASHBOARD */}
           <Route

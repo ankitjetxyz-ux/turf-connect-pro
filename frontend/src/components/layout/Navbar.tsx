@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import AiSupportWidget from "@/components/ai/AiSupportWidget";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -20,6 +21,8 @@ const Navbar = () => {
 
   const token = localStorage.getItem("token");
   const role = localStorage.getItem("role");
+  const profileImage = localStorage.getItem("profile_image_url");
+  const displayName = localStorage.getItem("name") || "User";
 
   const isLoggedIn = !!token;
 
@@ -142,13 +145,35 @@ const Navbar = () => {
                     navigate(
                       role === "client"
                         ? "/client/dashboard"
-                        : "/player/dashboard"
+                        : "/player/dashboard",
                     )
                   }
                 >
                   <LayoutDashboard className="w-4 h-4 mr-2" />
                   Dashboard
                 </Button>
+
+                <button
+                  className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-secondary/60 transition-colors"
+                  onClick={() => navigate("/profile")}
+                >
+                  <Avatar className="h-8 w-8">
+                    {profileImage && (
+                      <AvatarImage src={profileImage} alt={displayName} />
+                    )}
+                    <AvatarFallback>
+                      {displayName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground hidden lg:inline">
+                    {displayName}
+                  </span>
+                </button>
 
                 <Button
                   variant="destructive"
@@ -189,17 +214,30 @@ const Navbar = () => {
               </Link>
             ))}
             {isLoggedIn && (
-              <Link
-                to="/chat"
-                onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  isActive("/chat")
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                }`}
-              >
-                Chat
-              </Link>
+              <>
+                <Link
+                  to="/chat"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/chat")
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  }`}
+                >
+                  Chat
+                </Link>
+                <Link
+                  to="/profile"
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
+                    isActive("/profile")
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  }`}
+                >
+                  Profile
+                </Link>
+              </>
             )}
 
             <Link

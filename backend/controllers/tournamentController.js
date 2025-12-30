@@ -1,9 +1,19 @@
 const supabase = require("../config/db");
+const Razorpay = require("razorpay");
+const crypto = require("crypto");
+
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+let razorpay = null;
+if (razorpayKeyId && razorpayKeySecret) {
+  razorpay = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+}
 
 /* =========================
    GET ALL TOURNAMENTS
    - Filters out expired tournaments (end_date < today)
    - Supports search by name, sport
+   - Includes lightweight stats: spots_left, current_teams
 ========================= */
 exports.getAllTournaments = async (req, res) => {
   const user_id = req.user?.id || null;
@@ -29,6 +39,10 @@ exports.getAllTournaments = async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
+    if (!tournaments || tournaments.length === 0) {
+      return res.json([]);
+    }
+
     // 2. Fetch joined tournaments (player only)
     let joinedIds = [];
 
@@ -36,24 +50,51 @@ exports.getAllTournaments = async (req, res) => {
       const { data: joins } = await supabase
         .from("tournament_participants")
         .select("tournament_id")
-        .eq("user_id", user_id);
+        .eq("user_id", user_id)
+        .eq("payment_status", "paid");
 
-      joinedIds = joins?.map(j => j.tournament_id) || [];
+      joinedIds = joins?.map((j) => j.tournament_id) || [];
     }
 
-    // 3. Shape response safely
-    const formatted = tournaments.map(t => ({
-      id: t.id,
-      name: t.name,
-      sport: t.sport,
-      start_date: t.start_date,
-      end_date: t.end_date,
-      entry_fee: t.entry_fee,
-      max_teams: t.max_teams,
-      image: t.image,
-      status: t.status || "upcoming",
-      already_joined: joinedIds.includes(t.id),
-    }));
+    // 3. Compute current team counts (paid participants only)
+    const tournamentIds = tournaments.map((t) => t.id);
+    const { data: participants, error: partErr } = await supabase
+      .from("tournament_participants")
+      .select("tournament_id")
+      .in("tournament_id", tournamentIds)
+      .eq("payment_status", "paid");
+
+    if (partErr) {
+      console.warn("Failed to load tournament participants for stats", partErr);
+    }
+
+    const teamCountByTournament = {};
+    (participants || []).forEach((p) => {
+      teamCountByTournament[p.tournament_id] =
+        (teamCountByTournament[p.tournament_id] || 0) + 1;
+    });
+
+    // 4. Shape response safely
+    const formatted = tournaments.map((t) => {
+      const currentTeams = teamCountByTournament[t.id] || 0;
+      const maxTeams = Number(t.max_teams) || 0;
+      const spotsLeft = Math.max(0, maxTeams - currentTeams);
+
+      return {
+        id: t.id,
+        name: t.name,
+        sport: t.sport,
+        start_date: t.start_date,
+        end_date: t.end_date,
+        entry_fee: t.entry_fee,
+        max_teams: maxTeams,
+        current_teams: currentTeams,
+        spots_left: spotsLeft,
+        image: t.image,
+        status: t.status || "upcoming",
+        already_joined: joinedIds.includes(t.id),
+      };
+    });
 
     res.json(formatted);
   } catch (err) {
@@ -84,7 +125,8 @@ exports.getTournamentById = async (req, res) => {
 };
 
 /* =========================
-   JOIN TOURNAMENT
+   LEGACY: JOIN TOURNAMENT (NO PAYMENT)
+   - Kept only for free tournaments (entry_fee <= 0)
 ========================= */
 exports.joinTournament = async (req, res) => {
   const user_id = req.user.id;
@@ -96,25 +138,294 @@ exports.joinTournament = async (req, res) => {
     .eq("id", tournament_id)
     .single();
 
-  if (!tournament || tournament.max_teams <= 0) {
-    return res.status(400).json({ error: "Tournament full or not found" });
+  if (!tournament) {
+    return res.status(404).json({ error: "Tournament not found" });
+  }
+
+  if (Number(tournament.entry_fee) > 0) {
+    return res
+      .status(400)
+      .json({ error: "Paid tournaments must be joined via the payment flow" });
+  }
+
+  // Capacity check based on paid participants (for free tournaments this is effectively unlimited)
+  const { data: paidParticipants } = await supabase
+    .from("tournament_participants")
+    .select("id")
+    .eq("tournament_id", tournament_id)
+    .eq("payment_status", "paid");
+
+  const maxTeams = Number(tournament.max_teams) || 0;
+  if (maxTeams > 0 && (paidParticipants?.length || 0) >= maxTeams) {
+    return res.status(400).json({ error: "Tournament full" });
   }
 
   const { error } = await supabase
     .from("tournament_participants")
-    .insert([{ user_id, tournament_id, team_name, team_members }]);
+    .insert([
+      {
+        user_id,
+        tournament_id,
+        team_name,
+        team_members,
+        status: "registered",
+        payment_status: "paid", // Treat free tournaments as paid
+      },
+    ]);
 
   if (error) {
     return res.status(400).json({ error: "Already joined or registration failed" });
   }
 
-  // Decrement max_teams
-  await supabase
-    .from("tournaments")
-    .update({ max_teams: tournament.max_teams - 1 })
-    .eq("id", tournament_id);
-
   res.json({ message: "Joined successfully" });
+};
+
+/* =========================
+   PAID JOIN: CREATE ORDER + PENDING PARTICIPANT
+========================= */
+exports.joinTournamentWithOrder = async (req, res) => {
+  if (!razorpay) {
+    return res.status(500).json({ error: "Payments not configured" });
+  }
+
+  const user_id = req.user.id;
+  const { tournament_id, team_name, team_members } = req.body;
+
+  if (!tournament_id || !team_name) {
+    return res.status(400).json({ error: "tournament_id and team_name are required" });
+  }
+
+  try {
+    const { data: tournament, error: tErr } = await supabase
+      .from("tournaments")
+      .select("id, entry_fee, max_teams")
+      .eq("id", tournament_id)
+      .single();
+
+    if (tErr || !tournament) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+
+    const maxTeams = Number(tournament.max_teams) || 0;
+
+    // Capacity check: count paid participants
+    const { data: paidParticipants, error: pErr } = await supabase
+      .from("tournament_participants")
+      .select("id")
+      .eq("tournament_id", tournament_id)
+      .eq("payment_status", "paid");
+
+    if (pErr) {
+      console.error("[joinTournamentWithOrder] participants fetch error", pErr);
+      return res.status(500).json({ error: "Failed to validate capacity" });
+    }
+
+    if (maxTeams > 0 && (paidParticipants?.length || 0) >= maxTeams) {
+      return res.status(400).json({ error: "Tournament is full" });
+    }
+
+    const entryFee = Number(tournament.entry_fee) || 0;
+    if (entryFee <= 0) {
+      return res.status(400).json({ error: "Tournament has no entry fee; use free join" });
+    }
+
+    const order = await razorpay.orders.create({
+      amount: Math.round(entryFee * 100),
+      currency: "INR",
+      payment_capture: 1,
+    });
+
+    const { data: participant, error: partErr } = await supabase
+      .from("tournament_participants")
+      .insert([
+        {
+          user_id,
+          tournament_id,
+          team_name,
+          team_members,
+          status: "pending",
+          payment_status: "pending",
+          razorpay_order_id: order.id,
+        },
+      ])
+      .select()
+      .single();
+
+    if (partErr || !participant) {
+      console.error("[joinTournamentWithOrder] participant insert error", partErr);
+      return res.status(500).json({ error: "Failed to create participant" });
+    }
+
+    res.json({
+      participant_id: participant.id,
+      order,
+      key_id: razorpayKeyId,
+    });
+  } catch (err) {
+    console.error("[joinTournamentWithOrder] Unexpected error", err);
+    res.status(500).json({ error: "Failed to start payment" });
+  }
+};
+
+/* =========================
+   VERIFY TOURNAMENT PAYMENT
+========================= */
+exports.verifyTournamentPayment = async (req, res) => {
+  if (!razorpay) {
+    return res.status(500).json({ error: "Payments not configured" });
+  }
+
+  const { razorpay_order_id, razorpay_payment_id, razorpay_signature, participant_id } = req.body;
+
+  if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !participant_id) {
+    return res.status(400).json({ error: "missing fields" });
+  }
+
+  try {
+    // 1) Verify Razorpay signature
+    const generated_signature = crypto
+      .createHmac("sha256", razorpayKeySecret)
+      .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+      .digest("hex");
+
+    if (generated_signature !== razorpay_signature) {
+      console.error("[verifyTournamentPayment] Signature mismatch", {
+        razorpay_order_id,
+        razorpay_payment_id,
+      });
+      return res.status(400).json({ error: "Invalid signature" });
+    }
+
+    // 2) Load participant and tournament/owner
+    const { data: participant, error: partErr } = await supabase
+      .from("tournament_participants")
+      .select(
+        `id, user_id, tournament_id, payment_status, status,
+         tournaments (
+           id, entry_fee, turf_id,
+           turfs ( owner_id )
+         )`
+      )
+      .eq("id", participant_id)
+      .maybeSingle();
+
+    if (partErr || !participant) {
+      return res.status(404).json({ error: "Participant not found" });
+    }
+
+    if (participant.payment_status === "paid") {
+      // Idempotent success
+      return res.json({ success: true });
+    }
+
+    const tournament = participant.tournaments;
+    if (!tournament) {
+      return res.status(400).json({ error: "Tournament data missing" });
+    }
+
+    const entryFee = Number(tournament.entry_fee) || 0;
+    const ownerId = tournament.turfs?.owner_id || null;
+
+    // 3) Capacity double-check
+    const maxTeams = Number(tournament.max_teams) || 0;
+    const { data: paidParticipants } = await supabase
+      .from("tournament_participants")
+      .select("id")
+      .eq("tournament_id", tournament.id)
+      .eq("payment_status", "paid");
+
+    if (maxTeams > 0 && (paidParticipants?.length || 0) >= maxTeams) {
+      return res.status(400).json({ error: "Tournament is full" });
+    }
+
+    // 4) Mark participant as paid/registered
+    const { error: updateErr } = await supabase
+      .from("tournament_participants")
+      .update({
+        payment_status: "paid",
+        status: "registered",
+        razorpay_order_id,
+      })
+      .eq("id", participant_id);
+
+    if (updateErr) {
+      console.error("[verifyTournamentPayment] participant update failed", updateErr);
+      return res.status(500).json({ error: "Failed to update participant" });
+    }
+
+    // 5) Earnings distribution (reuse booking logic style)
+    if (entryFee > 0) {
+      const adminCut = 50.0; // Fixed admin cut, consistent with booking flow
+      const ownerCut = Math.max(0, entryFee - adminCut);
+      const adminId =
+        process.env.ADMIN_ENTITY_ID || "00000000-0000-0000-0000-000000000000";
+
+      // Admin earnings
+      try {
+        await supabase.rpc("increment_earning", {
+          p_entity_id: adminId,
+          p_entity_type: "admin",
+          p_amount: adminCut,
+        });
+      } catch (rpcErr) {
+        console.warn("[verifyTournamentPayment] admin earning RPC failed", rpcErr);
+      }
+
+      // Owner earnings
+      if (ownerId) {
+        try {
+          await supabase.rpc("increment_earning", {
+            p_entity_id: ownerId,
+            p_entity_type: "owner",
+            p_amount: ownerCut,
+          });
+        } catch (rpcErr) {
+          console.warn("[verifyTournamentPayment] owner earning RPC failed", rpcErr);
+        }
+      }
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("[verifyTournamentPayment] Unexpected error", err);
+    res.status(500).json({ error: "Failed to verify payment" });
+  }
+};
+
+/* =========================
+   GET TOURNAMENT PARTICIPANTS (PAID)
+========================= */
+exports.getTournamentParticipants = async (req, res) => {
+  const { id } = req.params; // tournament id
+
+  try {
+    const { data, error } = await supabase
+      .from("tournament_participants")
+      .select(
+        `id, user_id, team_name, team_members, created_at,
+         users ( name, profile_image_url )`
+      )
+      .eq("tournament_id", id)
+      .eq("payment_status", "paid");
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    const participants = (data || []).map((p) => ({
+      id: p.id,
+      user_id: p.user_id,
+      team_name: p.team_name,
+      team_members: p.team_members,
+      created_at: p.created_at,
+      user: p.users || null,
+    }));
+
+    res.json(participants);
+  } catch (err) {
+    console.error("[getTournamentParticipants] Unexpected error", err);
+    res.status(500).json({ error: "Failed to load participants" });
+  }
 };
 
 /* =========================
@@ -126,15 +437,33 @@ exports.createTournament = async (req, res) => {
 
   try {
     // 1. Verify turf belongs to owner
-    const { data: turf } = await supabase.from("turfs").select("id, owner_id").eq("id", turf_id).single();
+    const { data: turf } = await supabase
+      .from("turfs")
+      .select("id, owner_id")
+      .eq("id", turf_id)
+      .single();
     if (!turf || turf.owner_id !== owner_id) {
       return res.status(403).json({ error: "Unauthorized or Turf not found" });
     }
 
     // 2. Insert
-    const { data, error } = await supabase.from("tournaments").insert([{
-      name, sport, start_date, end_date, entry_fee, max_teams, turf_id, description, image
-    }]).select().single();
+    const { data, error } = await supabase
+      .from("tournaments")
+      .insert([
+        {
+          name,
+          sport,
+          start_date,
+          end_date,
+          entry_fee,
+          max_teams,
+          turf_id,
+          description,
+          image,
+        },
+      ])
+      .select()
+      .single();
 
     if (error) throw error;
 
@@ -153,26 +482,30 @@ exports.getMyTournaments = async (req, res) => {
 
   try {
     // Fetch turfs owned by user
-    const { data: turfs } = await supabase.from("turfs").select("id").eq("owner_id", owner_id);
-    const turfIds = turfs?.map(t => t.id) || [];
+    const { data: turfs } = await supabase
+      .from("turfs")
+      .select("id")
+      .eq("owner_id", owner_id);
+    const turfIds = turfs?.map((t) => t.id) || [];
 
     if (turfIds.length === 0) return res.json([]);
 
     // If specific turf requested, verify ownership
     if (turf_id && !turfIds.includes(turf_id)) {
-      return res.status(403).json({ error: "Unauthorized access to this turf" });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized access to this turf" });
     }
 
-    let query = supabase
-      .from("tournaments")
-      .select("*")
-      .order("date", { ascending: true });
+    let query = supabase.from("tournaments").select("*");
 
     if (turf_id) {
       query = query.eq("turf_id", turf_id);
     } else {
       query = query.in("turf_id", turfIds);
     }
+
+    query = query.order("start_date", { ascending: true });
 
     const { data: tournaments, error } = await query;
 
@@ -192,11 +525,16 @@ exports.deleteTournament = async (req, res) => {
 
   try {
     // Verify ownership via turf
-    // Note: This relies on foreign key `turf_id` references `turfs(id)`
-    const { data: tournament } = await supabase.from("tournaments").select("turf_id, turfs!inner(owner_id)").eq("id", id).single();
+    const { data: tournament } = await supabase
+      .from("tournaments")
+      .select("turf_id, turfs!inner(owner_id)")
+      .eq("id", id)
+      .single();
 
     if (!tournament || tournament.turfs?.owner_id !== owner_id) {
-      return res.status(403).json({ error: "Unauthorized or Tournament not linked to your turf" });
+      return res
+        .status(403)
+        .json({ error: "Unauthorized or Tournament not linked to your turf" });
     }
 
     const { error } = await supabase.from("tournaments").delete().eq("id", id);
@@ -215,7 +553,17 @@ exports.deleteTournament = async (req, res) => {
 exports.updateTournament = async (req, res) => {
   const owner_id = req.user.id;
   const { id } = req.params;
-  const { name, sport, start_date, end_date, entry_fee, max_teams, description, image, status } = req.body;
+  const {
+    name,
+    sport,
+    start_date,
+    end_date,
+    entry_fee,
+    max_teams,
+    description,
+    image,
+    status,
+  } = req.body;
 
   try {
     // 1. Verify ownership (via turf)
@@ -235,8 +583,8 @@ exports.updateTournament = async (req, res) => {
     if (sport) updates.sport = sport;
     if (start_date) updates.start_date = start_date;
     if (end_date) updates.end_date = end_date;
-    if (entry_fee) updates.entry_fee = entry_fee;
-    if (max_teams) updates.max_teams = max_teams;
+    if (entry_fee !== undefined) updates.entry_fee = entry_fee;
+    if (max_teams !== undefined) updates.max_teams = max_teams;
     if (description) updates.description = description;
     if (image) updates.image = image;
     if (status) updates.status = status; // cancel/complete etc.
@@ -264,18 +612,23 @@ exports.getPlayerTournaments = async (req, res) => {
   try {
     const { data: participants, error } = await supabase
       .from("tournament_participants")
-      .select(`
+      .select(
+        `
         tournament_id,
         tournaments (
           id, name, sport, start_date, end_date, status, image
         )
-      `)
-      .eq("user_id", user_id);
+      `
+      )
+      .eq("user_id", user_id)
+      .eq("payment_status", "paid");
 
     if (error) throw error;
 
     // Flatten structure
-    const tournaments = participants.map(p => p.tournaments);
+    const tournaments = (participants || [])
+      .map((p) => p.tournaments)
+      .filter(Boolean);
     res.json(tournaments);
   } catch (err) {
     res.status(400).json({ error: err.message });
