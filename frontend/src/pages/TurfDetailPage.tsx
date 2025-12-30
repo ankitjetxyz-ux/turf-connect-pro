@@ -1,0 +1,673 @@
+import Navbar from "@/components/layout/Navbar";
+import Footer from "@/components/layout/Footer";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { 
+  MapPin, 
+  Star, 
+  Clock, 
+  Users, 
+  Wifi, 
+  Car, 
+  Coffee, 
+  ShowerHead,
+  Heart,
+  Share2,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle2,
+  Phone,
+  MessageCircle
+} from "lucide-react";
+import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { getTurfDetails } from "@/services/turfService";
+import { getSlotsByTurf } from "@/services/slotService";
+import { createBooking, verifyPayment } from "@/services/bookingService";
+
+/* TYPES */
+
+type Slot = {
+  id: number;
+  is_available?: boolean;
+  is_booked?: boolean;
+  start_time: string;
+  end_time: string;
+  price: number;
+};
+
+type Turf = {
+  id: number;
+  name: string;
+  location: string;
+  description: string;
+  images?: string | string[];
+  facilities?: string | string[];
+  price_per_slot: number;
+  owner_phone?: string;
+  owner_id: string;
+  rating?: number;
+  reviews?: number;
+  sports?: string[];
+  open_hours?: string;
+  size?: string;
+  surface?: string;
+};
+
+type ToastConfig = {
+  title: string;
+  description: string;
+  variant?: "default" | "destructive" | "success";
+};
+
+/* RAZORPAY LOADER */
+
+const loadRazorpay = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if ((window as any).Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
+
+/* FACILITY ICONS MAP */
+
+const facilityIconsMap: { [key: string]: any } = {
+  wifi: Wifi,
+  parking: Car,
+  cafeteria: Coffee,
+  showers: ShowerHead,
+  "free wifi": Wifi,
+  "free parking": Car,
+};
+
+const getFacilityIcon = (facility: string): any => {
+  const key = facility.toLowerCase();
+  return facilityIconsMap[key] || Wifi;
+};
+
+/* MAIN COMPONENT */
+
+const TurfDetailPage = () => {
+  const { id } = useParams();
+  const navigate = useNavigate();
+
+  const [turf, setTurf] = useState<Turf | null>(null);
+  const [slots, setSlots] = useState<Slot[]>([]);
+  const [currentImage, setCurrentImage] = useState(0);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
+  const [bookingLoading, setBookingLoading] = useState(false);
+  const [toast, setToast] = useState<ToastConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  /* AUTH */
+
+  const role = localStorage.getItem("role");
+  const playerId = localStorage.getItem("user_id");
+
+  /* TOAST */
+
+  const showToast = (config: ToastConfig) => {
+    setToast(config);
+    setTimeout(() => setToast(null), 4000);
+  };
+
+  const toastClass =
+    toast?.variant === "success"
+      ? "bg-green-600"
+      : toast?.variant === "destructive"
+      ? "bg-red-600"
+      : "bg-slate-800";
+
+  /* SLOT AVAILABILITY */
+
+  const isSlotAvailable = (slot: Slot): boolean => {
+    if (typeof slot.is_booked === "boolean") {
+      return slot.is_booked === false;
+    }
+    if (typeof slot.is_available === "boolean") {
+      return slot.is_available === true;
+    }
+    return true;
+  };
+
+  const toggleSlotSelection = (slotId: number) => {
+    setSelectedSlots((prev) => {
+      if (prev.includes(slotId)) {
+        return prev.filter((id) => id !== slotId);
+      } else {
+        return [...prev, slotId];
+      }
+    });
+  };
+
+  /* BOOKING AND PAYMENT */
+
+  const handleBooking = async () => {
+    if (role !== "player") {
+      showToast({
+        title: "Access Denied",
+        description: "Only players can book slots",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (selectedSlots.length === 0) {
+      showToast({
+        title: "Select Slot",
+        description: "Please select at least one slot",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setBookingLoading(true);
+
+    const razorLoaded = await loadRazorpay();
+    if (!razorLoaded) {
+      showToast({
+        title: "Payment Error",
+        description: "Razorpay failed to load",
+        variant: "destructive"
+      });
+      setBookingLoading(false);
+      return;
+    }
+
+    try {
+      const { data } = await createBooking(selectedSlots);
+      
+      const options = {
+        key: data.key_id,
+        amount: data.order.amount,
+        currency: data.order.currency,
+        name: "Book My Turf",
+        description: "Turf Booking",
+        order_id: data.order.id,
+        handler: async (response: any) => {
+          try {
+            await verifyPayment({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+              booking_id: data.booking_ids[0]
+            });
+            showToast({ 
+              title: "Success", 
+              description: "Booking Confirmed!", 
+              variant: "success" 
+            });
+            setTimeout(() => {
+              navigate("/player/dashboard");
+            }, 1500);
+          } catch (err) {
+            console.error(err);
+            showToast({ 
+              title: "Error", 
+              description: "Payment verification failed", 
+              variant: "destructive" 
+            });
+          }
+        },
+        prefill: {
+          name: "Player",
+          email: "player@example.com",
+          contact: "9999999999"
+        },
+        theme: {
+          color: "#2563eb"
+        }
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.open();
+      rzp.on('payment.failed', function (response: any){
+        showToast({ 
+          title: "Failed", 
+          description: response.error.description, 
+          variant: "destructive" 
+        });
+      });
+
+    } catch (error: any) {
+      console.error(error);
+      showToast({
+        title: "Booking Failed",
+        description: error.response?.data?.error || "Could not initiate booking",
+        variant: "destructive"
+      });
+    } finally {
+      setBookingLoading(false);
+    }
+  };
+
+  /* CONTACT */
+
+  const handleCallOwner = () => {
+    if (!turf?.owner_phone) {
+      showToast({
+        title: "Unavailable",
+        description: "Owner phone not available",
+        variant: "destructive"
+      });
+      return;
+    }
+    window.open(`tel:${turf.owner_phone}`, "_self");
+  };
+
+  const handleMessageOwner = () => {
+    if (!playerId) {
+      showToast({
+        title: "Login Required",
+        description: "Please login first",
+        variant: "destructive"
+      });
+      return;
+    }
+    navigate("/chat");
+  };
+
+  /* IMAGE NAVIGATION */
+
+  const nextImage = () => {
+    const images = Array.isArray(turf?.images)
+      ? turf.images
+      : typeof turf?.images === "string"
+      ? turf.images.split(",")
+      : [];
+    setCurrentImage((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    const images = Array.isArray(turf?.images)
+      ? turf.images
+      : typeof turf?.images === "string"
+      ? turf.images.split(",")
+      : [];
+    setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  /* FETCH DATA */
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!id) return;
+      try {
+        const [turfRes, slotsRes] = await Promise.all([
+          getTurfDetails(id),
+          getSlotsByTurf(id)
+        ]);
+        setTurf(turfRes.data);
+        setSlots(slotsRes.data);
+      } catch (error) {
+        console.error(error);
+        showToast({
+          title: "Error",
+          description: "Failed to load turf details",
+          variant: "destructive"
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, [id]);
+
+  /* LOADING STATE */
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading turf details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!turf) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-heading font-bold text-foreground mb-2">Turf Not Found</h2>
+          <p className="text-muted-foreground mb-6">The turf you're looking for doesn't exist.</p>
+          <Button onClick={() => navigate("/turfs")}>Browse Turfs</Button>
+        </div>
+      </div>
+    );
+  }
+
+  /* DATA NORMALIZATION */
+
+  const images = Array.isArray(turf.images)
+    ? turf.images
+    : typeof turf.images === "string"
+    ? turf.images.split(",").map(img => img.trim())
+    : ["https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1200"];
+
+  const facilitiesList = Array.isArray(turf.facilities)
+    ? turf.facilities
+    : typeof turf.facilities === "string"
+    ? turf.facilities.split(",").map(f => f.trim())
+    : ["WiFi", "Parking", "Cafeteria", "Showers"];
+
+  const sportsList = turf.sports || ["Football", "Cricket", "Badminton"];
+
+  const totalAmount = selectedSlots.reduce((sum, slotId) => {
+    const slot = slots.find(s => s.id === slotId);
+    return sum + (slot ? Number(slot.price) : 0);
+  }, 0);
+
+  const dates = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date();
+    date.setDate(date.getDate() + i);
+    return date;
+  });
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Navbar />
+      
+      {toast && (
+        <div className={`fixed top-20 right-4 p-4 rounded-lg z-50 ${toastClass} text-white shadow-lg animate-slide-down`}>
+          <b className="block mb-1">{toast.title}</b>
+          <p className="text-sm">{toast.description}</p>
+        </div>
+      )}
+      
+      <main className="pt-20 pb-12">
+        {/* Image Gallery */}
+        <section className="relative h-[50vh] md:h-[60vh] overflow-hidden">
+          <img
+            src={images[currentImage]}
+            alt={turf.name}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
+          
+          {images.length > 1 && (
+            <>
+              <button
+                onClick={prevImage}
+                className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary transition-colors"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+              <button
+                onClick={nextImage}
+                className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary transition-colors"
+              >
+                <ChevronRight className="w-6 h-6" />
+              </button>
+            </>
+          )}
+
+          {images.length > 1 && (
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+              {images.map((_, i) => (
+                <button
+                  key={i}
+                  onClick={() => setCurrentImage(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${
+                    i === currentImage ? "w-8 bg-primary" : "bg-foreground/50"
+                  }`}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="absolute top-4 right-4 flex gap-2">
+            <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-destructive transition-colors">
+              <Heart className="w-5 h-5" />
+            </button>
+            <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary transition-colors">
+              <Share2 className="w-5 h-5" />
+            </button>
+          </div>
+        </section>
+
+        <div className="container px-4 -mt-16 relative z-10">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Main Content */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Header Card */}
+              <Card variant="glass">
+                <CardContent className="p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                    <div>
+                      <Badge variant="featured" className="mb-2">Featured</Badge>
+                      <h1 className="font-heading text-2xl md:text-3xl font-bold text-foreground">
+                        {turf.name}
+                      </h1>
+                      <div className="flex items-center gap-2 text-muted-foreground mt-2">
+                        <MapPin className="w-4 h-4" />
+                        <span className="text-sm">{turf.location}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-lg">
+                      <Star className="w-5 h-5 text-primary fill-primary" />
+                      <span className="font-heading font-bold text-primary">
+                        {turf.rating || 4.8}
+                      </span>
+                      <span className="text-muted-foreground text-sm">
+                        ({turf.reviews || 245} reviews)
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-muted-foreground mb-6">{turf.description}</p>
+
+                  <div className="flex flex-wrap gap-2 mb-6">
+                    {sportsList.map((sport) => (
+                      <Badge key={sport} variant="secondary">{sport}</Badge>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-secondary/50 rounded-lg p-3 text-center">
+                      <Clock className="w-5 h-5 text-primary mx-auto mb-1" />
+                      <div className="text-xs text-muted-foreground">Open Hours</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {turf.open_hours || "6:00 AM - 11:00 PM"}
+                      </div>
+                    </div>
+                    <div className="bg-secondary/50 rounded-lg p-3 text-center">
+                      <Users className="w-5 h-5 text-primary mx-auto mb-1" />
+                      <div className="text-xs text-muted-foreground">Size</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {turf.size || "100 x 60 m"}
+                      </div>
+                    </div>
+                    <div className="bg-secondary/50 rounded-lg p-3 text-center col-span-2">
+                      <CheckCircle2 className="w-5 h-5 text-primary mx-auto mb-1" />
+                      <div className="text-xs text-muted-foreground">Surface</div>
+                      <div className="text-sm font-semibold text-foreground">
+                        {turf.surface || "Artificial Turf"}
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Facilities */}
+              <Card variant="default">
+                <CardHeader>
+                  <CardTitle>Facilities & Amenities</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {facilitiesList.map((facility) => {
+                      const IconComponent = getFacilityIcon(facility);
+                      return (
+                        <div
+                          key={facility}
+                          className="flex items-center gap-3 p-3 bg-secondary/50 rounded-lg"
+                        >
+                          <div className="w-10 h-10 rounded-lg gradient-primary flex items-center justify-center">
+                            <IconComponent className="w-5 h-5 text-primary-foreground" />
+                          </div>
+                          <span className="text-sm font-medium text-foreground">{facility}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Time Slots */}
+              <Card variant="default">
+                <CardHeader>
+                  <CardTitle>Available Time Slots</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
+                    {dates.map((date, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setSelectedDate(date)}
+                        className={`flex flex-col items-center min-w-[70px] p-3 rounded-xl transition-all ${
+                          selectedDate.toDateString() === date.toDateString()
+                            ? "gradient-primary text-primary-foreground"
+                            : "bg-secondary text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        <span className="text-xs font-medium">
+                          {date.toLocaleDateString("en-US", { weekday: "short" })}
+                        </span>
+                        <span className="text-lg font-bold">{date.getDate()}</span>
+                        <span className="text-xs">
+                          {date.toLocaleDateString("en-US", { month: "short" })}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+
+                  {slots.length > 0 ? (
+                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                      {slots.map((slot) => {
+                        const available = isSlotAvailable(slot);
+                        const isSelected = selectedSlots.includes(slot.id);
+                        
+                        return (
+                          <button
+                            key={slot.id}
+                            disabled={!available}
+                            onClick={() => available && toggleSlotSelection(slot.id)}
+                            className={`p-3 rounded-lg text-center transition-all ${
+                              !available
+                                ? "bg-secondary/30 text-muted-foreground cursor-not-allowed line-through"
+                                : isSelected
+                                ? "gradient-primary text-primary-foreground shadow-glow"
+                                : "bg-secondary text-foreground hover:border-primary border border-transparent"
+                            }`}
+                          >
+                            <div className="text-sm font-semibold">
+                              {slot.start_time.slice(0, 5)}
+                            </div>
+                            <div className="text-xs mt-1">₹{slot.price}</div>
+                            {isSelected && (
+                              <CheckCircle2 className="w-4 h-4 mx-auto mt-1" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>No slots available for this date</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Booking Sidebar */}
+            <div className="lg:col-span-1">
+              <Card variant="featured" className="sticky top-24">
+                <CardHeader>
+                  <CardTitle>Book This Turf</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="text-center p-4 bg-secondary/50 rounded-xl">
+                    <div className="text-muted-foreground text-sm">Starting from</div>
+                    <div className="font-heading text-3xl font-bold text-primary">
+                      ₹{turf.price_per_slot}
+                      <span className="text-muted-foreground text-sm font-normal">/hr</span>
+                    </div>
+                  </div>
+
+                  {selectedSlots.length > 0 && (
+                    <div className="p-4 bg-primary/10 border border-primary/30 rounded-xl">
+                      <div className="text-sm text-muted-foreground mb-1">Selected Slots</div>
+                      <div className="font-heading font-bold text-foreground">
+                        {selectedDate.toLocaleDateString("en-US", { 
+                          weekday: "long",
+                          month: "long",
+                          day: "numeric"
+                        })}
+                      </div>
+                      <div className="text-primary font-semibold mt-2">
+                        {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
+                      </div>
+                      <div className="text-foreground font-bold text-xl mt-2">
+                        Total: ₹{totalAmount}
+                      </div>
+                    </div>
+                  )}
+
+                  <Button 
+                    variant="hero" 
+                    size="xl" 
+                    className="w-full" 
+                    disabled={selectedSlots.length === 0 || bookingLoading}
+                    onClick={handleBooking}
+                  >
+                    {bookingLoading ? "Processing..." : selectedSlots.length > 0 ? "Proceed to Pay" : "Select a Time Slot"}
+                  </Button>
+
+                  <div className="flex gap-3">
+                    <Button variant="outline" className="flex-1" onClick={handleCallOwner}>
+                      <Phone className="w-4 h-4 mr-2" />
+                      Call
+                    </Button>
+                    <Button variant="outline" className="flex-1" onClick={handleMessageOwner}>
+                      <MessageCircle className="w-4 h-4 mr-2" />
+                      Chat
+                    </Button>
+                  </div>
+
+                  <div className="space-y-2 pt-4 border-t border-border">
+                    {[
+                      "Instant Confirmation",
+                      "Free Cancellation (24hrs)",
+                      "Secure Payment",
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-2 text-muted-foreground text-sm">
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <Footer />
+    </div>
+  );
+};
+
+export default TurfDetailPage;
