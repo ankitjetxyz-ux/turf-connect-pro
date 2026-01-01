@@ -17,12 +17,10 @@ const {
 
 const { verifyToken, allowRoles, optionalVerifyToken } = require("../middleware/authMiddleware");
 
-// Public / auth-aware routes
+// Public list route
 router.get("/", optionalVerifyToken, getAllTournaments);
-router.get("/:id", optionalVerifyToken, getTournamentById); // Public/Auth details
-router.get("/:id/participants", optionalVerifyToken, getTournamentParticipants);
 
-// Player join routes
+// Player join routes (static paths before :id)
 router.post("/join", verifyToken, allowRoles("player"), joinTournament); // legacy free join
 router.post(
   "/join-and-order",
@@ -37,13 +35,17 @@ router.post(
   verifyTournamentPayment,
 );
 
-// Client Routes
+// Client Routes (static paths before :id)
 router.post("/", verifyToken, allowRoles("client"), createTournament);
 router.get("/my", verifyToken, allowRoles("client"), getMyTournaments);
+
+// Player Routes (static paths before :id)
+router.get("/player-stats", verifyToken, allowRoles("player"), getPlayerTournaments);
+
+// Parameterized routes MUST come AFTER static routes
+router.get("/:id", optionalVerifyToken, getTournamentById);
+router.get("/:id/participants", optionalVerifyToken, getTournamentParticipants);
 router.put("/:id", verifyToken, allowRoles("client"), updateTournament);
 router.delete("/:id", verifyToken, allowRoles("client"), deleteTournament);
-
-// Player Routes
-router.get("/player-stats", verifyToken, allowRoles("player"), getPlayerTournaments);
 
 module.exports = router;

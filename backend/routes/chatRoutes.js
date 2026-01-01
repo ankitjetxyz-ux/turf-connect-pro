@@ -8,5 +8,7 @@ router.post("/create", verifyToken, chatController.createConversation);
 router.get("/conversations", verifyToken, chatController.listConversations);
 router.get("/:chatId/messages", verifyToken, chatController.getMessages);
 router.post("/:chatId/message", verifyToken, chatController.postMessage);
+router.delete("/:chatId", verifyToken, chatController.deleteChat);
+router.post("/:chatId/favorite", verifyToken, chatController.toggleFavorite);
 
 module.exports = router;

@@ -1,6 +1,6 @@
 export const loadRazorpay = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    if ((window as any).Razorpay) {
+    if ((window as unknown as { Razorpay: unknown }).Razorpay) {
       resolve(true);
       return;
     }

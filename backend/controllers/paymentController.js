@@ -13,8 +13,11 @@ if (razorpayKeyId && razorpayKeySecret) {
 exports.createOrder = async (req, res, next) => {
   try {
     if (!razorpay) return res.status(500).json({ error: "Razorpay not configured on server" });
-    const { booking_id, amount, currency = "INR", turf_id, payer_id } = req.body;
-    if (!booking_id || !amount || !payer_id) return res.status(400).json({ error: "booking_id, amount, payer_id required" });
+    const { booking_id, amount, currency = "INR", turf_id } = req.body;
+    const payer_id = req.user?.id; // Use authenticated user ID for security
+    
+    if (!booking_id || !amount) return res.status(400).json({ error: "booking_id and amount required" });
+    if (!payer_id) return res.status(401).json({ error: "Authentication required" });
 
     const options = {
       amount: Math.round(amount * 100), // rupees to paise
@@ -105,6 +108,11 @@ exports.verifyPayment = async (req, res, next) => {
 
     const ownerId = bookings[0].slots?.turfs?.owner_id || null;
     const payerId = bookings[0].user_id;
+
+    // Verify the authenticated user matches the payer (security check)
+    if (req.user && req.user.id !== payerId) {
+      return res.status(403).json({ error: "You can only verify your own payments" });
+    }
 
     // 3) Try to update payments row if it exists (non-fatal if it doesn't)
     const { data: payment, error: pErr } = await supabase
@@ -298,18 +306,61 @@ exports.refundPayment = async (req, res, next) => {
     const { payment_id, reason } = req.body;
     if (!payment_id) return res.status(400).json({ error: "payment_id required" });
 
-    const { data: payment } = await supabase.from("payments").select("*").eq("id", payment_id).limit(1).single();
-    if (!payment) return res.status(404).json({ error: "payment not found" });
+    const { data: payment, error: paymentError } = await supabase
+      .from("payments")
+      .select("*, bookings(slot_id, slots(turfs(owner_id)))")
+      .eq("id", payment_id)
+      .limit(1)
+      .single();
+    
+    if (paymentError || !payment) {
+      if (paymentError) {
+        console.error("Error fetching payment:", paymentError);
+      }
+      return res.status(404).json({ error: "payment not found" });
+    }
 
-    // Razorpay refunds require payment id; attempt refund if present
-    await supabase.from("bookings").update({ status: "cancelled_by_owner" }).eq("id", payment.booking_id);
-    // TODO: update slot availability depending on schema
+    // Verify the authenticated user is the turf owner (security check)
+    const ownerId = payment.bookings?.slots?.turfs?.owner_id;
+    if (req.user && ownerId && req.user.id !== ownerId) {
+      return res.status(403).json({ error: "Only the turf owner can issue refunds" });
+    }
 
-    await supabase.from("payments").update({ status: "refunded" }).eq("id", payment_id);
-    // update booking and slot availability
-    const { data: booking } = await supabase.from("bookings").update({ status: "cancelled_by_owner" }).eq("id", payment.booking_id).select("slot_id").single();
+    // Update booking status and slot availability
+    const { data: booking, error: bookingError } = await supabase
+      .from("bookings")
+      .update({ status: "cancelled_by_owner" })
+      .eq("id", payment.booking_id)
+      .select("slot_id")
+      .single();
+
+    if (bookingError) {
+      console.error("Error updating booking for refund:", bookingError);
+      return res.status(500).json({ error: "Failed to update booking" });
+    }
+
+    // Free up the slot if booking was found
     if (booking && booking.slot_id) {
-      await supabase.from("slots").update({ is_booked: false }).eq("id", booking.slot_id);
+      const { error: slotError } = await supabase
+        .from("slots")
+        .update({ is_booked: false })
+        .eq("id", booking.slot_id);
+      
+      if (slotError) {
+        console.error("Error freeing slot:", slotError);
+        // Continue with refund even if slot update fails
+      }
+    }
+
+    // Update payment status to refunded
+    const { error: paymentUpdateError } = await supabase
+      .from("payments")
+      .update({ status: "refunded" })
+      .eq("id", payment_id);
+    
+    if (paymentUpdateError) {
+      console.error("Error updating payment status:", paymentUpdateError);
+      return res.status(500).json({ error: "Failed to update payment status" });
     }
 
     res.json({ ok: true });

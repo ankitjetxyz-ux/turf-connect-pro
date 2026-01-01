@@ -16,17 +16,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Trophy,
-  MapPin,
   Calendar,
-  Clock,
   Search,
   Filter,
   ChevronDown,
   Users,
+  Target,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import api from "@/services/api";
 import { loadRazorpay } from "@/utils/razorpay";
+import { RazorpayResponse } from "@/types";
 
 const sportFilters = [
   "All Sports",
@@ -85,10 +85,19 @@ const TournamentsPage = () => {
 
   const role = localStorage.getItem("role");
 
-  const fetchTournaments = async () => {
+  // Calculate tournament stats
+  const tournamentStats = useMemo(() => {
+    const total = tournaments.length;
+    const upcoming = tournaments.filter(t => t.status === 'upcoming').length;
+    const totalSpots = tournaments.reduce((sum, t) => sum + (t.spots_left || 0), 0);
+    const totalTeams = tournaments.reduce((sum, t) => sum + (t.current_teams || 0), 0);
+    return { total, upcoming, totalSpots, totalTeams };
+  }, [tournaments]);
+
+  const fetchTournaments = useCallback(async () => {
     setLoading(true);
     try {
-      const params: any = {};
+      const params: Record<string, string> = {};
       if (searchQuery) params.search = searchQuery;
 
       const res = await api.get("/tournaments", { params });
@@ -99,14 +108,26 @@ const TournamentsPage = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery]);
 
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       fetchTournaments();
     }, 500);
     return () => clearTimeout(timeoutId);
-  }, [searchQuery]);
+  }, [fetchTournaments]);
+
+  const openTeamsModal = async (tournament: Tournament) => {
+    try {
+      const res = await api.get(`/tournaments/${tournament.id}/participants`);
+      setParticipants(res.data || []);
+      setIsTeamsOpen(true);
+    } catch (err) {
+      console.error("Failed to load participants", err);
+      setParticipants([]);
+      setIsTeamsOpen(true);
+    }
+  };
 
   const openJoinModal = (tournament: Tournament) => {
     if (role !== "player") {
@@ -157,14 +178,14 @@ const TournamentsPage = () => {
         team_members: teamMembers,
       });
 
-      const options: any = {
+      const options: Record<string, unknown> = {
         key: data.key_id,
         amount: data.order.amount,
         currency: data.order.currency,
         name: selectedTournament.name || "Tournament Entry",
         description: "Tournament registration",
         order_id: data.order.id,
-        handler: async (response: any) => {
+        handler: async (response: RazorpayResponse) => {
           try {
             await api.post("/tournaments/verify-payment", {
               razorpay_order_id: response.razorpay_order_id,
@@ -175,12 +196,10 @@ const TournamentsPage = () => {
             alert("Registration & payment successful!");
             setIsJoinOpen(false);
             fetchTournaments();
-          } catch (err: any) {
+          } catch (err: unknown) {
             console.error("verify-payment failed", err);
-            alert(
-              err?.response?.data?.error ||
-                "Payment verification failed. Please contact support.",
-            );
+            const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Payment verification failed. Please contact support.";
+            alert(errorMessage);
           }
         },
         prefill: {
@@ -191,12 +210,13 @@ const TournamentsPage = () => {
         },
       };
 
-      const RazorpayConstructor = (window as any).Razorpay;
+      const RazorpayConstructor = (window as unknown as { Razorpay: new (options: unknown) => { open: () => void } }).Razorpay;
       const rzp = new RazorpayConstructor(options);
       rzp.open();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      alert(err?.response?.data?.error || "Join failed");
+      const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Join failed";
+      alert(errorMessage);
     } finally {
       setJoining(false);
     }
@@ -257,6 +277,47 @@ const TournamentsPage = () => {
                   My Tournaments
                 </button>
               </div>
+            </div>
+          )}
+
+          {/* Tournament Stats Bar */}
+          {!loading && tournaments.length > 0 && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+              <Card className="bg-gradient-to-br from-orange-500/10 to-amber-500/5 border-orange-500/20">
+                <CardContent className="p-5 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
+                    <Trophy className="w-6 h-6 text-orange-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-orange-400">{tournamentStats.total}</div>
+                    <p className="text-sm text-muted-foreground">Active Tournaments</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-rose-500/10 to-pink-500/5 border-rose-500/20">
+                <CardContent className="p-5 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center">
+                    <Users className="w-6 h-6 text-rose-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-rose-400">{tournamentStats.totalTeams}</div>
+                    <p className="text-sm text-muted-foreground">Teams Registered</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-gradient-to-br from-amber-500/10 to-yellow-500/5 border-amber-500/20">
+                <CardContent className="p-5 flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                    <Target className="w-6 h-6 text-amber-400" />
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold text-amber-400">{tournamentStats.totalSpots}</div>
+                    <p className="text-sm text-muted-foreground">Spots Open</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
           )}
 
@@ -380,8 +441,8 @@ const TournamentsPage = () => {
                       {t.already_joined
                         ? "Already Joined"
                         : (spotsLeft || 0) > 0
-                        ? "Join Tournament"
-                        : "Full"}
+                          ? "Join Tournament"
+                          : "Full"}
                     </Button>
                   </CardContent>
                 </Card>

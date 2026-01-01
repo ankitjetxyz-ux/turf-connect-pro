@@ -6,10 +6,24 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ChangeEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Turf } from "@/types";
+
+interface TournamentFormData {
+    name: string;
+    sport: string;
+    start_date: string;
+    end_date: string;
+    entry_fee: string;
+    max_teams: string;
+    turf_id: string;
+    description: string;
+    image: string;
+    [key: string]: string;
+}
 
 const AddTournamentPage = () => {
     const navigate = useNavigate();
@@ -18,10 +32,10 @@ const AddTournamentPage = () => {
     const editId = searchParams.get("id");
     const { toast } = useToast();
 
-    const [turfs, setTurfs] = useState<any[]>([]);
+    const [turfs, setTurfs] = useState<Turf[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<TournamentFormData>({
         name: "",
         sport: "Cricket",
         start_date: "",
@@ -61,9 +75,9 @@ const AddTournamentPage = () => {
                 })
                 .finally(() => setFetching(false));
         }
-    }, [editId]);
+    }, [editId, navigate, toast]);
 
-    const handleChange = (e: any) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -84,8 +98,9 @@ const AddTournamentPage = () => {
                 toast({ title: "Success", description: "Tournament created successfully!" });
             }
             navigate("/client/dashboard");
-        } catch (error: any) {
-            toast({ variant: "destructive", title: "Error", description: error.response?.data?.error || "Operation failed" });
+        } catch (error: unknown) {
+            const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Operation failed";
+            toast({ variant: "destructive", title: "Error", description: errorMessage });
         } finally {
             setLoading(false);
         }
@@ -140,7 +155,7 @@ const AddTournamentPage = () => {
                                             <SelectTrigger className="bg-secondary/20"><SelectValue placeholder="Choose your turf" /></SelectTrigger>
                                             <SelectContent>
                                                 {turfs.map(t => (
-                                                    <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                                                    <SelectItem key={t.id} value={String(t.id)}>{t.name}</SelectItem>
                                                 ))}
                                             </SelectContent>
                                         </Select>
@@ -180,7 +195,9 @@ const AddTournamentPage = () => {
                                 </div>
 
                                 <Button type="submit" className="w-full gradient-primary" disabled={loading}>
-                                    {loading ? "Creating..." : "Create Tournament"}
+                                    {loading
+                                        ? (editId ? "Updating..." : "Creating...")
+                                        : (editId ? "Update Tournament" : "Create Tournament")}
                                 </Button>
                             </form>
                         </CardContent>

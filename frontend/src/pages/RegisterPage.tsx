@@ -58,10 +58,10 @@ const RegisterPage = () => {
 
       alert("Registration successful. Please login.");
       navigate("/login");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       // Extract backend error message if available
-      const backendError = err.response?.data?.error;
+      const backendError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       const message = backendError || (err instanceof Error ? err.message : "Registration failed");
       alert(message);
     }

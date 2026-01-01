@@ -1,0 +1,104 @@
+export interface Turf {
+  id: number;
+  name: string;
+  location: string;
+  description: string;
+  images?: string | string[];
+  facilities?: string | string[];
+  price_per_slot: number;
+  owner_phone?: string;
+  owner_id: string;
+  rating?: number;
+  reviews?: number;
+  sports?: string | string[];
+  open_hours?: string;
+  size?: string;
+  surface?: string;
+  tournaments_hosted?: number;
+  matches_played?: number;
+  is_popular?: boolean;
+}
+
+export interface Slot {
+  id: number;
+  is_available?: boolean;
+  is_booked?: boolean;
+  start_time: string;
+  end_time: string;
+  price: number;
+  turf_id?: string;
+  created_at?: string;
+}
+
+export interface Booking {
+  id: number | string;
+  turf_name?: string;
+  player_name?: string;
+  player_id?: string;
+  slot_time?: string;
+  status?: string;
+  location?: string;
+  turf_owner_name?: string;
+  turf_owner_email?: string;
+}
+
+export interface Conversation {
+  id: string;
+  owner_id: string;
+  player_id: string;
+  last_message?: string;
+  updated_at?: string;
+  is_favorite?: boolean;
+  other_user?: {
+    name: string;
+    email: string;
+    profile_image_url?: string | null;
+  };
+}
+
+export interface Tournament {
+  id: string;
+  name: string;
+  start_date: string;
+  status: string;
+  sport?: string;
+  end_date?: string;
+  entry_fee?: string;
+  max_teams?: string;
+  turf_id?: string;
+  description?: string;
+  image?: string;
+}
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  profile_image_url?: string | null;
+}
+
+export interface PaymentVerificationData {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+  booking_id: number | string;
+}
+
+export interface RazorpayResponse {
+  razorpay_order_id: string;
+  razorpay_payment_id: string;
+  razorpay_signature: string;
+}
+
+export interface RazorpayErrorResponse {
+  error: {
+    code: string;
+    description: string;
+    source: string;
+    step: string;
+    reason: string;
+    metadata: {
+      order_id: string;
+      payment_id: string;
+    };
+  };
+}

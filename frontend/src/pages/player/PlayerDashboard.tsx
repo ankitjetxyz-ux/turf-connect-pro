@@ -8,15 +8,14 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Booking, Conversation, Tournament, UserProfile } from "@/types";
 
 const PlayerDashboard = () => {
-  type Booking = { id: number | string; turf_name?: string; location?: string; slot_time?: string; status?: string; turf_owner_name?: string; turf_owner_email?: string };
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  const [profile, setProfile] = useState<{ name: string; email: string; profile_image_url?: string | null } | null>(null);
-  type Conversation = { id: string; owner_id: string; player_id: string; last_message?: string; updated_at?: string };
+  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
   const loadConversations = async () => {
@@ -42,7 +41,6 @@ const PlayerDashboard = () => {
     }
   };
 
-  type Tournament = { id: string; name: string; start_date: string; status: string };
   const [tournamentStats, setTournamentStats] = useState({ total: 0, upcoming: 0, past: 0 });
 
   const fetchTournamentStats = async () => {

@@ -18,14 +18,17 @@ exports.bookSlot = async (req, res) => {
     const { slot_id } = req.body;
 
     // Fetch slot with price so we can persist total_amount on the booking
-    const { data: slot } = await supabase
+    const { data: slot, error: slotError } = await supabase
       .from("slots")
       .select("id, price, turfs(owner_id)")
       .eq("id", slot_id)
       .eq("is_booked", false)
       .single();
 
-    if (!slot) {
+    if (slotError || !slot) {
+      if (slotError) {
+        console.error("[bookSlot] Slot fetch error:", slotError);
+      }
       return res.status(400).json({ error: "Slot not available" });
     }
 
@@ -47,7 +50,16 @@ exports.bookSlot = async (req, res) => {
       return res.status(500).json({ error: "Booking failed" });
     }
 
-    await supabase.from("slots").update({ is_booked: true }).eq("id", slot_id);
+    const { error: slotUpdateError } = await supabase
+      .from("slots")
+      .update({ is_booked: true })
+      .eq("id", slot_id);
+    
+    if (slotUpdateError) {
+      console.error("[bookSlot] Error updating slot:", slotUpdateError);
+      // Booking already created, but slot wasn't marked as booked
+      // This is a data consistency issue but we still return success
+    }
 
     res.status(201).json({ message: "Slot booked", booking_id: booking.id });
   } catch (err) {
@@ -244,13 +256,17 @@ exports.ownerCancelBooking = async (req, res) => {
   try {
     const { booking_id } = req.body;
 
-    const { data: booking } = await supabase
+    const { data: booking, error: bookingError } = await supabase
       .from("bookings")
       .select("id, slot_id, slots(turfs(owner_id))")
       .eq("id", booking_id)
       .single();
 
-    if (!booking || booking.slots.turfs.owner_id !== req.user.id) {
+    if (bookingError || !booking) {
+      return res.status(404).json({ error: "Booking not found" });
+    }
+
+    if (!booking.slots || !booking.slots.turfs || booking.slots.turfs.owner_id !== req.user.id) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 

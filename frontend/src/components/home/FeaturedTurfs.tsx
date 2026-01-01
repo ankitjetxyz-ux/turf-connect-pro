@@ -106,7 +106,7 @@ const FeaturedTurfs = () => {
               const sports = Array.isArray(turf.facilities)
                 ? turf.facilities
                 : typeof turf.facilities === "string"
-                  ? turf.facilities.split(",")
+                  ? (Array.isArray(turf.facilities) ? turf.facilities : turf.facilities.split(","))
                   : [];
 
               return (

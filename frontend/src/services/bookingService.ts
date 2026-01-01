@@ -1,4 +1,5 @@
 import api from "./api";
+import { PaymentVerificationData } from "@/types";
 
 export const getMyBookings = () => {
   return api.get("/bookings/my");
@@ -12,6 +13,6 @@ export const createBooking = (slot_ids: number[]) => {
   return api.post("/bookings/create-and-order", { slot_ids });
 };
 
-export const verifyPayment = (data: any) => {
+export const verifyPayment = (data: PaymentVerificationData) => {
   return api.post("/payments/verify", data);
 };

@@ -10,7 +10,7 @@ exports.submitContactForm = async (req, res) => {
       return res.status(400).json({ error: "Email and message required" });
     }
 
-    const { data } = await supabase
+    const { data, error: dbError } = await supabase
       .from("contact_messages")
       .insert({
         name,
@@ -22,6 +22,15 @@ exports.submitContactForm = async (req, res) => {
       })
       .select()
       .single();
+
+    if (dbError) {
+      console.error("Database error inserting contact message:", dbError);
+      return res.status(500).json({ error: "Failed to save message" });
+    }
+
+    if (!data) {
+      return res.status(500).json({ error: "Message saved but no data returned" });
+    }
 
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       const transporter = nodemailer.createTransport({

@@ -17,21 +17,12 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { getSlotsByTurf, createSlot } from "@/services/slotService";
 import api from "@/services/api";
+import { Slot } from "@/types";
 
 /* TYPES */
-
-type Slot = {
-  id: number;
-  turf_id: string;
-  start_time: string;
-  end_time: string;
-  price: number;
-  is_booked: boolean;
-  created_at?: string;
-};
 
 type Toast = {
   id: string;
@@ -101,7 +92,12 @@ const formatDate = (dateStr: string): string => {
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 };
 
-const showToast = (setToasts: any, title: string, description?: string, variant: "default" | "destructive" | "success" = "default") => {
+const showToast = (
+  setToasts: React.Dispatch<React.SetStateAction<Toast[]>>,
+  title: string,
+  description?: string,
+  variant: "default" | "destructive" | "success" = "default"
+) => {
   const id = Date.now().toString();
   setToasts((prev: Toast[]) => [...prev, { id, title, description, variant }]);
   setTimeout(() => {
@@ -142,22 +138,23 @@ const TurfSlotsPage = () => {
   const [formError, setFormError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  /* FETCH SLOTS */
-  useEffect(() => {
-    loadSlots();
-  }, [turfId]);
-
-  const loadSlots = async () => {
+  const loadSlots = useCallback(async () => {
     try {
       setLoading(true);
       const res = await getSlotsByTurf(turfId!);
       setSlots(res.data || []);
-    } catch (error: any) {
-      showToast(setToasts, "Error", error.response?.data?.error || "Failed to load slots", "destructive");
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to load slots";
+      showToast(setToasts, "Error", errorMessage, "destructive");
     } finally {
       setLoading(false);
     }
-  };
+  }, [turfId]);
+
+  /* FETCH SLOTS */
+  useEffect(() => {
+    loadSlots();
+  }, [loadSlots]);
 
   /* SINGLE SLOT CREATION */
   const handleCreateSlot = async () => {
@@ -199,11 +196,12 @@ const TurfSlotsPage = () => {
       setPrice("");
       setFormError("");
       loadSlots();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to create slot";
       showToast(
         setToasts,
         "Error",
-        error.response?.data?.error || "Failed to create slot",
+        errorMessage,
         "destructive"
       );
     } finally {
@@ -280,11 +278,12 @@ const TurfSlotsPage = () => {
       setBulkPrice("");
       setFormError("");
       loadSlots();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to create slots";
       showToast(
         setToasts,
         "Error",
-        error.response?.data?.error || "Failed to create slots",
+        errorMessage,
         "destructive"
       );
     } finally {
@@ -331,11 +330,12 @@ const TurfSlotsPage = () => {
       showToast(setToasts, "Success", "Slot updated successfully", "success");
       setEditingId(null);
       loadSlots();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to update slot";
       showToast(
         setToasts,
         "Error",
-        error.response?.data?.error || "Failed to update slot",
+        errorMessage,
         "destructive"
       );
     } finally {
@@ -359,11 +359,12 @@ const TurfSlotsPage = () => {
       await api.delete(`/slots/${slotId}`);
       showToast(setToasts, "Success", "Slot deleted successfully", "success");
       loadSlots();
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete slot";
       showToast(
         setToasts,
         "Error",
-        error.response?.data?.error || "Failed to delete slot",
+        errorMessage,
         "destructive"
       );
     }

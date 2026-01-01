@@ -12,42 +12,26 @@ import {
   Trophy,
   Calendar,
 } from "lucide-react";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 import { io, Socket } from "socket.io-client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { Turf, Booking, Tournament, UserProfile } from "@/types";
 
 const ClientDashboard = () => {
-  type TurfItem = {
-    id: number | string;
-    name?: string;
-    location?: string;
-    facilities?: string;
-    price_per_slot?: number;
-  };
-
-  type Booking = {
-    id: number | string;
-    turf_name?: string;
-    player_name?: string;
-    slot_time?: string;
-    status?: string;
-  };
-
-  const [turfs, setTurfs] = useState<TurfItem[]>([]);
+  const [turfs, setTurfs] = useState<Turf[]>([]);
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [myTournaments, setMyTournaments] = useState<any[]>([]);
+  const [myTournaments, setMyTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [profile, setProfile] = useState<{ name: string; email: string; profile_image_url?: string | null } | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const navigate = useNavigate();
   const { toast } = useToast();
-  const socketRef = useRef<Socket | null>(null);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [turfsRes, bookingsRes, tournamentsRes, profileRes] =
         await Promise.all([
@@ -70,13 +54,13 @@ const ClientDashboard = () => {
           localStorage.setItem("profile_image_url", user.profile_image_url);
         }
       }
-    } catch (err: any) {
-      console.error("Client dashboard error:", err?.response?.data || err);
+    } catch (err: unknown) {
+      console.error("Client dashboard error:", err);
       // alert(err?.response?.data?.error || "Failed to load client data");
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -84,8 +68,7 @@ const ClientDashboard = () => {
     const userId = localStorage.getItem("user_id");
     if (!userId) return;
 
-    const socket = io("http://localhost:8080");
-    socketRef.current = socket;
+    const socket = io("http://localhost:5000");
 
     // Join per-user room so backend can push booking notifications
     socket.emit("join_user", userId);
@@ -101,7 +84,7 @@ const ClientDashboard = () => {
     return () => {
       socket.disconnect();
     };
-  }, []);
+  }, [fetchData, toast]);
 
   const handleCancel = async (bookingId: string | number) => {
     if (!confirm("Are you sure you want to cancel this booking?")) return;
@@ -114,9 +97,10 @@ const ClientDashboard = () => {
 
       // Instantly remove from UI
       setBookings(prev => prev.filter(b => b.id !== bookingId));
-    } catch (err: any) {
-      console.error("Cancel booking error:", err?.response?.data || err);
-      alert(err?.response?.data?.error || "Cancellation failed");
+    } catch (err: unknown) {
+      console.error("Cancel booking error:", err);
+      const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Cancellation failed";
+      alert(errorMessage);
     }
   };
 
@@ -229,12 +213,14 @@ const ClientDashboard = () => {
                   </div>
 
                   <div className="flex gap-2 flex-wrap">
-                    {turf.facilities
-                      ?.split(",")
+                    {(Array.isArray(turf.facilities)
+                      ? turf.facilities
+                      : turf.facilities?.split(",") || []
+                    )
                       .slice(0, 3)
                       .map((f) => (
                         <Badge key={f} variant="secondary" className="text-xs">
-                          {f.trim()}
+                          {typeof f === "string" ? f.trim() : f}
                         </Badge>
                       ))}
                   </div>
@@ -325,8 +311,9 @@ const ClientDashboard = () => {
                           await api.delete(`/tournaments/${t.id}`);
                           setMyTournaments(prev => prev.filter(x => x.id !== t.id));
                           toast({ title: "Tournament deleted" });
-                        } catch (e: any) {
-                          alert(e.response?.data?.error || "Failed to delete");
+                        } catch (e: unknown) {
+                          const errorMessage = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete";
+                          alert(errorMessage);
                         }
                       }}
                     >

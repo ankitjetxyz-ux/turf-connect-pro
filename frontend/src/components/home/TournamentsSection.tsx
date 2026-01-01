@@ -5,10 +5,11 @@ import { Trophy, MapPin, Calendar, Users, Gift, ArrowRight } from "lucide-react"
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
+import { Tournament } from "@/types";
 
 const TournamentsSection = () => {
   const navigate = useNavigate();
-  const [tournaments, setTournaments] = useState<any[]>([]);
+  const [tournaments, setTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

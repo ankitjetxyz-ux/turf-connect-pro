@@ -2,14 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { Conversation } from "@/pages/ChatPage";
 import { useChat } from "@/hooks/useChat";
 import type { Socket } from "socket.io-client";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-const MessageWindow = ({ 
-  chatId, 
-  onBack, 
+const MessageWindow = ({
+  chatId,
+  onBack,
   conversation,
   socket,
-}: { 
-  chatId?: string | null; 
+}: {
+  chatId?: string | null;
   onBack?: () => void;
   conversation?: Conversation;
   socket?: Socket | null;
@@ -21,8 +22,13 @@ const MessageWindow = ({
 
   // Auto-scroll to bottom without causing layout jumps
   useEffect(() => {
-    if (bottomRef.current) {
-      bottomRef.current.scrollIntoView({ behavior: "auto", block: "end" });
+    if (bottomRef.current && scrollRef.current) {
+      // Use requestAnimationFrame to avoid layout shifts
+      requestAnimationFrame(() => {
+        if (bottomRef.current) {
+          bottomRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
+        }
+      });
     }
   }, [messages]);
 
@@ -46,21 +52,26 @@ const MessageWindow = ({
   };
 
   const displayName = conversation?.other_user?.name || (conversation?.owner_id === currentUserId ? "Player" : "Turf Owner");
+  const profileImage = conversation?.other_user?.profile_image_url || null;
+  const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <div className="h-full flex flex-col bg-transparent">
+    <div className="h-full flex flex-col bg-transparent overflow-hidden">
       {/* Header */}
-      <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-white/5 backdrop-blur-md sticky top-0 z-10 shadow-sm">
-        <button 
-          onClick={onBack} 
+      <div className="p-4 border-b border-white/10 flex items-center gap-3 bg-white/5 backdrop-blur-md sticky top-0 z-10 shadow-sm shrink-0">
+        <button
+          onClick={onBack}
           className="md:hidden p-2 -ml-2 hover:bg-white/10 rounded-full transition-colors"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6" /></svg>
         </button>
-        
-        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center text-white font-bold text-sm shadow-glow-sm">
-          {displayName.charAt(0).toUpperCase()}
-        </div>
+
+        <Avatar className="w-10 h-10 shadow-glow-sm">
+          {profileImage && <AvatarImage src={profileImage} alt={displayName} />}
+          <AvatarFallback className="gradient-primary text-white font-bold text-sm">
+            {initial}
+          </AvatarFallback>
+        </Avatar>
         <div>
           <h3 className="font-heading font-bold text-sm md:text-base text-foreground">{displayName}</h3>
           <div className="flex items-center gap-1.5">
@@ -73,14 +84,15 @@ const MessageWindow = ({
       {/* Messages Area */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-background/40"
+        className="flex-1 overflow-y-auto p-4 space-y-2 custom-scrollbar bg-background/40 overflow-x-hidden"
+        style={{ minHeight: 0 }}
       >
         {messages.length === 0 && (
           <div className="flex justify-center mt-10">
             <span className="text-muted-foreground text-sm bg-white/5 border border-white/10 px-4 py-2 rounded-full backdrop-blur-sm">Start the conversation</span>
           </div>
         )}
-        
+
         {messages.map((m, i) => {
           const isMe = m.sender_id === currentUserId;
 
@@ -97,9 +109,8 @@ const MessageWindow = ({
                   {m.content}
                 </div>
                 <div
-                  className={`mt-1 flex items-center gap-1 text-[10px] opacity-70 ${
-                    isMe ? "justify-end text-primary-foreground/90" : "justify-start text-muted-foreground"
-                  }`}
+                  className={`mt-1 flex items-center gap-1 text-[10px] opacity-70 ${isMe ? "justify-end text-primary-foreground/90" : "justify-start text-muted-foreground"
+                    }`}
                 >
                   {m.created_at &&
                     new Date(m.created_at).toLocaleTimeString([], {
@@ -109,7 +120,7 @@ const MessageWindow = ({
                   {isMe && (
                     <span className="ml-1">
                       {/* single/double tick using either is_read or read */}
-                      {(m as any).is_read || (m as any).read ? (
+                      {m.is_read || m.read ? (
                         <svg
                           className="w-3 h-3 text-emerald-300"
                           viewBox="0 0 24 24"
@@ -156,23 +167,23 @@ const MessageWindow = ({
       </div>
 
       {/* Input Area */}
-      <div className="p-3 border-t border-white/10 bg-background/80 backdrop-blur-md">
+      <div className="p-3 border-t border-white/10 bg-background/80 backdrop-blur-md shrink-0">
         <div className="flex gap-2 items-end bg-secondary/40 p-2 rounded-2xl border border-white/10 focus-within:border-primary/60 focus-within:ring-1 focus-within:ring-primary/30 transition-all">
-          <textarea 
-            value={text} 
-            onChange={(e) => setText(e.target.value)} 
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type a message..." 
+            placeholder="Type a message..."
             className="flex-1 bg-transparent border-none outline-none resize-none max-h-32 min-h-[44px] py-3 px-2 text-sm text-foreground placeholder:text-muted-foreground"
             rows={1}
-            style={{ minHeight: '44px' }} 
+            style={{ minHeight: '44px' }}
           />
-          <button 
-            onClick={handleSend} 
+          <button
+            onClick={handleSend}
             disabled={!text.trim() || sending}
             className={`p-3 rounded-lg transition-all flex-shrink-0 mb-1
-              ${!text.trim() || sending 
-                ? "bg-white/5 text-muted-foreground cursor-not-allowed" 
+              ${!text.trim() || sending
+                ? "bg-white/5 text-muted-foreground cursor-not-allowed"
                 : "gradient-primary text-primary-foreground hover:shadow-glow transform hover:scale-105"
               }`}
           >
@@ -182,7 +193,7 @@ const MessageWindow = ({
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
               </svg>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></svg>
             )}
           </button>
         </div>

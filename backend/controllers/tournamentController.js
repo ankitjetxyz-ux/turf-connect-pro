@@ -132,13 +132,16 @@ exports.joinTournament = async (req, res) => {
   const user_id = req.user.id;
   const { tournament_id, team_name, team_members } = req.body;
 
-  const { data: tournament } = await supabase
+  const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
     .select("*")
     .eq("id", tournament_id)
     .single();
 
-  if (!tournament) {
+  if (tournamentError || !tournament) {
+    if (tournamentError) {
+      console.error("[joinTournament] Tournament fetch error:", tournamentError);
+    }
     return res.status(404).json({ error: "Tournament not found" });
   }
 
@@ -437,13 +440,18 @@ exports.createTournament = async (req, res) => {
 
   try {
     // 1. Verify turf belongs to owner
-    const { data: turf } = await supabase
+    const { data: turf, error: turfError } = await supabase
       .from("turfs")
       .select("id, owner_id")
       .eq("id", turf_id)
       .single();
-    if (!turf || turf.owner_id !== owner_id) {
-      return res.status(403).json({ error: "Unauthorized or Turf not found" });
+    
+    if (turfError || !turf) {
+      return res.status(404).json({ error: "Turf not found" });
+    }
+    
+    if (turf.owner_id !== owner_id) {
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     // 2. Insert
@@ -525,16 +533,18 @@ exports.deleteTournament = async (req, res) => {
 
   try {
     // Verify ownership via turf
-    const { data: tournament } = await supabase
+    const { data: tournament, error: tournamentError } = await supabase
       .from("tournaments")
       .select("turf_id, turfs!inner(owner_id)")
       .eq("id", id)
       .single();
 
-    if (!tournament || tournament.turfs?.owner_id !== owner_id) {
-      return res
-        .status(403)
-        .json({ error: "Unauthorized or Tournament not linked to your turf" });
+    if (tournamentError || !tournament) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+
+    if (!tournament.turfs || tournament.turfs.owner_id !== owner_id) {
+      return res.status(403).json({ error: "Unauthorized" });
     }
 
     const { error } = await supabase.from("tournaments").delete().eq("id", id);
@@ -567,13 +577,17 @@ exports.updateTournament = async (req, res) => {
 
   try {
     // 1. Verify ownership (via turf)
-    const { data: tournament } = await supabase
+    const { data: tournament, error: tournamentError } = await supabase
       .from("tournaments")
       .select("turf_id, turfs!inner(owner_id)")
       .eq("id", id)
       .single();
 
-    if (!tournament || tournament.turfs?.owner_id !== owner_id) {
+    if (tournamentError || !tournament) {
+      return res.status(404).json({ error: "Tournament not found" });
+    }
+
+    if (!tournament.turfs || tournament.turfs.owner_id !== owner_id) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 

@@ -37,6 +37,10 @@ const Navbar = () => {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("user_id");
+    localStorage.removeItem("name");
+    localStorage.removeItem("email");
+    localStorage.removeItem("profile_image_url");
     navigate("/login");
   };
 
@@ -49,230 +53,80 @@ const Navbar = () => {
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
-          isScrolled ? "glass-effect shadow-elevated" : "bg-transparent"
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? "glass-effect shadow-elevated" : "bg-transparent"
+          }`}
       >
         <div className="container mx-auto px-4">
           <nav className="flex items-center justify-between h-16 md:h-20">
 
-          {/* LOGO */}
-          <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-              <MapPin className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <span className="font-heading font-bold text-xl">
-              Turf<span className="text-primary">Book</span>
-            </span>
-          </Link>
-
-          {/* DESKTOP LINKS */}
-          <div className="hidden md:flex items-center gap-1">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isActive(link.path)
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isLoggedIn && (
-              <Link
-                to="/chat"
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  isActive("/chat")
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                }`}
-              >
-                Chat
-              </Link>
-            )}
-            <Link
-              to="/about"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isActive("/about")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
-            >
-              About Us
+            {/* LOGO */}
+            <Link to="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                <MapPin className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="font-heading font-bold text-xl">
+                Turf<span className="text-primary">Book</span>
+              </span>
             </Link>
-            <Link
-              to="/contact"
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                isActive("/contact")
-                  ? "text-primary"
-                  : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-              }`}
-            >
-              Contact
-            </Link>
-          </div>
 
-          {/* DESKTOP ACTIONS */}
-          <div className="hidden md:flex items-center gap-3">
-
-            {!isLoggedIn && (
-              <>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link to="/login">
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Login
-                  </Link>
-                </Button>
-
-                <Button variant="hero" size="sm" asChild>
-                  <Link to="/register">
-                    <User className="w-4 h-4 mr-2" />
-                    Register
-                  </Link>
-                </Button>
-              </>
-            )}
-
-            {isLoggedIn && (
-              <>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    navigate(
-                      role === "client"
-                        ? "/client/dashboard"
-                        : "/player/dashboard",
-                    )
-                  }
+            {/* DESKTOP LINKS */}
+            <div className="hidden md:flex items-center gap-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive(link.path)
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    }`}
                 >
-                  <LayoutDashboard className="w-4 h-4 mr-2" />
-                  Dashboard
-                </Button>
-
-                <button
-                  className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-secondary/60 transition-colors"
-                  onClick={() => navigate("/profile")}
-                >
-                  <Avatar className="h-8 w-8">
-                    {profileImage && (
-                      <AvatarImage src={profileImage} alt={displayName} />
-                    )}
-                    <AvatarFallback>
-                      {displayName
-                        .split(" ")
-                        .map((n) => n[0])
-                        .join("")
-                        .toUpperCase()
-                        .slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm text-muted-foreground hidden lg:inline">
-                    {displayName}
-                  </span>
-                </button>
-
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={handleLogout}
-                >
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
-                </Button>
-              </>
-            )}
-          </div>
-
-          {/* MOBILE MENU BUTTON */}
-          <button
-            className="md:hidden p-2"
-            onClick={() => setIsOpen(!isOpen)}
-          >
-            {isOpen ? <X /> : <Menu />}
-          </button>
-        </nav>
-
-        {/* MOBILE MENU */}
-        {isOpen && (
-          <div className="md:hidden absolute top-16 left-0 right-0 p-4 space-y-2 glass-effect border-b border-border/30 animate-slide-down">
-            {navLinks.map((link) => (
-              <Link
-                key={link.path}
-                to={link.path}
-                onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                  isActive(link.path)
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                }`}
-              >
-                {link.label}
-              </Link>
-            ))}
-            {isLoggedIn && (
-              <>
+                  {link.label}
+                </Link>
+              ))}
+              {isLoggedIn && (
                 <Link
                   to="/chat"
-                  onClick={() => setIsOpen(false)}
-                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/chat")
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                  }`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive("/chat")
+                      ? "text-primary"
+                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    }`}
                 >
                   Chat
                 </Link>
-                <Link
-                  to="/profile"
-                  onClick={() => setIsOpen(false)}
-                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                    isActive("/profile")
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+              )}
+              <Link
+                to="/about"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive("/about")
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                   }`}
-                >
-                  Profile
-                </Link>
-              </>
-            )}
+              >
+                About Us
+              </Link>
+              <Link
+                to="/contact"
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive("/contact")
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                  }`}
+              >
+                Contact
+              </Link>
+            </div>
 
-            <Link
-              to="/about"
-              onClick={() => setIsOpen(false)}
-              className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                isActive("/about")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              About Us
-            </Link>
-            <Link
-              to="/contact"
-              onClick={() => setIsOpen(false)}
-              className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${
-                isActive("/contact")
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-              }`}
-            >
-              Contact
-            </Link>
+            {/* DESKTOP ACTIONS */}
+            <div className="hidden md:flex items-center gap-3">
 
-            <div className="pt-2 space-y-2">
               {!isLoggedIn && (
                 <>
-                  <Button variant="outline" className="w-full justify-start" asChild>
+                  <Button variant="ghost" size="sm" asChild>
                     <Link to="/login">
                       <LogIn className="w-4 h-4 mr-2" />
                       Login
                     </Link>
                   </Button>
-                  <Button variant="hero" className="w-full justify-start" asChild>
+
+                  <Button variant="hero" size="sm" asChild>
                     <Link to="/register">
                       <User className="w-4 h-4 mr-2" />
                       Register
@@ -285,26 +139,45 @@ const Navbar = () => {
                 <>
                   <Button
                     variant="outline"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setIsOpen(false);
+                    size="sm"
+                    onClick={() =>
                       navigate(
                         role === "client"
                           ? "/client/dashboard"
-                          : "/player/dashboard"
-                      );
-                    }}
+                          : "/player/dashboard",
+                      )
+                    }
                   >
                     <LayoutDashboard className="w-4 h-4 mr-2" />
                     Dashboard
                   </Button>
+
+                  <button
+                    className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-secondary/60 transition-colors"
+                    onClick={() => navigate("/profile")}
+                  >
+                    <Avatar className="h-8 w-8">
+                      {profileImage && (
+                        <AvatarImage src={profileImage} alt={displayName} />
+                      )}
+                      <AvatarFallback>
+                        {displayName
+                          .split(" ")
+                          .map((n) => n[0])
+                          .join("")
+                          .toUpperCase()
+                          .slice(0, 2)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="text-sm text-muted-foreground hidden lg:inline">
+                      {displayName}
+                    </span>
+                  </button>
+
                   <Button
                     variant="destructive"
-                    className="w-full justify-start"
-                    onClick={() => {
-                      setIsOpen(false);
-                      handleLogout();
-                    }}
+                    size="sm"
+                    onClick={handleLogout}
                   >
                     <LogOut className="w-4 h-4 mr-2" />
                     Logout
@@ -312,9 +185,130 @@ const Navbar = () => {
                 </>
               )}
             </div>
-          </div>
-        )}
-      </div>
+
+            {/* MOBILE MENU BUTTON */}
+            <button
+              className="md:hidden p-2"
+              onClick={() => setIsOpen(!isOpen)}
+            >
+              {isOpen ? <X /> : <Menu />}
+            </button>
+          </nav>
+
+          {/* MOBILE MENU */}
+          {isOpen && (
+            <div className="md:hidden absolute top-16 left-0 right-0 p-4 space-y-2 glass-effect border-b border-border/30 animate-slide-down">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.path}
+                  to={link.path}
+                  onClick={() => setIsOpen(false)}
+                  className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive(link.path)
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    }`}
+                >
+                  {link.label}
+                </Link>
+              ))}
+              {isLoggedIn && (
+                <>
+                  <Link
+                    to="/chat"
+                    onClick={() => setIsOpen(false)}
+                    className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/chat")
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
+                  >
+                    Chat
+                  </Link>
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsOpen(false)}
+                    className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/profile")
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      }`}
+                  >
+                    Profile
+                  </Link>
+                </>
+              )}
+
+              <Link
+                to="/about"
+                onClick={() => setIsOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/about")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  }`}
+              >
+                About Us
+              </Link>
+              <Link
+                to="/contact"
+                onClick={() => setIsOpen(false)}
+                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/contact")
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                  }`}
+              >
+                Contact
+              </Link>
+
+              <div className="pt-2 space-y-2">
+                {!isLoggedIn && (
+                  <>
+                    <Button variant="outline" className="w-full justify-start" asChild>
+                      <Link to="/login">
+                        <LogIn className="w-4 h-4 mr-2" />
+                        Login
+                      </Link>
+                    </Button>
+                    <Button variant="hero" className="w-full justify-start" asChild>
+                      <Link to="/register">
+                        <User className="w-4 h-4 mr-2" />
+                        Register
+                      </Link>
+                    </Button>
+                  </>
+                )}
+
+                {isLoggedIn && (
+                  <>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate(
+                          role === "client"
+                            ? "/client/dashboard"
+                            : "/player/dashboard"
+                        );
+                      }}
+                    >
+                      <LayoutDashboard className="w-4 h-4 mr-2" />
+                      Dashboard
+                    </Button>
+                    <Button
+                      variant="destructive"
+                      className="w-full justify-start"
+                      onClick={() => {
+                        setIsOpen(false);
+                        handleLogout();
+                      }}
+                    >
+                      <LogOut className="w-4 h-4 mr-2" />
+                      Logout
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
       </header>
       <AiSupportWidget />
     </>

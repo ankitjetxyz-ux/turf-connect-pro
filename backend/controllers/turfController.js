@@ -180,37 +180,55 @@ exports.getAllTurfs = async (req, res) => {
    GET CLIENT'S OWN TURFS
 ======================= */
 exports.getMyTurfs = async (req, res) => {
-  const owner_id = req.user.id;
+  try {
+    const owner_id = req.user.id;
 
-  const { data, error } = await supabase
-    .from("turfs")
-    .select("*")
-    .eq("owner_id", owner_id)
-    .eq("is_active", true)
-    .order("id", { ascending: false });
+    const { data, error } = await supabase
+      .from("turfs")
+      .select("*")
+      .eq("owner_id", owner_id)
+      .eq("is_active", true)
+      .order("id", { ascending: false });
 
-  if (error) {
-    return res.status(400).json({ error: error.message });
+    if (error) {
+      console.error("Error fetching my turfs:", error);
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error("Get my turfs error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
-
-  res.json(data);
 };
 
 /* =======================
    GET TURF BY ID
 ======================= */
 exports.getTurfById = async (req, res) => {
-  const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-  const { data, error } = await supabase
-    .from("turfs")
-    .select("*")
-    .eq("id", id)
-    .single();
+    if (!id) {
+      return res.status(400).json({ error: "Turf ID is required" });
+    }
 
-  if (error || !data) {
-    return res.status(404).json({ error: "Turf not found" });
+    const { data, error } = await supabase
+      .from("turfs")
+      .select("*")
+      .eq("id", id)
+      .single();
+
+    if (error || !data) {
+      if (error) {
+        console.error("Error fetching turf:", error);
+      }
+      return res.status(404).json({ error: "Turf not found" });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error("Get turf by ID error:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
-
-  res.json(data);
 };

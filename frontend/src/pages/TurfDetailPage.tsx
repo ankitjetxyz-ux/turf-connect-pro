@@ -25,35 +25,9 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getTurfDetails } from "@/services/turfService";
 import { getSlotsByTurf } from "@/services/slotService";
 import { createBooking, verifyPayment } from "@/services/bookingService";
+import { Turf, Slot } from "@/types";
 
 /* TYPES */
-
-type Slot = {
-  id: number;
-  is_available?: boolean;
-  is_booked?: boolean;
-  start_time: string;
-  end_time: string;
-  price: number;
-};
-
-type Turf = {
-  id: number;
-  name: string;
-  location: string;
-  description: string;
-  images?: string | string[];
-  facilities?: string | string[];
-  price_per_slot: number;
-  owner_phone?: string;
-  owner_id: string;
-  rating?: number;
-  reviews?: number;
-  sports?: string[];
-  open_hours?: string;
-  size?: string;
-  surface?: string;
-};
 
 type ToastConfig = {
   title: string;
@@ -65,7 +39,7 @@ type ToastConfig = {
 
 const loadRazorpay = (): Promise<boolean> => {
   return new Promise((resolve) => {
-    if ((window as any).Razorpay) {
+    if ((window as unknown as { Razorpay: unknown }).Razorpay) {
       resolve(true);
       return;
     }
@@ -77,9 +51,11 @@ const loadRazorpay = (): Promise<boolean> => {
   });
 };
 
+import { LucideIcon } from "lucide-react";
+
 /* FACILITY ICONS MAP */
 
-const facilityIconsMap: { [key: string]: any } = {
+const facilityIconsMap: { [key: string]: LucideIcon } = {
   wifi: Wifi,
   parking: Car,
   cafeteria: Coffee,
@@ -88,7 +64,7 @@ const facilityIconsMap: { [key: string]: any } = {
   "free parking": Car,
 };
 
-const getFacilityIcon = (facility: string): any => {
+const getFacilityIcon = (facility: string): LucideIcon => {
   const key = facility.toLowerCase();
   return facilityIconsMap[key] || Wifi;
 };
@@ -193,7 +169,7 @@ const TurfDetailPage = () => {
         name: "Book My Turf",
         description: "Turf Booking",
         order_id: data.order.id,
-        handler: async (response: any) => {
+        handler: async (response: RazorpayResponse) => {
           try {
             await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
@@ -228,9 +204,10 @@ const TurfDetailPage = () => {
         }
       };
 
-      const rzp = new (window as any).Razorpay(options);
+      const RazorpayConstructor = (window as unknown as { Razorpay: new (options: unknown) => { open: () => void; on: (event: string, handler: (response: RazorpayErrorResponse) => void) => void } }).Razorpay;
+      const rzp = new RazorpayConstructor(options);
       rzp.open();
-      rzp.on('payment.failed', function (response: any){
+      rzp.on('payment.failed', function (response: RazorpayErrorResponse){
         showToast({ 
           title: "Failed", 
           description: response.error.description, 
@@ -238,11 +215,12 @@ const TurfDetailPage = () => {
         });
       });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
+      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Could not initiate booking";
       showToast({
         title: "Booking Failed",
-        description: error.response?.data?.error || "Could not initiate booking",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -358,7 +336,7 @@ const TurfDetailPage = () => {
   const facilitiesList = Array.isArray(turf.facilities)
     ? turf.facilities
     : typeof turf.facilities === "string"
-    ? turf.facilities.split(",").map(f => f.trim())
+    ? (Array.isArray(turf.facilities) ? turf.facilities : turf.facilities.split(",")).map(f => typeof f === "string" ? f.trim() : f)
     : ["WiFi", "Parking", "Cafeteria", "Showers"];
 
   const sportsList = turf.sports || ["Football", "Cricket", "Badminton"];

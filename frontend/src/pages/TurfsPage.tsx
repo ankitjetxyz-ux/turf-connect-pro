@@ -2,11 +2,14 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import TurfCard from "@/components/turfs/TurfCard";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { useEffect, useState, useMemo } from "react";
 import { getAllTurfs } from "@/services/turfService";
+import { Turf } from "@/types";
+import { Building2, Trophy, Gamepad2 } from "lucide-react";
 
 const TurfPage = () => {
-  const [turfs, setTurfs] = useState<any[]>([]);
+  const [turfs, setTurfs] = useState<Turf[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -16,14 +19,23 @@ const TurfPage = () => {
         const res = await getAllTurfs();
         const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
         setTurfs(data);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error("Failed to load turfs", err);
-        setError(err?.response?.data?.error || "Failed to load turfs");
+        const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to load turfs";
+        setError(errorMessage);
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  // Calculate platform-wide stats
+  const stats = useMemo(() => {
+    const totalTurfs = turfs.length;
+    const totalTournaments = turfs.reduce((sum, t) => sum + (t.tournaments_hosted || 0), 0);
+    const totalMatches = turfs.reduce((sum, t) => sum + (t.matches_played || 0), 0);
+    return { totalTurfs, totalTournaments, totalMatches };
+  }, [turfs]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -38,6 +50,47 @@ const TurfPage = () => {
             how often they are played on.
           </p>
         </div>
+
+        {/* Platform Stats Bar */}
+        {!loading && !error && turfs.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+            <Card className="bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border-blue-500/20">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <Building2 className="w-6 h-6 text-blue-400" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-blue-400">{stats.totalTurfs}</div>
+                  <p className="text-sm text-muted-foreground">Active Turfs</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 border-purple-500/20">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                  <Trophy className="w-6 h-6 text-purple-400" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-purple-400">{stats.totalTournaments}</div>
+                  <p className="text-sm text-muted-foreground">Tournaments Hosted</p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gradient-to-br from-emerald-500/10 to-teal-500/5 border-emerald-500/20">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+                  <Gamepad2 className="w-6 h-6 text-emerald-400" />
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-emerald-400">{stats.totalMatches}</div>
+                  <p className="text-sm text-muted-foreground">Matches Played</p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
 
         {loading && (
           <p className="text-center text-muted-foreground">Loading turfs...</p>
@@ -58,14 +111,14 @@ const TurfPage = () => {
             const images = Array.isArray(turf.images)
               ? turf.images
               : typeof turf.images === "string"
-              ? turf.images.split(",")
-              : [];
+                ? turf.images.split(",")
+                : [];
             const displayImage = images[0] || undefined;
             const sports = Array.isArray(turf.sports)
               ? turf.sports
               : typeof turf.sports === "string"
-              ? turf.sports.split(",")
-              : [];
+                ? turf.sports.split(",")
+                : [];
 
             const tournamentsHosted = turf.tournaments_hosted ?? 0;
             const matchesPlayed = turf.matches_played ?? 0;

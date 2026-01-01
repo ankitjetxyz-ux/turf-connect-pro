@@ -28,10 +28,6 @@ if (missing.length > 0) {
    GLOBAL MIDDLEWARE
 ========================= */
 app.use(cors());
-app.use((req, res, next) => {
-  console.log(`[DEBUG] Raw Request: ${req.method} ${req.path}`);
-  next();
-});
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
@@ -40,16 +36,14 @@ app.use(
   "/uploads",
   express.static(path.join(__dirname, "uploads")),
 );
-app.use((req, res, next) => {
-  console.log(`[DEBUG] Body Parsed:`, req.body);
-  next();
-});
 
-// Log all incoming requests
+// Request logging (only in development)
+if (process.env.NODE_ENV === "development") {
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} [${req.method}] ${req.path}`, req.body);
+    console.log(`${new Date().toISOString()} [${req.method}] ${req.path}`);
   next();
 });
+}
 
 /* =========================
    DIAGNOSTIC ECHO ROUTE
@@ -107,9 +101,6 @@ app.use((err, req, res, next) => {
 /* =========================
    START SERVER
 ========================= */
-/* =========================
-   START SERVER
-========================= */
 const PORT = process.env.PORT || 8080;
 
 const http = require('http');
@@ -157,5 +148,3 @@ server.listen(PORT, () => {
   console.log(`✅ Server (with Socket.IO) running on port ${PORT}`);
 });
 
-// FORCE KEEP ALIVE (Debug for premature exit)
-setInterval(() => { }, 10000);

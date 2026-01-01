@@ -8,9 +8,9 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
+import { Booking } from "@/types";
 
 const ClientBookings = () => {
-  type Booking = { id: string | number; turf_name?: string; player_name?: string; player_id?: string; slot_time?: string; status?: string };
   const [bookings, setBookings] = useState<Booking[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -57,9 +57,10 @@ const ClientBookings = () => {
 
       // Instantly remove from UI
       setBookings(prev => prev.filter(b => b.id !== bookingId));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Cancel failed", err);
-      toast({ title: "Error", description: err.response?.data?.error || "Failed to cancel booking", variant: "destructive" });
+      const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to cancel booking";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
     }
   };
 

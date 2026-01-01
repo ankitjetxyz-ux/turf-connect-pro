@@ -38,6 +38,9 @@ const LoginPage = () => {
       localStorage.setItem("user_id", res.data.user.id);
       localStorage.setItem("name", res.data.user.name || "");
       localStorage.setItem("email", res.data.user.email || formData.email);
+      if (res.data.user.profile_image_url) {
+        localStorage.setItem("profile_image_url", res.data.user.profile_image_url);
+      }
 
       const role = res.data.user.role;
 
@@ -46,10 +49,10 @@ const LoginPage = () => {
       } else if (role === "client") {
         navigate("/client/dashboard");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       // Extract backend error message if available
-      const backendError = err.response?.data?.error;
+      const backendError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       const message = backendError || (err instanceof Error ? err.message : "Login failed");
       alert(message);
     }
@@ -59,7 +62,7 @@ const LoginPage = () => {
     <div className="min-h-screen bg-background relative overflow-hidden">
       <div className="absolute inset-0 grid-overlay opacity-20" />
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] animate-pulse" />
-      
+
       <Navbar />
 
       <main className="pt-24 pb-12 flex items-center justify-center min-h-screen relative z-10">
