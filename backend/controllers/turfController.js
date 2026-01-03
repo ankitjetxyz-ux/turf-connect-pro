@@ -232,3 +232,98 @@ exports.getTurfById = async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+/* =======================
+   GET TURF GALLERY
+======================= */
+exports.getTurfGallery = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("turf_gallery")
+      .select("*")
+      .eq("turf_id", id)
+      .order("display_order", { ascending: true });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load gallery" });
+  }
+};
+
+/* =======================
+   GET TURF REVIEWS
+======================= */
+exports.getTurfReviews = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("turf_reviews")
+      .select(`
+        *,
+        users(id, name, profile_image_url)
+      `)
+      .eq("turf_id", id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load reviews" });
+  }
+};
+
+/* =======================
+   GET TURF TESTIMONIALS
+======================= */
+exports.getTurfTestimonials = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { data, error } = await supabase
+      .from("turf_testimonials")
+      .select(`
+        *,
+        users(id, name, profile_image_url)
+      `)
+      .eq("turf_id", id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      return res.status(400).json({ error: error.message });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to load testimonials" });
+  }
+};
+
+/* =======================
+   UPLOAD TURF IMAGES
+======================= */
+exports.uploadTurfImages = async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No files uploaded" });
+  }
+
+  try {
+    // Build public URLs for uploaded images
+    const imageUrls = req.files.map((file) => `/uploads/turfs/${file.filename}`);
+
+    res.json({
+      success: true,
+      image_urls: imageUrls,
+      count: imageUrls.length
+    });
+  } catch (err) {
+    console.error("[uploadTurfImages] Unexpected error", err);
+    res.status(500).json({ error: "Failed to upload images" });
+  }
+};

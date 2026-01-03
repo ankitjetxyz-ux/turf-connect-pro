@@ -39,7 +39,10 @@ const ChatPage = () => {
   }, []);
   useEffect(() => {
     // Connect Socket.IO (shared instance for the whole chat page)
-    const s = io("http://localhost:8080");
+    const s = io({
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+    });
     setSocket(s);
 
     s.on("connect", () => {

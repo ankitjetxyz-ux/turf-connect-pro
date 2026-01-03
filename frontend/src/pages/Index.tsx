@@ -6,6 +6,7 @@ import FeaturesSection from "@/components/home/FeaturesSection";
 import TournamentsSection from "@/components/home/TournamentsSection";
 import HowItWorks from "@/components/home/HowItWorks";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
+import PromotionalVideos from "@/components/home/PromotionalVideos";
 import CTASection from "@/components/home/CTASection";
 
 const Index = () => {
@@ -16,6 +17,7 @@ const Index = () => {
         <HeroSection />
         <FeaturedTurfs />
         <FeaturesSection />
+        <PromotionalVideos />
         <TournamentsSection />
         <HowItWorks />
         <TestimonialsSection />

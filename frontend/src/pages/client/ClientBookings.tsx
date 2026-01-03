@@ -94,6 +94,18 @@ const ClientBookings = () => {
                     {b.slot_time}
                   </div>
 
+                  {b.verification_code && b.status === "confirmed" && (
+                    <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg mb-3">
+                      <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
+                      <div className="text-xl font-mono font-bold text-primary tracking-wider text-center">
+                        {b.verification_code}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1 text-center">
+                        Player should show this code
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex justify-between items-center">
                     <Badge>{b.status}</Badge>
 

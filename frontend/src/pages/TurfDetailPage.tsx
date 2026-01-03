@@ -3,14 +3,14 @@ import Footer from "@/components/layout/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { 
-  MapPin, 
-  Star, 
-  Clock, 
-  Users, 
-  Wifi, 
-  Car, 
-  Coffee, 
+import {
+  MapPin,
+  Star,
+  Clock,
+  Users,
+  Wifi,
+  Car,
+  Coffee,
   ShowerHead,
   Heart,
   Share2,
@@ -25,7 +25,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import { getTurfDetails } from "@/services/turfService";
 import { getSlotsByTurf } from "@/services/slotService";
 import { createBooking, verifyPayment } from "@/services/bookingService";
-import { Turf, Slot } from "@/types";
+import { Turf, Slot, RazorpayResponse, RazorpayErrorResponse } from "@/types";
+import api from "@/services/api";
 
 /* TYPES */
 
@@ -83,6 +84,8 @@ const TurfDetailPage = () => {
   const [bookingLoading, setBookingLoading] = useState(false);
   const [toast, setToast] = useState<ToastConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gallery, setGallery] = useState<Array<{ id: string; image_url: string }>>([]);
+  const [testimonials, setTestimonials] = useState<Array<{ id: string; type: string; content?: string; video_url?: string; users?: { name: string; profile_image_url?: string } }>>([]);
 
   /* AUTH */
 
@@ -100,8 +103,8 @@ const TurfDetailPage = () => {
     toast?.variant === "success"
       ? "bg-green-600"
       : toast?.variant === "destructive"
-      ? "bg-red-600"
-      : "bg-slate-800";
+        ? "bg-red-600"
+        : "bg-slate-800";
 
   /* SLOT AVAILABILITY */
 
@@ -161,7 +164,7 @@ const TurfDetailPage = () => {
 
     try {
       const { data } = await createBooking(selectedSlots);
-      
+
       const options = {
         key: data.key_id,
         amount: data.order.amount,
@@ -171,26 +174,37 @@ const TurfDetailPage = () => {
         order_id: data.order.id,
         handler: async (response: RazorpayResponse) => {
           try {
-            await verifyPayment({
+            const verifyRes = await verifyPayment({
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               booking_id: data.booking_ids[0]
             });
-            showToast({ 
-              title: "Success", 
-              description: "Booking Confirmed!", 
-              variant: "success" 
-            });
+            const verificationCodes = verifyRes.data?.verification_codes || [];
+            const firstCode = verificationCodes[0]?.verification_code;
+
+            if (firstCode) {
+              showToast({
+                title: "Success",
+                description: `Booking Confirmed! Verification Code: ${firstCode}`,
+                variant: "success"
+              });
+            } else {
+              showToast({
+                title: "Success",
+                description: "Booking Confirmed!",
+                variant: "success"
+              });
+            }
             setTimeout(() => {
               navigate("/player/dashboard");
-            }, 1500);
+            }, 2000);
           } catch (err) {
             console.error(err);
-            showToast({ 
-              title: "Error", 
-              description: "Payment verification failed", 
-              variant: "destructive" 
+            showToast({
+              title: "Error",
+              description: "Payment verification failed",
+              variant: "destructive"
             });
           }
         },
@@ -207,11 +221,11 @@ const TurfDetailPage = () => {
       const RazorpayConstructor = (window as unknown as { Razorpay: new (options: unknown) => { open: () => void; on: (event: string, handler: (response: RazorpayErrorResponse) => void) => void } }).Razorpay;
       const rzp = new RazorpayConstructor(options);
       rzp.open();
-      rzp.on('payment.failed', function (response: RazorpayErrorResponse){
-        showToast({ 
-          title: "Failed", 
-          description: response.error.description, 
-          variant: "destructive" 
+      rzp.on('payment.failed', function (response: RazorpayErrorResponse) {
+        showToast({
+          title: "Failed",
+          description: response.error.description,
+          variant: "destructive"
         });
       });
 
@@ -260,8 +274,8 @@ const TurfDetailPage = () => {
     const images = Array.isArray(turf?.images)
       ? turf.images
       : typeof turf?.images === "string"
-      ? turf.images.split(",")
-      : [];
+        ? turf.images.split(",")
+        : [];
     setCurrentImage((prev) => (prev + 1) % images.length);
   };
 
@@ -269,8 +283,8 @@ const TurfDetailPage = () => {
     const images = Array.isArray(turf?.images)
       ? turf.images
       : typeof turf?.images === "string"
-      ? turf.images.split(",")
-      : [];
+        ? turf.images.split(",")
+        : [];
     setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
   };
 
@@ -280,12 +294,16 @@ const TurfDetailPage = () => {
     const fetchData = async () => {
       if (!id) return;
       try {
-        const [turfRes, slotsRes] = await Promise.all([
+        const [turfRes, slotsRes, galleryRes, testimonialsRes] = await Promise.all([
           getTurfDetails(id),
-          getSlotsByTurf(id)
+          getSlotsByTurf(id),
+          api.get(`/turfs/${id}/gallery`).catch(() => ({ data: [] })),
+          api.get(`/turfs/${id}/testimonials`).catch(() => ({ data: [] }))
         ]);
         setTurf(turfRes.data);
         setSlots(slotsRes.data);
+        setGallery(galleryRes.data || []);
+        setTestimonials(testimonialsRes.data || []);
       } catch (error) {
         console.error(error);
         showToast({
@@ -330,16 +348,20 @@ const TurfDetailPage = () => {
   const images = Array.isArray(turf.images)
     ? turf.images
     : typeof turf.images === "string"
-    ? turf.images.split(",").map(img => img.trim())
-    : ["https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1200"];
+      ? turf.images.split(",").map(img => img.trim())
+      : ["https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1200"];
 
   const facilitiesList = Array.isArray(turf.facilities)
     ? turf.facilities
     : typeof turf.facilities === "string"
-    ? (Array.isArray(turf.facilities) ? turf.facilities : turf.facilities.split(",")).map(f => typeof f === "string" ? f.trim() : f)
-    : ["WiFi", "Parking", "Cafeteria", "Showers"];
+      ? (Array.isArray(turf.facilities) ? turf.facilities : turf.facilities.split(",")).map(f => typeof f === "string" ? f.trim() : f)
+      : ["WiFi", "Parking", "Cafeteria", "Showers"];
 
-  const sportsList = turf.sports || ["Football", "Cricket", "Badminton"];
+  const sportsList = Array.isArray(turf.sports)
+    ? turf.sports
+    : typeof turf.sports === "string"
+      ? turf.sports.split(",").map(s => s.trim())
+      : ["Football", "Cricket", "Badminton"];
 
   const totalAmount = selectedSlots.reduce((sum, slotId) => {
     const slot = slots.find(s => s.id === slotId);
@@ -355,14 +377,14 @@ const TurfDetailPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       {toast && (
         <div className={`fixed top-20 right-4 p-4 rounded-lg z-50 ${toastClass} text-white shadow-lg animate-slide-down`}>
           <b className="block mb-1">{toast.title}</b>
           <p className="text-sm">{toast.description}</p>
         </div>
       )}
-      
+
       <main className="pt-20 pb-12">
         {/* Image Gallery */}
         <section className="relative h-[50vh] md:h-[60vh] overflow-hidden">
@@ -372,7 +394,7 @@ const TurfDetailPage = () => {
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-transparent to-transparent" />
-          
+
           {images.length > 1 && (
             <>
               <button
@@ -396,9 +418,8 @@ const TurfDetailPage = () => {
                 <button
                   key={i}
                   onClick={() => setCurrentImage(i)}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    i === currentImage ? "w-8 bg-primary" : "bg-foreground/50"
-                  }`}
+                  className={`w-2 h-2 rounded-full transition-all ${i === currentImage ? "w-8 bg-primary" : "bg-foreground/50"
+                    }`}
                 />
               ))}
             </div>
@@ -502,6 +523,103 @@ const TurfDetailPage = () => {
                 </CardContent>
               </Card>
 
+              {/* Gallery Section */}
+              {gallery.length > 0 && (
+                <Card variant="default">
+                  <CardHeader>
+                    <CardTitle>Gallery</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      {gallery.map((item) => (
+                        <div
+                          key={item.id}
+                          className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
+                          onClick={() => window.open(item.image_url, '_blank')}
+                        >
+                          <img
+                            src={item.image_url}
+                            alt="Gallery"
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Testimonials Section */}
+              {testimonials.length > 0 && (
+                <Card variant="default">
+                  <CardHeader>
+                    <CardTitle>Testimonials</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {testimonials.map((testimonial) => (
+                        <div key={testimonial.id} className="p-4 bg-secondary/50 rounded-lg">
+                          {testimonial.type === 'video' && testimonial.video_url ? (
+                            <div className="aspect-video rounded-lg overflow-hidden mb-3">
+                              <video
+                                src={testimonial.video_url}
+                                controls
+                                className="w-full h-full object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <p className="text-muted-foreground mb-3">{testimonial.content}</p>
+                          )}
+                          {testimonial.users && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <span className="font-semibold">{testimonial.users.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Google Maps */}
+              {(turf.latitude && turf.longitude) || turf.location ? (
+                <Card variant="default">
+                  <CardHeader>
+                    <CardTitle>Location</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="w-full h-[400px] rounded-lg overflow-hidden">
+                      {turf.latitude && turf.longitude ? (
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBFw0Qbyq9zTFTd-tUY6d-s6R7Z8xT8'}&q=${turf.latitude},${turf.longitude}&zoom=15`}
+                        />
+                      ) : (
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBFw0Qbyq9zTFTd-tUY6d-s6R7Z8xT8'}&q=${encodeURIComponent(turf.location)}&zoom=15`}
+                        />
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
+                      <MapPin className="w-4 h-4" />
+                      {turf.location}
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : null}
+
               {/* Time Slots */}
               <Card variant="default">
                 <CardHeader>
@@ -513,11 +631,10 @@ const TurfDetailPage = () => {
                       <button
                         key={i}
                         onClick={() => setSelectedDate(date)}
-                        className={`flex flex-col items-center min-w-[70px] p-3 rounded-xl transition-all ${
-                          selectedDate.toDateString() === date.toDateString()
+                        className={`flex flex-col items-center min-w-[70px] p-3 rounded-xl transition-all ${selectedDate.toDateString() === date.toDateString()
                             ? "gradient-primary text-primary-foreground"
                             : "bg-secondary text-muted-foreground hover:text-foreground"
-                        }`}
+                          }`}
                       >
                         <span className="text-xs font-medium">
                           {date.toLocaleDateString("en-US", { weekday: "short" })}
@@ -535,19 +652,18 @@ const TurfDetailPage = () => {
                       {slots.map((slot) => {
                         const available = isSlotAvailable(slot);
                         const isSelected = selectedSlots.includes(slot.id);
-                        
+
                         return (
                           <button
                             key={slot.id}
                             disabled={!available}
                             onClick={() => available && toggleSlotSelection(slot.id)}
-                            className={`p-3 rounded-lg text-center transition-all ${
-                              !available
+                            className={`p-3 rounded-lg text-center transition-all ${!available
                                 ? "bg-secondary/30 text-muted-foreground cursor-not-allowed line-through"
                                 : isSelected
-                                ? "gradient-primary text-primary-foreground shadow-glow"
-                                : "bg-secondary text-foreground hover:border-primary border border-transparent"
-                            }`}
+                                  ? "gradient-primary text-primary-foreground shadow-glow"
+                                  : "bg-secondary text-foreground hover:border-primary border border-transparent"
+                              }`}
                           >
                             <div className="text-sm font-semibold">
                               {slot.start_time.slice(0, 5)}
@@ -588,7 +704,7 @@ const TurfDetailPage = () => {
                     <div className="p-4 bg-primary/10 border border-primary/30 rounded-xl">
                       <div className="text-sm text-muted-foreground mb-1">Selected Slots</div>
                       <div className="font-heading font-bold text-foreground">
-                        {selectedDate.toLocaleDateString("en-US", { 
+                        {selectedDate.toLocaleDateString("en-US", {
                           weekday: "long",
                           month: "long",
                           day: "numeric"
@@ -603,10 +719,10 @@ const TurfDetailPage = () => {
                     </div>
                   )}
 
-                  <Button 
-                    variant="hero" 
-                    size="xl" 
-                    className="w-full" 
+                  <Button
+                    variant="hero"
+                    size="xl"
+                    className="w-full"
                     disabled={selectedSlots.length === 0 || bookingLoading}
                     onClick={handleBooking}
                   >

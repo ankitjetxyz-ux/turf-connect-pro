@@ -10,6 +10,7 @@ export interface Turf {
   owner_id: string;
   rating?: number;
   reviews?: number;
+  reviewsCount?: number;
   sports?: string | string[];
   open_hours?: string;
   size?: string;
@@ -17,6 +18,8 @@ export interface Turf {
   tournaments_hosted?: number;
   matches_played?: number;
   is_popular?: boolean;
+  latitude?: number;
+  longitude?: number;
 }
 
 export interface Slot {
@@ -40,6 +43,8 @@ export interface Booking {
   location?: string;
   turf_owner_name?: string;
   turf_owner_email?: string;
+  verification_code?: string;
+  verification_expires_at?: string;
 }
 
 export interface Conversation {
@@ -68,6 +73,10 @@ export interface Tournament {
   turf_id?: string;
   description?: string;
   image?: string;
+  participant_id?: string;
+  team_name?: string;
+  verification_code?: string;
+  verification_expires_at?: string;
 }
 
 export interface UserProfile {

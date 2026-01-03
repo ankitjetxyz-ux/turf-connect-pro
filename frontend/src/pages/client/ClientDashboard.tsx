@@ -68,7 +68,10 @@ const ClientDashboard = () => {
     const userId = localStorage.getItem("user_id");
     if (!userId) return;
 
-    const socket = io("http://localhost:5000");
+    const socket = io({
+      path: "/socket.io",
+      transports: ["polling", "websocket"],
+    });
 
     // Join per-user room so backend can push booking notifications
     socket.emit("join_user", userId);

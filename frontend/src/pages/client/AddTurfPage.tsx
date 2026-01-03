@@ -9,7 +9,7 @@ import api from "@/services/api";
 import axios from "axios";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { MapPin, IndianRupee, Image, Building2 } from "lucide-react";
+import { MapPin, IndianRupee, Image, Building2, X, Upload } from "lucide-react";
 
 const AddTurfPage = () => {
   const navigate = useNavigate();
@@ -25,11 +25,61 @@ const AddTurfPage = () => {
     facilities: "",
     images: "",
   });
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    // Validate file types and size
+    const validFiles = files.filter(file => {
+      const isValidType = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type);
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB
+      if (!isValidType) {
+        toast({
+          title: "Invalid file type",
+          description: `${file.name} is not a valid image format`,
+          variant: "destructive",
+        });
+      }
+      if (!isValidSize) {
+        toast({
+          title: "File too large",
+          description: `${file.name} exceeds 10MB limit`,
+          variant: "destructive",
+        });
+      }
+      return isValidType && isValidSize;
+    });
+
+    if (validFiles.length === 0) return;
+
+    // Update files and previews
+    const newFiles = [...imageFiles, ...validFiles].slice(0, 10); // Max 10 images
+    setImageFiles(newFiles);
+
+    // Create previews
+    const newPreviews = newFiles.map(file => URL.createObjectURL(file));
+    setImagePreviews(newPreviews);
+  };
+
+  const removeImage = (index: number) => {
+    const newFiles = imageFiles.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    
+    // Revoke old preview URL
+    URL.revokeObjectURL(imagePreviews[index]);
+    
+    setImageFiles(newFiles);
+    setImagePreviews(newPreviews);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -47,10 +97,31 @@ const AddTurfPage = () => {
     setLoading(true);
 
     try {
-      const imagesArray = form.images
-        .split(",")
-        .map((url) => url.trim())
-        .filter((url) => url.length > 0);
+      let imagesArray: string[] = [];
+
+      // Upload files if any
+      if (imageFiles.length > 0) {
+        setUploadingImages(true);
+        const formData = new FormData();
+        imageFiles.forEach(file => {
+          formData.append("images", file);
+        });
+
+        const uploadRes = await api.post("/turfs/upload-images", formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+        imagesArray = uploadRes.data.image_urls || [];
+        setUploadingImages(false);
+      }
+
+      // Also include any manual URLs
+      if (form.images) {
+        const urlArray = form.images
+          .split(",")
+          .map((url) => url.trim())
+          .filter((url) => url.length > 0);
+        imagesArray = [...imagesArray, ...urlArray];
+      }
 
       await api.post("/turfs", {
         ...form,
@@ -180,27 +251,79 @@ const AddTurfPage = () => {
                 </div>
 
                 <div>
-                  <label className="text-sm text-muted-foreground">
-                    Image URLs (comma separated)
+                  <label className="text-sm text-muted-foreground mb-2 block">
+                    Turf Images
                   </label>
+                  
+                  {/* File Upload */}
+                  <div className="mb-4">
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-lg cursor-pointer bg-secondary/20 hover:bg-secondary/30 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <Upload className="w-8 h-8 mb-2 text-muted-foreground" />
+                        <p className="mb-2 text-sm text-muted-foreground">
+                          <span className="font-semibold">Click to upload</span> or drag and drop
+                        </p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG, WEBP (MAX. 10MB each, up to 10 images)</p>
+                      </div>
+                      <input
+                        type="file"
+                        className="hidden"
+                        multiple
+                        accept="image/jpeg,image/jpg,image/png,image/webp"
+                        onChange={handleImageChange}
+                        disabled={uploadingImages || imageFiles.length >= 10}
+                      />
+                    </label>
+                  </div>
+
+                  {/* Image Previews */}
+                  {imagePreviews.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <img
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border border-white/10"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="absolute top-1 right-1 p-1 bg-destructive/80 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-4 h-4 text-white" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Manual URL Input (Optional) */}
                   <div className="relative">
                     <Image className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
                     <Input
                       name="images"
-                      placeholder="https://image1.jpg, https://image2.jpg"
+                      placeholder="Or enter image URLs (comma separated, optional)"
                       value={form.images}
                       onChange={handleChange}
                       className="pl-9 bg-secondary/30 border-white/10 focus:border-primary/60"
                     />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      You can upload files above or enter URLs manually
+                    </p>
                   </div>
                 </div>
 
                 <Button
                   type="submit"
                   className="w-full gradient-primary shadow-glow"
-                  disabled={loading}
+                  disabled={loading || uploadingImages}
                 >
-                  {loading ? "Creating Turf..." : "Create Turf"}
+                  {uploadingImages 
+                    ? "Uploading Images..." 
+                    : loading 
+                    ? "Creating Turf..." 
+                    : "Create Turf"}
                 </Button>
               </form>
             </CardContent>

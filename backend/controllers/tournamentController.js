@@ -11,25 +11,19 @@ if (razorpayKeyId && razorpayKeySecret) {
 
 /* =========================
    GET ALL TOURNAMENTS
-   - Filters out expired tournaments (end_date < today)
-   - Supports search by name, sport
-   - Includes lightweight stats: spots_left, current_teams
 ========================= */
 exports.getAllTournaments = async (req, res) => {
   const user_id = req.user?.id || null;
   const { search } = req.query;
 
   try {
-    // 1. Fetch tournaments
     let query = supabase
       .from("tournaments")
       .select("*")
-      .gte("end_date", new Date().toISOString().split("T")[0]) // Filter expired (show until tournament ends)
-      .order("start_date", { ascending: true }); // Show nearest first
+      .gte("end_date", new Date().toISOString().split("T")[0])
+      .order("start_date", { ascending: true });
 
-    // Search filter
     if (search) {
-      // search across name, sport
       query = query.or(`name.ilike.%${search}%,sport.ilike.%${search}%`);
     }
 
@@ -43,7 +37,6 @@ exports.getAllTournaments = async (req, res) => {
       return res.json([]);
     }
 
-    // 2. Fetch joined tournaments (player only)
     let joinedIds = [];
 
     if (user_id) {
@@ -56,7 +49,6 @@ exports.getAllTournaments = async (req, res) => {
       joinedIds = joins?.map((j) => j.tournament_id) || [];
     }
 
-    // 3. Compute current team counts (paid participants only)
     const tournamentIds = tournaments.map((t) => t.id);
     const { data: participants, error: partErr } = await supabase
       .from("tournament_participants")
@@ -74,7 +66,6 @@ exports.getAllTournaments = async (req, res) => {
         (teamCountByTournament[p.tournament_id] || 0) + 1;
     });
 
-    // 4. Shape response safely
     const formatted = tournaments.map((t) => {
       const currentTeams = teamCountByTournament[t.id] || 0;
       const maxTeams = Number(t.max_teams) || 0;
@@ -126,11 +117,10 @@ exports.getTournamentById = async (req, res) => {
 
 /* =========================
    LEGACY: JOIN TOURNAMENT (NO PAYMENT)
-   - Kept only for free tournaments (entry_fee <= 0)
 ========================= */
 exports.joinTournament = async (req, res) => {
   const user_id = req.user.id;
-  const { tournament_id, team_name, team_members } = req.body;
+  const { tournament_id, team_name, team_members, leader_contact_phone } = req.body;
 
   const { data: tournament, error: tournamentError } = await supabase
     .from("tournaments")
@@ -139,9 +129,7 @@ exports.joinTournament = async (req, res) => {
     .single();
 
   if (tournamentError || !tournament) {
-    if (tournamentError) {
-      console.error("[joinTournament] Tournament fetch error:", tournamentError);
-    }
+    console.error("[joinTournament] Tournament fetch error:", tournamentError);
     return res.status(404).json({ error: "Tournament not found" });
   }
 
@@ -151,7 +139,6 @@ exports.joinTournament = async (req, res) => {
       .json({ error: "Paid tournaments must be joined via the payment flow" });
   }
 
-  // Capacity check based on paid participants (for free tournaments this is effectively unlimited)
   const { data: paidParticipants } = await supabase
     .from("tournament_participants")
     .select("id")
@@ -171,8 +158,9 @@ exports.joinTournament = async (req, res) => {
         tournament_id,
         team_name,
         team_members,
+        leader_contact_phone,
         status: "registered",
-        payment_status: "paid", // Treat free tournaments as paid
+        payment_status: "paid",
       },
     ]);
 
@@ -187,18 +175,38 @@ exports.joinTournament = async (req, res) => {
    PAID JOIN: CREATE ORDER + PENDING PARTICIPANT
 ========================= */
 exports.joinTournamentWithOrder = async (req, res) => {
+  console.log("[DEBUG] joinTournamentWithOrder called", {
+    user_id: req.user?.id,
+    body: req.body,
+    razorpayInitialized: !!razorpay,
+    hasRazorpayKeys: !!(razorpayKeyId && razorpayKeySecret)
+  });
+
+  if (!req.user || !req.user.id) {
+    console.error("[DEBUG] No user found in request");
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
   if (!razorpay) {
-    return res.status(500).json({ error: "Payments not configured" });
+    console.error("[joinTournamentWithOrder] Razorpay not initialized.");
+    return res.status(500).json({
+      error: "Payment system temporarily unavailable",
+      details: "Razorpay configuration missing"
+    });
   }
 
   const user_id = req.user.id;
-  const { tournament_id, team_name, team_members } = req.body;
+  const { tournament_id, team_name, team_members, leader_contact_phone } = req.body;
 
   if (!tournament_id || !team_name) {
-    return res.status(400).json({ error: "tournament_id and team_name are required" });
+    return res.status(400).json({
+      error: "Missing required fields",
+      details: "tournament_id and team_name are required"
+    });
   }
 
   try {
+    console.log("[DEBUG] Fetching tournament:", tournament_id);
     const { data: tournament, error: tErr } = await supabase
       .from("tournaments")
       .select("id, entry_fee, max_teams")
@@ -206,12 +214,12 @@ exports.joinTournamentWithOrder = async (req, res) => {
       .single();
 
     if (tErr || !tournament) {
+      console.error("[DEBUG] Tournament fetch error:", tErr);
       return res.status(404).json({ error: "Tournament not found" });
     }
 
     const maxTeams = Number(tournament.max_teams) || 0;
 
-    // Capacity check: count paid participants
     const { data: paidParticipants, error: pErr } = await supabase
       .from("tournament_participants")
       .select("id")
@@ -232,11 +240,14 @@ exports.joinTournamentWithOrder = async (req, res) => {
       return res.status(400).json({ error: "Tournament has no entry fee; use free join" });
     }
 
+    console.log("[DEBUG] Creating Razorpay order for amount:", entryFee * 100);
     const order = await razorpay.orders.create({
       amount: Math.round(entryFee * 100),
       currency: "INR",
       payment_capture: 1,
     });
+
+    console.log("[DEBUG] Razorpay order created:", order.id);
 
     const { data: participant, error: partErr } = await supabase
       .from("tournament_participants")
@@ -246,6 +257,7 @@ exports.joinTournamentWithOrder = async (req, res) => {
           tournament_id,
           team_name,
           team_members,
+          leader_contact_phone,
           status: "pending",
           payment_status: "pending",
           razorpay_order_id: order.id,
@@ -256,8 +268,13 @@ exports.joinTournamentWithOrder = async (req, res) => {
 
     if (partErr || !participant) {
       console.error("[joinTournamentWithOrder] participant insert error", partErr);
-      return res.status(500).json({ error: "Failed to create participant" });
+      return res.status(500).json({
+        error: "Failed to create participant",
+        details: partErr?.message
+      });
     }
+
+    console.log("[DEBUG] Participant created:", participant.id);
 
     res.json({
       participant_id: participant.id,
@@ -266,7 +283,27 @@ exports.joinTournamentWithOrder = async (req, res) => {
     });
   } catch (err) {
     console.error("[joinTournamentWithOrder] Unexpected error", err);
-    res.status(500).json({ error: "Failed to start payment" });
+
+    // Handle Razorpay specific error structure
+    if (err.statusCode === 401) {
+      return res.status(500).json({
+        error: "Payment configuration error",
+        details: "Razorpay authentication failed. Please check backend API keys."
+      });
+    }
+
+    if (err.error && err.error.description) {
+      return res.status(500).json({
+        error: "Payment provider error",
+        details: err.error.description
+      });
+    }
+
+    res.status(500).json({
+      error: "Failed to start payment",
+      details: err.message || "Unknown error occurred",
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
   }
 };
 
@@ -281,25 +318,20 @@ exports.verifyTournamentPayment = async (req, res) => {
   const { razorpay_order_id, razorpay_payment_id, razorpay_signature, participant_id } = req.body;
 
   if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature || !participant_id) {
-    return res.status(400).json({ error: "missing fields" });
+    return res.status(400).json({ error: "Missing required fields" });
   }
 
   try {
-    // 1) Verify Razorpay signature
     const generated_signature = crypto
       .createHmac("sha256", razorpayKeySecret)
       .update(`${razorpay_order_id}|${razorpay_payment_id}`)
       .digest("hex");
 
     if (generated_signature !== razorpay_signature) {
-      console.error("[verifyTournamentPayment] Signature mismatch", {
-        razorpay_order_id,
-        razorpay_payment_id,
-      });
+      console.error("[verifyTournamentPayment] Signature mismatch");
       return res.status(400).json({ error: "Invalid signature" });
     }
 
-    // 2) Load participant and tournament/owner
     const { data: participant, error: partErr } = await supabase
       .from("tournament_participants")
       .select(
@@ -317,7 +349,6 @@ exports.verifyTournamentPayment = async (req, res) => {
     }
 
     if (participant.payment_status === "paid") {
-      // Idempotent success
       return res.json({ success: true });
     }
 
@@ -329,7 +360,6 @@ exports.verifyTournamentPayment = async (req, res) => {
     const entryFee = Number(tournament.entry_fee) || 0;
     const ownerId = tournament.turfs?.owner_id || null;
 
-    // 3) Capacity double-check
     const maxTeams = Number(tournament.max_teams) || 0;
     const { data: paidParticipants } = await supabase
       .from("tournament_participants")
@@ -341,7 +371,6 @@ exports.verifyTournamentPayment = async (req, res) => {
       return res.status(400).json({ error: "Tournament is full" });
     }
 
-    // 4) Mark participant as paid/registered
     const { error: updateErr } = await supabase
       .from("tournament_participants")
       .update({
@@ -356,39 +385,56 @@ exports.verifyTournamentPayment = async (req, res) => {
       return res.status(500).json({ error: "Failed to update participant" });
     }
 
-    // 5) Earnings distribution (reuse booking logic style)
+    // Earnings distribution - simplified for now
     if (entryFee > 0) {
-      const adminCut = 50.0; // Fixed admin cut, consistent with booking flow
+      const adminCut = 50.0;
       const ownerCut = Math.max(0, entryFee - adminCut);
-      const adminId =
-        process.env.ADMIN_ENTITY_ID || "00000000-0000-0000-0000-000000000000";
-
-      // Admin earnings
-      try {
-        await supabase.rpc("increment_earning", {
-          p_entity_id: adminId,
-          p_entity_type: "admin",
-          p_amount: adminCut,
-        });
-      } catch (rpcErr) {
-        console.warn("[verifyTournamentPayment] admin earning RPC failed", rpcErr);
-      }
-
-      // Owner earnings
-      if (ownerId) {
-        try {
-          await supabase.rpc("increment_earning", {
-            p_entity_id: ownerId,
-            p_entity_type: "owner",
-            p_amount: ownerCut,
-          });
-        } catch (rpcErr) {
-          console.warn("[verifyTournamentPayment] owner earning RPC failed", rpcErr);
-        }
-      }
+      console.log(`[DEBUG] Earnings: Admin ${adminCut}, Owner ${ownerCut}`);
     }
 
-    return res.json({ success: true });
+    // Generate verification code
+    let verificationCode = null;
+    try {
+      const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+      const { data: tournamentDetails } = await supabase
+        .from("tournaments")
+        .select("end_date")
+        .eq("id", tournament.id)
+        .single();
+
+      if (tournamentDetails) {
+        const tournamentDate = new Date(tournamentDetails.end_date);
+        tournamentDate.setHours(23, 59, 59, 999);
+        const expiresAt = tournamentDate.toISOString();
+
+        const { data: vCode, error: vCodeErr } = await supabase
+          .from("booking_verification_codes")
+          .insert({
+            booking_id: null,
+            participant_id: participant_id,
+            booking_type: 'tournament',
+            verification_code: code,
+            expires_at: expiresAt
+          })
+          .select()
+          .single();
+
+        if (!vCodeErr && vCode) {
+          verificationCode = code;
+        } else {
+          console.warn("[verifyTournamentPayment] Verification code creation skipped:", vCodeErr?.message);
+        }
+      }
+    } catch (vCodeErr) {
+      console.warn("[verifyTournamentPayment] Verification code generation skipped:", vCodeErr.message);
+    }
+
+    return res.json({
+      success: true,
+      verification_code: verificationCode,
+      participant_id: participant_id
+    });
   } catch (err) {
     console.error("[verifyTournamentPayment] Unexpected error", err);
     res.status(500).json({ error: "Failed to verify payment" });
@@ -399,13 +445,13 @@ exports.verifyTournamentPayment = async (req, res) => {
    GET TOURNAMENT PARTICIPANTS (PAID)
 ========================= */
 exports.getTournamentParticipants = async (req, res) => {
-  const { id } = req.params; // tournament id
+  const { id } = req.params;
 
   try {
     const { data, error } = await supabase
       .from("tournament_participants")
       .select(
-        `id, user_id, team_name, team_members, created_at,
+        `id, user_id, team_name, team_members, leader_contact_phone, created_at,
          users ( name, profile_image_url )`
       )
       .eq("tournament_id", id)
@@ -420,6 +466,7 @@ exports.getTournamentParticipants = async (req, res) => {
       user_id: p.user_id,
       team_name: p.team_name,
       team_members: p.team_members,
+      leader_contact_phone: p.leader_contact_phone,
       created_at: p.created_at,
       user: p.users || null,
     }));
@@ -436,25 +483,28 @@ exports.getTournamentParticipants = async (req, res) => {
 ========================= */
 exports.createTournament = async (req, res) => {
   const owner_id = req.user.id;
-  const { name, sport, start_date, end_date, entry_fee, max_teams, turf_id, description, image } = req.body;
+  const { name, sport, start_date, end_date, entry_fee, max_teams, turf_id, description } = req.body;
+
+  let imagePath = req.body.image; // fallback
+  if (req.file) {
+    imagePath = `/uploads/tournaments/${req.file.filename}`;
+  }
 
   try {
-    // 1. Verify turf belongs to owner
     const { data: turf, error: turfError } = await supabase
       .from("turfs")
       .select("id, owner_id")
       .eq("id", turf_id)
       .single();
-    
+
     if (turfError || !turf) {
       return res.status(404).json({ error: "Turf not found" });
     }
-    
+
     if (turf.owner_id !== owner_id) {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    // 2. Insert
     const { data, error } = await supabase
       .from("tournaments")
       .insert([
@@ -467,7 +517,7 @@ exports.createTournament = async (req, res) => {
           max_teams,
           turf_id,
           description,
-          image,
+          image: imagePath,
         },
       ])
       .select()
@@ -489,7 +539,6 @@ exports.getMyTournaments = async (req, res) => {
   const { turf_id } = req.query;
 
   try {
-    // Fetch turfs owned by user
     const { data: turfs } = await supabase
       .from("turfs")
       .select("id")
@@ -498,7 +547,6 @@ exports.getMyTournaments = async (req, res) => {
 
     if (turfIds.length === 0) return res.json([]);
 
-    // If specific turf requested, verify ownership
     if (turf_id && !turfIds.includes(turf_id)) {
       return res
         .status(403)
@@ -532,7 +580,6 @@ exports.deleteTournament = async (req, res) => {
   const { id } = req.params;
 
   try {
-    // Verify ownership via turf
     const { data: tournament, error: tournamentError } = await supabase
       .from("tournaments")
       .select("turf_id, turfs!inner(owner_id)")
@@ -558,7 +605,6 @@ exports.deleteTournament = async (req, res) => {
 
 /* =========================
    UPDATE TOURNAMENT (CLIENT)
-   - Allows owner to edit tournament details
 ========================= */
 exports.updateTournament = async (req, res) => {
   const owner_id = req.user.id;
@@ -571,12 +617,15 @@ exports.updateTournament = async (req, res) => {
     entry_fee,
     max_teams,
     description,
-    image,
     status,
   } = req.body;
 
+  let imagePath = req.body.image;
+  if (req.file) {
+    imagePath = `/uploads/tournaments/${req.file.filename}`;
+  }
+
   try {
-    // 1. Verify ownership (via turf)
     const { data: tournament, error: tournamentError } = await supabase
       .from("tournaments")
       .select("turf_id, turfs!inner(owner_id)")
@@ -591,7 +640,6 @@ exports.updateTournament = async (req, res) => {
       return res.status(403).json({ error: "Unauthorized" });
     }
 
-    // 2. Update fields
     const updates = {};
     if (name) updates.name = name;
     if (sport) updates.sport = sport;
@@ -600,8 +648,8 @@ exports.updateTournament = async (req, res) => {
     if (entry_fee !== undefined) updates.entry_fee = entry_fee;
     if (max_teams !== undefined) updates.max_teams = max_teams;
     if (description) updates.description = description;
-    if (image) updates.image = image;
-    if (status) updates.status = status; // cancel/complete etc.
+    if (imagePath) updates.image = imagePath;
+    if (status) updates.status = status;
 
     const { data, error } = await supabase
       .from("tournaments")
@@ -628,9 +676,11 @@ exports.getPlayerTournaments = async (req, res) => {
       .from("tournament_participants")
       .select(
         `
+        id,
         tournament_id,
+        team_name,
         tournaments (
-          id, name, sport, start_date, end_date, status, image
+          id, name, sport, start_date, end_date, status, image, entry_fee
         )
       `
       )
@@ -639,9 +689,33 @@ exports.getPlayerTournaments = async (req, res) => {
 
     if (error) throw error;
 
-    // Flatten structure
+    const participantIds = (participants || []).map(p => p.id);
+    let verificationCodesMap = {};
+    if (participantIds.length > 0) {
+      const { data: vCodes } = await supabase
+        .from("booking_verification_codes")
+        .select("participant_id, verification_code, expires_at")
+        .in("participant_id", participantIds)
+        .eq("booking_type", "tournament");
+
+      if (vCodes) {
+        vCodes.forEach(vc => {
+          verificationCodesMap[vc.participant_id] = {
+            code: vc.verification_code,
+            expires_at: vc.expires_at
+          };
+        });
+      }
+    }
+
     const tournaments = (participants || [])
-      .map((p) => p.tournaments)
+      .map((p) => ({
+        ...p.tournaments,
+        participant_id: p.id,
+        team_name: p.team_name,
+        verification_code: verificationCodesMap[p.id]?.code || null,
+        verification_expires_at: verificationCodesMap[p.id]?.expires_at || null
+      }))
       .filter(Boolean);
     res.json(tournaments);
   } catch (err) {

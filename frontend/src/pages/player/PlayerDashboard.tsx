@@ -3,7 +3,7 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, XCircle, User } from "lucide-react";
+import { MapPin, Clock, XCircle, User, Calendar, Users } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
@@ -43,6 +43,8 @@ const PlayerDashboard = () => {
 
   const [tournamentStats, setTournamentStats] = useState({ total: 0, upcoming: 0, past: 0 });
 
+  const [tournamentBookings, setTournamentBookings] = useState<Tournament[]>([]);
+
   const fetchTournamentStats = async () => {
     try {
       const res = await api.get("/tournaments/player-stats");
@@ -51,6 +53,7 @@ const PlayerDashboard = () => {
       const upcoming = list.filter((t: Tournament) => new Date(t.start_date) > now).length;
       const past = list.filter((t: Tournament) => new Date(t.start_date) <= now).length; // Approximating past as started
       setTournamentStats({ total: list.length, upcoming, past });
+      setTournamentBookings(list);
     } catch (e) {
       console.warn("Failed to load tournament stats");
     }
@@ -173,6 +176,73 @@ const PlayerDashboard = () => {
             </Card>
           )}
 
+          {/* Tournament Bookings Section */}
+          {tournamentBookings.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-2xl font-heading font-bold text-foreground mb-4">
+                My Tournament Bookings
+              </h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {tournamentBookings.map((tournament, index) => (
+                  <Card
+                    key={tournament.id}
+                    className="glass-card hover-lift border-white/10 overflow-hidden animate-slide-up"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
+                    <CardContent className="p-0">
+                      <div className="p-5 border-b border-white/5 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <h3 className="font-heading font-bold text-xl text-foreground line-clamp-1">
+                            {tournament.name}
+                          </h3>
+                          <Badge
+                            variant="outline"
+                            className={`capitalize border-0 ${
+                              tournament.status === "upcoming"
+                                ? "bg-amber-500/10 text-amber-500"
+                                : tournament.status === "completed"
+                                ? "bg-gray-500/10 text-gray-500"
+                                : "bg-secondary text-muted-foreground"
+                            }`}
+                          >
+                            {tournament.status}
+                          </Badge>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Calendar className="w-4 h-4 text-primary" />
+                            <span>
+                              {tournament.start_date} - {tournament.end_date}
+                            </span>
+                          </div>
+                          {tournament.team_name && (
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <Users className="w-4 h-4 text-primary" />
+                              <span>Team: {tournament.team_name}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {tournament.verification_code && (
+                        <div className="p-4 bg-primary/10 border-t border-primary/30">
+                          <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
+                          <div className="text-2xl font-mono font-bold text-primary tracking-wider text-center">
+                            {tournament.verification_code}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-2 text-center">
+                            Show this code at the tournament
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {bookings.map((booking, index) => (
               <Card
@@ -218,7 +288,18 @@ const PlayerDashboard = () => {
                   </div>
 
                   {booking.status === "confirmed" && (
-                    <div className="p-4 bg-secondary/30">
+                    <div className="p-4 bg-secondary/30 space-y-3">
+                      {booking.verification_code && (
+                        <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                          <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
+                          <div className="text-2xl font-mono font-bold text-primary tracking-wider text-center">
+                            {booking.verification_code}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-2 text-center">
+                            Show this code to the turf owner
+                          </div>
+                        </div>
+                      )}
                       <Button
                         variant="destructive"
                         className="w-full gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"

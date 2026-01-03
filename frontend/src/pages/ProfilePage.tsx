@@ -15,6 +15,15 @@ interface ProfileStats {
   tournaments_hosted: number;
 }
 
+interface HistoryItem {
+  id: string | number;
+  type: 'booking' | 'tournament';
+  name: string;
+  date?: string;
+  owner_name?: string;
+  status?: string;
+}
+
 interface ProfileUser {
   id: string;
   name: string;
@@ -31,6 +40,8 @@ const ProfilePage = () => {
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
 
   const loadProfile = async () => {
     try {
@@ -46,9 +57,71 @@ const ProfilePage = () => {
     }
   };
 
+  const loadHistory = async () => {
+    if (!user) return;
+    setHistoryLoading(true);
+    try {
+      const [bookingsRes, tournamentsRes] = await Promise.all([
+        api.get("/bookings/my").catch(() => ({ data: [] })),
+        api.get("/tournaments/player-stats").catch(() => ({ data: [] }))
+      ]);
+
+      const historyItems: HistoryItem[] = [];
+
+      // Add bookings
+      if (bookingsRes.data && Array.isArray(bookingsRes.data)) {
+        bookingsRes.data.forEach((b: any) => {
+          if (b.turf_name) {
+            historyItems.push({
+              id: b.id,
+              type: 'booking',
+              name: b.turf_name,
+              date: b.slot_time,
+              owner_name: b.turf_owner_name,
+              status: b.status
+            });
+          }
+        });
+      }
+
+      // Add tournaments
+      if (tournamentsRes.data && Array.isArray(tournamentsRes.data)) {
+        tournamentsRes.data.forEach((t: any) => {
+          if (t.name) {
+            historyItems.push({
+              id: t.id,
+              type: 'tournament',
+              name: t.name,
+              date: t.start_date,
+              status: t.status
+            });
+          }
+        });
+      }
+
+      // Sort by date (most recent first)
+      historyItems.sort((a, b) => {
+        if (!a.date || !b.date) return 0;
+        return new Date(b.date).getTime() - new Date(a.date).getTime();
+      });
+
+      setHistory(historyItems);
+    } catch (e) {
+      console.error("Failed to load history", e);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   useEffect(() => {
     loadProfile();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      loadHistory();
+    }
+  }, [user]);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -165,7 +238,7 @@ const ProfilePage = () => {
             </Card>
 
             <Card className="md:col-span-2 glass-card border-white/10">
-              <CardContent className="p-6 space-y-4">
+              <CardContent className="p-6 space-y-6">
                 <h2 className="text-xl font-heading font-bold mb-2">
                   Profile Stats
                 </h2>
@@ -218,6 +291,63 @@ const ProfilePage = () => {
                   <p className="text-muted-foreground text-sm">
                     No stats available yet.
                   </p>
+                )}
+
+                {/* History Section */}
+                {user.role === "player" && (
+                  <div className="pt-6 border-t border-white/10">
+                    <h2 className="text-xl font-heading font-bold mb-4">
+                      History
+                    </h2>
+                    {historyLoading ? (
+                      <p className="text-muted-foreground text-sm">Loading history...</p>
+                    ) : history.length > 0 ? (
+                      <div className="space-y-3">
+                        {history.map((item) => (
+                          <div
+                            key={`${item.type}-${item.id}`}
+                            className="p-4 rounded-xl bg-secondary/40 border border-white/5 hover:bg-secondary/60 transition-colors"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <span className={`px-2 py-1 rounded text-xs font-medium ${
+                                    item.type === 'booking' 
+                                      ? 'bg-primary/20 text-primary' 
+                                      : 'bg-amber-500/20 text-amber-500'
+                                  }`}>
+                                    {item.type === 'booking' ? 'Turf Booking' : 'Tournament'}
+                                  </span>
+                                  {item.status && (
+                                    <span className="text-xs text-muted-foreground capitalize">
+                                      {item.status.replace(/_/g, ' ')}
+                                    </span>
+                                  )}
+                                </div>
+                                <h3 className="font-semibold text-foreground mb-1">
+                                  {item.name}
+                                </h3>
+                                {item.owner_name && (
+                                  <p className="text-sm text-muted-foreground">
+                                    Owner: {item.owner_name}
+                                  </p>
+                                )}
+                                {item.date && (
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {item.date}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        No history available yet.
+                      </p>
+                    )}
+                  </div>
                 )}
               </CardContent>
             </Card>

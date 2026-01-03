@@ -246,6 +246,51 @@ exports.verifyPayment = async (req, res, next) => {
       }
     }
 
+    // 5.5) Generate verification codes for each booking
+    const verificationCodes = [];
+    for (const booking of bookings) {
+      if (booking.slot_id) {
+        // Fetch slot details to get end time
+        const { data: slotData } = await supabase
+          .from("slots")
+          .select("date, end_time")
+          .eq("id", booking.slot_id)
+          .single();
+
+        if (slotData) {
+          // Generate unique 6-digit code
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          
+          // Calculate expiration time (slot end time)
+          const slotDate = new Date(slotData.date);
+          const [hours, minutes] = slotData.end_time.split(':');
+          slotDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+          const expiresAt = slotDate.toISOString();
+
+          // Store verification code (for turf bookings)
+          const { data: vCode, error: vCodeErr } = await supabase
+            .from("booking_verification_codes")
+            .insert({
+              booking_id: booking.id,
+              slot_id: booking.slot_id,
+              booking_type: 'turf',
+              verification_code: code,
+              expires_at: expiresAt
+            })
+            .select()
+            .single();
+
+          if (!vCodeErr && vCode) {
+            verificationCodes.push({
+              booking_id: booking.id,
+              verification_code: code,
+              expires_at: expiresAt
+            });
+          }
+        }
+      }
+    }
+
     // 6) Auto-create chat between player and owner + realtime notification
     if (ownerId && payerId) {
       let chatId = null;
@@ -294,7 +339,11 @@ exports.verifyPayment = async (req, res, next) => {
     }
 
     // 7) Response for frontend
-    res.json({ success: true, booking_ids: bookingIds });
+    res.json({ 
+      success: true, 
+      booking_ids: bookingIds,
+      verification_codes: verificationCodes
+    });
   } catch (err) {
     next(err);
   }

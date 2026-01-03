@@ -16,6 +16,10 @@ export default defineConfig(({ mode }) => ({
         target: "http://localhost:5000",
         changeOrigin: true,
       },
+      "/socket.io": {
+        target: "ws://localhost:5000",
+        ws: true,
+      },
     },
   },
   plugins: [

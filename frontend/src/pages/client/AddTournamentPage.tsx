@@ -21,7 +21,6 @@ interface TournamentFormData {
     max_teams: string;
     turf_id: string;
     description: string;
-    image: string;
     [key: string]: string;
 }
 
@@ -35,6 +34,11 @@ const AddTournamentPage = () => {
     const [turfs, setTurfs] = useState<Turf[]>([]);
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
+
+    // For file upload
+    const [selectedImage, setSelectedImage] = useState<File | null>(null);
+    const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
     const [formData, setFormData] = useState<TournamentFormData>({
         name: "",
         sport: "Cricket",
@@ -44,7 +48,6 @@ const AddTournamentPage = () => {
         max_teams: "",
         turf_id: preSelectedTurfId || "",
         description: "",
-        image: ""
     });
 
     useEffect(() => {
@@ -66,10 +69,12 @@ const AddTournamentPage = () => {
                         max_teams: t.max_teams || "",
                         turf_id: t.turf_id || "",
                         description: t.description || "",
-                        image: t.image || ""
                     });
+                    if (t.image) {
+                        setPreviewUrl(t.image);
+                    }
                 })
-                .catch(err => {
+                .catch(() => {
                     toast({ variant: "destructive", title: "Error", description: "Failed to load tournament" });
                     navigate("/client/dashboard");
                 })
@@ -86,15 +91,37 @@ const AddTournamentPage = () => {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
+    const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedImage(file);
+            setPreviewUrl(URL.createObjectURL(file));
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+
+        const data = new FormData();
+        Object.keys(formData).forEach(key => {
+            data.append(key, formData[key]);
+        });
+
+        if (selectedImage) {
+            data.append("image", selectedImage);
+        }
+
         try {
             if (editId) {
-                await api.put(`/tournaments/${editId}`, formData);
+                await api.put(`/tournaments/${editId}`, data, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
                 toast({ title: "Success", description: "Tournament updated successfully!" });
             } else {
-                await api.post("/tournaments", formData);
+                await api.post("/tournaments", data, {
+                    headers: { "Content-Type": "multipart/form-data" }
+                });
                 toast({ title: "Success", description: "Tournament created successfully!" });
             }
             navigate("/client/dashboard");
@@ -190,13 +217,29 @@ const AddTournamentPage = () => {
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label>Banner Image URL (Optional)</Label>
-                                    <Input name="image" value={formData.image} onChange={handleChange} placeholder="https://..." className="bg-secondary/20" />
+                                    <Label>Banner Image</Label>
+                                    <div className="flex flex-col gap-3">
+                                        <Input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={handleFileChange}
+                                            className="bg-secondary/20 file:bg-primary file:text-primary-foreground file:border-0 file:rounded-md file:px-2 file:py-1 file:mr-3 file:text-sm file:font-medium hover:file:bg-primary/90"
+                                        />
+                                        {previewUrl && (
+                                            <div className="relative w-full h-48 rounded-lg overflow-hidden border border-white/10">
+                                                <img
+                                                    src={previewUrl}
+                                                    alt="Preview"
+                                                    className="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
 
                                 <Button type="submit" className="w-full gradient-primary" disabled={loading}>
                                     {loading
-                                        ? (editId ? "Updating..." : "Creating...")
+                                        ? (editId ? "Updating..." : "Created...")
                                         : (editId ? "Update Tournament" : "Create Tournament")}
                                 </Button>
                             </form>

@@ -63,6 +63,7 @@ const TournamentsPage = () => {
     id: string;
     team_name: string;
     team_members?: string[];
+    leader_contact_phone?: string;
     user?: { name?: string; profile_image_url?: string | null } | null;
   };
 
@@ -76,7 +77,7 @@ const TournamentsPage = () => {
   // Join Modal State
   const [selectedTournament, setSelectedTournament] = useState<Tournament | null>(null);
   const [isJoinOpen, setIsJoinOpen] = useState(false);
-  const [joinForm, setJoinForm] = useState({ team_name: "", team_members: "" });
+  const [joinForm, setJoinForm] = useState({ team_name: "", team_members: "", leader_contact_phone: "" });
   const [joining, setJoining] = useState(false);
 
   // Participants modal
@@ -135,19 +136,18 @@ const TournamentsPage = () => {
       return;
     }
     setSelectedTournament(tournament);
-    setJoinForm({ team_name: "", team_members: "" });
+    setJoinForm({ team_name: "", team_members: "", leader_contact_phone: "" });
     setIsJoinOpen(true);
   };
 
   const handleJoinSubmit = async () => {
-    if (!joinForm.team_name || !selectedTournament) {
-      alert("Team Name is required");
+    if (!joinForm.team_name || !selectedTournament || !joinForm.leader_contact_phone) {
+      alert("Team Name and Leader Contact Number are required");
       return;
     }
 
     setJoining(true);
     try {
-      // Free tournaments use legacy join, paid ones use Razorpay
       const isPaid = Number(selectedTournament.entry_fee || 0) > 0;
       const teamMembers = joinForm.team_members
         .split(",")
@@ -159,6 +159,7 @@ const TournamentsPage = () => {
           tournament_id: selectedTournament.id,
           team_name: joinForm.team_name,
           team_members: teamMembers,
+          leader_contact_phone: joinForm.leader_contact_phone
         });
         alert("Successfully joined the tournament!");
         setIsJoinOpen(false);
@@ -176,6 +177,7 @@ const TournamentsPage = () => {
         tournament_id: selectedTournament.id,
         team_name: joinForm.team_name,
         team_members: teamMembers,
+        leader_contact_phone: joinForm.leader_contact_phone
       });
 
       const options: Record<string, unknown> = {
@@ -187,13 +189,19 @@ const TournamentsPage = () => {
         order_id: data.order.id,
         handler: async (response: RazorpayResponse) => {
           try {
-            await api.post("/tournaments/verify-payment", {
+            const verifyRes = await api.post("/tournaments/verify-payment", {
               razorpay_order_id: response.razorpay_order_id,
               razorpay_payment_id: response.razorpay_payment_id,
               razorpay_signature: response.razorpay_signature,
               participant_id: data.participant_id,
             });
-            alert("Registration & payment successful!");
+
+            const verificationCode = verifyRes.data?.verification_code;
+            if (verificationCode) {
+              alert(`Registration & payment successful! Your verification code: ${verificationCode}`);
+            } else {
+              alert("Registration & payment successful!");
+            }
             setIsJoinOpen(false);
             fetchTournaments();
           } catch (err: unknown) {
@@ -214,9 +222,31 @@ const TournamentsPage = () => {
       const rzp = new RazorpayConstructor(options);
       rzp.open();
     } catch (err: unknown) {
-      console.error(err);
-      const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Join failed";
-      alert(errorMessage);
+      console.error("Join tournament error:", err);
+      let errorMessage = "Join failed";
+
+      if (err && typeof err === 'object') {
+        const axiosError = err as {
+          response?: {
+            data?: {
+              error?: string;
+              details?: string;
+            }
+          };
+          message?: string;
+        };
+
+        if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+          if (axiosError.response.data.details) {
+            errorMessage += `: ${axiosError.response.data.details}`;
+          }
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      }
+
+      alert(`Unable to join tournament: ${errorMessage}`);
     } finally {
       setJoining(false);
     }
@@ -457,7 +487,7 @@ const TournamentsPage = () => {
           <DialogHeader>
             <DialogTitle>Register for Tournament</DialogTitle>
             <DialogDescription>
-              Enter your team details to join.
+              Enter your team details and contact information to join.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -470,6 +500,18 @@ const TournamentsPage = () => {
                   setJoinForm({ ...joinForm, team_name: e.target.value })
                 }
                 placeholder="e.g. Thunder Strikers"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="leader_contact">Team Leader Contact Number</Label>
+              <Input
+                id="leader_contact"
+                value={joinForm.leader_contact_phone}
+                onChange={(e) =>
+                  setJoinForm({ ...joinForm, leader_contact_phone: e.target.value })
+                }
+                placeholder="e.g. 9876543210"
+                type="tel"
               />
             </div>
             <div className="grid gap-2">
@@ -517,6 +559,11 @@ const TournamentsPage = () => {
                 >
                   <div>
                     <p className="font-medium">{p.team_name}</p>
+                    {p.leader_contact_phone && (
+                      <p className="text-xs text-muted-foreground">
+                        Leader Contact: {p.leader_contact_phone}
+                      </p>
+                    )}
                     {p.team_members && p.team_members.length > 0 && (
                       <p className="text-xs text-muted-foreground mt-1">
                         {p.team_members.join(", ")}

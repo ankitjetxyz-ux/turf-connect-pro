@@ -197,6 +197,26 @@ exports.getMyBookings = async (req, res) => {
       return res.status(500).json({ error: "Failed to load bookings" });
     }
 
+    // Fetch verification codes for these bookings
+    const bookingIds = (data || []).map(b => b.id);
+    let verificationCodesMap = {};
+    if (bookingIds.length > 0) {
+      const { data: vCodes } = await supabase
+        .from("booking_verification_codes")
+        .select("booking_id, verification_code, expires_at")
+        .in("booking_id", bookingIds)
+        .eq("booking_type", "turf");
+      
+      if (vCodes) {
+        vCodes.forEach(vc => {
+          verificationCodesMap[vc.booking_id] = {
+            code: vc.verification_code,
+            expires_at: vc.expires_at
+          };
+        });
+      }
+    }
+
     // Shape data for PlayerDashboard expectations
     const formatted = (data || []).map((b) => ({
       id: b.id,
@@ -206,7 +226,9 @@ exports.getMyBookings = async (req, res) => {
       slot_time:
         b.slots?.date && b.slots?.start_time && b.slots?.end_time
           ? `${b.slots.date} ${b.slots.start_time} - ${b.slots.end_time}`
-          : null
+          : null,
+      verification_code: verificationCodesMap[b.id]?.code || null,
+      verification_expires_at: verificationCodesMap[b.id]?.expires_at || null
     }));
 
     res.json(formatted);
@@ -317,6 +339,26 @@ exports.getClientBookings = async (req, res) => {
       return res.status(500).json({ error: "Failed to load client bookings" });
     }
 
+    // Fetch verification codes for these bookings
+    const bookingIds = (data || []).map(b => b.id);
+    let verificationCodesMap = {};
+    if (bookingIds.length > 0) {
+      const { data: vCodes } = await supabase
+        .from("booking_verification_codes")
+        .select("booking_id, verification_code, expires_at")
+        .in("booking_id", bookingIds)
+        .eq("booking_type", "turf");
+      
+      if (vCodes) {
+        vCodes.forEach(vc => {
+          verificationCodesMap[vc.booking_id] = {
+            code: vc.verification_code,
+            expires_at: vc.expires_at
+          };
+        });
+      }
+    }
+
     // Shape data for ClientDashboard and ClientBookings expectations
     const formatted = (data || []).map((b) => ({
       id: b.id,
@@ -327,7 +369,9 @@ exports.getClientBookings = async (req, res) => {
       slot_time:
         b.slots?.date && b.slots?.start_time && b.slots?.end_time
           ? `${b.slots.date} ${b.slots.start_time} - ${b.slots.end_time}`
-          : null
+          : null,
+      verification_code: verificationCodesMap[b.id]?.code || null,
+      verification_expires_at: verificationCodesMap[b.id]?.expires_at || null
     }));
 
     res.json(formatted);

@@ -75,6 +75,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/promotional-videos", require("./routes/promotionalVideoRoutes"));
 
 /* =========================
    HEALTH CHECK
