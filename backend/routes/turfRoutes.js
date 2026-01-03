@@ -11,6 +11,9 @@ const {
   getTurfGallery,
   getTurfReviews,
   getTurfTestimonials,
+  getTurfComments,
+  addTurfComment,
+  deleteTurfComment,
   uploadTurfImages
 } = require("../controllers/turfController");
 const { verifyToken, allowRoles } = require("../middleware/authMiddleware");
@@ -59,5 +62,8 @@ router.get("/:id", getTurfById);
 router.get("/:id/gallery", getTurfGallery);
 router.get("/:id/reviews", getTurfReviews);
 router.get("/:id/testimonials", getTurfTestimonials);
+router.get("/:id/comments", getTurfComments);
+router.post("/:id/comments", verifyToken, addTurfComment);
+router.delete("/:id/comments/:commentId", verifyToken, allowRoles("client"), deleteTurfComment);
 
 module.exports = router;

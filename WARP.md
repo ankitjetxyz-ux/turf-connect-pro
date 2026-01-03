@@ -46,14 +46,15 @@ All commands below assume repo root is this directory.
 
 ### Prerequisites
 
-- Node.js + npm installed (see `frontend/README.md`).
-- A Supabase project configured with the schema in `backend/config/complete_schema.sql` and related SQL files.
+- Node.js (v20+ recommended; some Supabase client packages require >=20) and npm installed (see `frontend/README.md`).
+- Supabase Postgres configured with `backend/config/complete_schema.sql` and subsequent `schema_*.sql` migrations.
 - Razorpay test or live keys and JWT secret defined in `backend/.env` (see `.env.example`).
+- For newer features (reviews, gallery, tournament verification codes), follow `DATABASE_SETUP_INSTRUCTIONS.md` to apply `schema_enhancements.sql` and `schema_update_tournament_verification.sql`.
 
-> **Important port note:**
-> - `frontend/vite.config.ts` proxies `/api` to `http://localhost:8080`.
+> **Important port & proxy note:**
+> - `frontend/vite.config.ts` runs Vite on `http://localhost:3000` and proxies `/api`, `/uploads` and `/socket.io` to `http://localhost:5000`.
 > - `backend/server.js` listens on `process.env.PORT || 8080`.
-> - The sample `.env.example` sets `PORT=5000`, which will **break the Vite proxy**; for local dev either remove `PORT` or set `PORT=8080`, or update the Vite proxy if you intentionally change the backend port.
+> - `.env.example` sets `PORT=5000`, which keeps the backend aligned with the Vite proxy. If you change `PORT`, also update the proxy targets in `vite.config.ts` (and vice versa).
 
 ### Backend (Express + Supabase + Razorpay)
 
@@ -72,8 +73,8 @@ From repo root:
   - `cd backend && npm start`
 
 - **Health check (manual)**
-  - HTTP: `curl http://localhost:8080/api/health`
-  - Node script: `cd backend && node scripts/test_health.js`
+-  - HTTP: `curl http://localhost:5000/api/health`
+-  - Node script: `cd backend && node scripts/test_health.js`
 
 - **Simple auth registration smoke test**
   - `cd backend && node scripts/test_register_simple.js`

@@ -101,7 +101,7 @@ const TurfCard = ({
         <div>
           <h3 className="font-bold text-lg line-clamp-1 mb-2">{name}</h3>
           
-          {/* Address with expand/collapse */}
+          {/* Address with expand/collapse + map link */}
           <div className="space-y-1">
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
               <MapPin className="w-4 h-4 text-primary/70 mt-0.5 shrink-0" />
@@ -127,6 +127,16 @@ const TurfCard = ({
                     )}
                   </button>
                 )}
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.open(`https://www.google.com/maps/search/?q=${encodeURIComponent(location)}`, "_blank");
+                  }}
+                  className="block text-xs text-primary mt-1 hover:underline font-medium"
+                >
+                  View on map
+                </button>
               </div>
             </div>
 
@@ -134,7 +144,7 @@ const TurfCard = ({
             {ownerPhone && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Phone className="w-4 h-4 text-primary/70 shrink-0" />
-                <a 
+                <a
                   href={`tel:${ownerPhone}`}
                   onClick={(e) => e.stopPropagation()}
                   className="hover:text-primary transition-colors"
@@ -146,31 +156,7 @@ const TurfCard = ({
           </div>
         </div>
 
-        {/* Rating Display (moved from top, now below name for better visibility) */}
-        {rating > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-primary/10 px-2 py-1 rounded-lg">
-              <div className="flex gap-0.5">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-3.5 h-3.5 ${
-                      star <= Math.round(rating)
-                        ? "text-yellow-400 fill-yellow-400"
-                        : "text-gray-300 fill-gray-300"
-                    }`}
-                  />
-                ))}
-              </div>
-              <span className="font-semibold text-primary ml-1">{rating.toFixed(1)}</span>
-            </div>
-            {reviewsCount > 0 && (
-              <span className="text-muted-foreground text-sm">
-                ({reviewsCount} {reviewsCount === 1 ? 'review' : 'reviews'})
-              </span>
-            )}
-          </div>
-        )}
+        {/* Rating is shown once in the top-left badge; no secondary rating block here */}
 
         <div className="flex flex-wrap gap-2">
           {sports.slice(0, 3).map((sport) => (

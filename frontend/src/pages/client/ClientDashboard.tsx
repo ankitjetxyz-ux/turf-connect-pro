@@ -56,7 +56,6 @@ const ClientDashboard = () => {
       }
     } catch (err: unknown) {
       console.error("Client dashboard error:", err);
-      // alert(err?.response?.data?.error || "Failed to load client data");
     } finally {
       setLoading(false);
     }
@@ -96,14 +95,22 @@ const ClientDashboard = () => {
       const res = await api.post("/bookings/owner-cancel", {
         booking_id: bookingId,
       });
-      alert(res.data.message || "Booking cancelled");
 
       // Instantly remove from UI
       setBookings(prev => prev.filter(b => b.id !== bookingId));
+
+      toast({
+        title: "Booking cancelled",
+        description: res.data.message || "The booking was cancelled successfully.",
+      });
     } catch (err: unknown) {
       console.error("Cancel booking error:", err);
       const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Cancellation failed";
-      alert(errorMessage);
+      toast({
+        title: "Unable to cancel booking",
+        description: errorMessage,
+        variant: "destructive",
+      });
     }
   };
 
@@ -313,10 +320,17 @@ const ClientDashboard = () => {
                         try {
                           await api.delete(`/tournaments/${t.id}`);
                           setMyTournaments(prev => prev.filter(x => x.id !== t.id));
-                          toast({ title: "Tournament deleted" });
+                          toast({
+                            title: "Tournament deleted",
+                            description: "The tournament has been removed.",
+                          });
                         } catch (e: unknown) {
                           const errorMessage = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete";
-                          alert(errorMessage);
+                          toast({
+                            title: "Unable to delete tournament",
+                            description: errorMessage,
+                            variant: "destructive",
+                          });
                         }
                       }}
                     >

@@ -9,12 +9,13 @@ import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Booking, Conversation, Tournament, UserProfile } from "@/types";
+import { useToast } from "@/components/ui/use-toast";
 
 const PlayerDashboard = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-
+  const { toast } = useToast();
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [conversations, setConversations] = useState<Conversation[]>([]);
 
@@ -35,7 +36,11 @@ const PlayerDashboard = () => {
       const res = await api.get("/bookings/my");
       setBookings(res.data);
     } catch {
-      alert("Failed to load bookings");
+      toast({
+        title: "Unable to load bookings",
+        description: "Please try again in a moment.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -87,8 +92,16 @@ const PlayerDashboard = () => {
       await api.post("/bookings/cancel", { booking_id: bookingId });
       // Instantly remove from UI
       setBookings(prev => prev.filter(b => b.id !== bookingId));
+      toast({
+        title: "Booking cancelled",
+        description: "Your booking has been cancelled successfully.",
+      });
     } catch {
-      alert("Cancellation failed");
+      toast({
+        title: "Cancellation failed",
+        description: "We couldn't cancel this booking. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -36,6 +36,19 @@ type ToastConfig = {
   variant?: "default" | "destructive" | "success";
 };
 
+type TurfComment = {
+  id: string;
+  turf_id: string;
+  user_id: string;
+  comment: string;
+  created_at?: string;
+  users?: {
+    id: string;
+    name: string;
+    profile_image_url?: string | null;
+  };
+};
+
 /* RAZORPAY LOADER */
 
 const loadRazorpay = (): Promise<boolean> => {
@@ -86,11 +99,15 @@ const TurfDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [gallery, setGallery] = useState<Array<{ id: string; image_url: string }>>([]);
   const [testimonials, setTestimonials] = useState<Array<{ id: string; type: string; content?: string; video_url?: string; users?: { name: string; profile_image_url?: string } }>>([]);
+  const [comments, setComments] = useState<TurfComment[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
 
   /* AUTH */
 
   const role = localStorage.getItem("role");
   const playerId = localStorage.getItem("user_id");
+  const userId = playerId;
 
   /* TOAST */
 
@@ -294,16 +311,18 @@ const TurfDetailPage = () => {
     const fetchData = async () => {
       if (!id) return;
       try {
-        const [turfRes, slotsRes, galleryRes, testimonialsRes] = await Promise.all([
+        const [turfRes, slotsRes, galleryRes, testimonialsRes, commentsRes] = await Promise.all([
           getTurfDetails(id),
           getSlotsByTurf(id),
           api.get(`/turfs/${id}/gallery`).catch(() => ({ data: [] })),
-          api.get(`/turfs/${id}/testimonials`).catch(() => ({ data: [] }))
+          api.get(`/turfs/${id}/testimonials`).catch(() => ({ data: [] })),
+          api.get(`/turfs/${id}/comments`).catch(() => ({ data: [] })),
         ]);
         setTurf(turfRes.data);
         setSlots(slotsRes.data);
         setGallery(galleryRes.data || []);
         setTestimonials(testimonialsRes.data || []);
+        setComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
       } catch (error) {
         console.error(error);
         showToast({
@@ -356,6 +375,8 @@ const TurfDetailPage = () => {
     : typeof turf.facilities === "string"
       ? (Array.isArray(turf.facilities) ? turf.facilities : turf.facilities.split(",")).map(f => typeof f === "string" ? f.trim() : f)
       : ["WiFi", "Parking", "Cafeteria", "Showers"];
+
+  const isOwner = !!userId && turf.owner_id === userId;
 
   const sportsList = Array.isArray(turf.sports)
     ? turf.sports
@@ -581,6 +602,118 @@ const TurfDetailPage = () => {
                   </CardContent>
                 </Card>
               )}
+
+              {/* Comments Section */}
+              <Card variant="default">
+                <CardHeader>
+                  <CardTitle>Comments</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {userId ? (
+                    <div className="space-y-2">
+                      <textarea
+                        value={newComment}
+                        onChange={(e) => setNewComment(e.target.value)}
+                        maxLength={3000}
+                        rows={4}
+                        className="w-full rounded-md border border-border bg-background/60 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60"
+                        placeholder="Share your experience at this turf (50-60 lines max)."
+                      />
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {newComment.length}/3000 characters
+                        </span>
+                        <Button
+                          size="sm"
+                          disabled={!newComment.trim() || commentSubmitting}
+                          onClick={async () => {
+                            if (!id) return;
+                            setCommentSubmitting(true);
+                            try {
+                              const res = await api.post(`/turfs/${id}/comments`, { comment: newComment.trim() });
+                              setComments((prev) => [res.data, ...prev]);
+                              setNewComment("");
+                              showToast({
+                                title: "Comment added",
+                                description: "Your feedback has been recorded.",
+                              });
+                            } catch (error: unknown) {
+                              const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to add comment";
+                              showToast({
+                                title: "Unable to add comment",
+                                description: errorMessage,
+                                variant: "destructive",
+                              });
+                            } finally {
+                              setCommentSubmitting(false);
+                            }
+                          }}
+                        >
+                          {commentSubmitting ? "Posting..." : "Post Comment"}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Please log in to share your comments about this turf.
+                    </p>
+                  )}
+
+                  <div className="space-y-3">
+                    {comments.length === 0 ? (
+                      <p className="text-sm text-muted-foreground">
+                        No comments yet. Be the first to share your experience.
+                      </p>
+                    ) : (
+                      comments.map((c) => (
+                        <div
+                          key={c.id}
+                          className="p-3 rounded-lg bg-secondary/40 border border-border/40 flex items-start justify-between gap-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-muted-foreground mb-1">
+                              {c.users?.name || "User"}
+                              {c.created_at && (
+                                <span className="ml-2 opacity-70">
+                                   b7 {new Date(c.created_at).toLocaleString()}
+                                </span>
+                              )}
+                            </p>
+                            <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+                              {c.comment}
+                            </p>
+                          </div>
+                          {isOwner && (
+                            <button
+                              onClick={async () => {
+                                if (!id) return;
+                                try {
+                                  await api.delete(`/turfs/${id}/comments/${c.id}`);
+                                  setComments((prev) => prev.filter((x) => x.id !== c.id));
+                                  showToast({
+                                    title: "Comment deleted",
+                                    description: "The comment has been removed.",
+                                  });
+                                } catch (error: unknown) {
+                                  const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete comment";
+                                  showToast({
+                                    title: "Unable to delete comment",
+                                    description: errorMessage,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                              className="ml-2 text-xs text-muted-foreground hover:text-destructive"
+                            >
+                              Delete
+                            </button>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Google Maps */}
               {(turf.latitude && turf.longitude) || turf.location ? (

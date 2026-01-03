@@ -94,24 +94,6 @@ const Navbar = () => {
                   Chat
                 </Link>
               )}
-              <Link
-                to="/about"
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive("/about")
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                  }`}
-              >
-                About Us
-              </Link>
-              <Link
-                to="/contact"
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive("/contact")
-                    ? "text-primary"
-                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
-                  }`}
-              >
-                Contact
-              </Link>
             </div>
 
             {/* DESKTOP ACTIONS */}
@@ -137,21 +119,6 @@ const Navbar = () => {
 
               {isLoggedIn && (
                 <>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                      navigate(
-                        role === "client"
-                          ? "/client/dashboard"
-                          : "/player/dashboard",
-                      )
-                    }
-                  >
-                    <LayoutDashboard className="w-4 h-4 mr-2" />
-                    Dashboard
-                  </Button>
-
                   <button
                     className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-secondary/60 transition-colors"
                     onClick={() => navigate("/profile")}
@@ -231,31 +198,10 @@ const Navbar = () => {
                         : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                       }`}
                   >
-                    Profile
+                    Profile & Dashboard
                   </Link>
                 </>
               )}
-
-              <Link
-                to="/about"
-                onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/about")
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                  }`}
-              >
-                About Us
-              </Link>
-              <Link
-                to="/contact"
-                onClick={() => setIsOpen(false)}
-                className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/contact")
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
-                  }`}
-              >
-                Contact
-              </Link>
 
               <div className="pt-2 space-y-2">
                 {!isLoggedIn && (
@@ -282,15 +228,11 @@ const Navbar = () => {
                       className="w-full justify-start"
                       onClick={() => {
                         setIsOpen(false);
-                        navigate(
-                          role === "client"
-                            ? "/client/dashboard"
-                            : "/player/dashboard"
-                        );
+                        navigate("/profile");
                       }}
                     >
                       <LayoutDashboard className="w-4 h-4 mr-2" />
-                      Dashboard
+                      Profile & Dashboard
                     </Button>
                     <Button
                       variant="destructive"

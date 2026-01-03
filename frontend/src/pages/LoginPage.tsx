@@ -13,9 +13,11 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "@/services/authService";
+import { useToast } from "@/components/ui/use-toast";
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -44,17 +46,18 @@ const LoginPage = () => {
 
       const role = res.data.user.role;
 
-      if (role === "player") {
-        navigate("/player/dashboard");
-      } else if (role === "client") {
-        navigate("/client/dashboard");
+      if (role === "player" || role === "client") {
+        navigate("/profile");
       }
     } catch (err: unknown) {
       console.error(err);
-      // Extract backend error message if available
       const backendError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       const message = backendError || (err instanceof Error ? err.message : "Login failed");
-      alert(message);
+      toast({
+        title: "Unable to sign in",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 

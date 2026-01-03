@@ -306,6 +306,126 @@ exports.getTurfTestimonials = async (req, res) => {
 };
 
 /* =======================
+   TURF COMMENTS (TEXT)
+======================= */
+exports.getTurfComments = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const { data, error } = await supabase
+      .from("turf_comments")
+      .select(`
+        id,
+        turf_id,
+        user_id,
+        comment,
+        created_at,
+        updated_at,
+        users(id, name, profile_image_url)
+      `)
+      .eq("turf_id", id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("[getTurfComments] error", error);
+      return res.status(400).json({ error: "Failed to load comments" });
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    console.error("[getTurfComments] unexpected", err);
+    res.status(500).json({ error: "Failed to load comments" });
+  }
+};
+
+exports.addTurfComment = async (req, res) => {
+  try {
+    const { id } = req.params; // turf_id
+    const userId = req.user.id;
+    const { comment } = req.body;
+
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ error: "Comment is required" });
+    }
+
+    if (comment.length > 3000) {
+      return res.status(400).json({ error: "Comment is too long (max ~60 lines)" });
+    }
+
+    // Ensure turf exists (and is active) before inserting
+    const { data: turf, error: turfErr } = await supabase
+      .from("turfs")
+      .select("id")
+      .eq("id", id)
+      .single();
+
+    if (turfErr || !turf) {
+      return res.status(404).json({ error: "Turf not found" });
+    }
+
+    const { data, error } = await supabase
+      .from("turf_comments")
+      .insert({
+        turf_id: id,
+        user_id: userId,
+        comment: comment.trim(),
+      })
+      .select(
+        "id, turf_id, user_id, comment, created_at, updated_at, users(id, name, profile_image_url)"
+      )
+      .single();
+
+    if (error) {
+      console.error("[addTurfComment] error", error);
+      return res.status(400).json({ error: "Failed to add comment" });
+    }
+
+    res.status(201).json(data);
+  } catch (err) {
+    console.error("[addTurfComment] unexpected", err);
+    res.status(500).json({ error: "Failed to add comment" });
+  }
+};
+
+exports.deleteTurfComment = async (req, res) => {
+  try {
+    const { id, commentId } = req.params; // turf_id, comment id
+    const requesterId = req.user.id;
+
+    // Ensure requester is the turf owner
+    const { data: turf, error: turfErr } = await supabase
+      .from("turfs")
+      .select("id, owner_id")
+      .eq("id", id)
+      .single();
+
+    if (turfErr || !turf) {
+      return res.status(404).json({ error: "Turf not found" });
+    }
+
+    if (turf.owner_id !== requesterId) {
+      return res.status(403).json({ error: "Only the turf owner can delete comments" });
+    }
+
+    const { error } = await supabase
+      .from("turf_comments")
+      .delete()
+      .eq("id", commentId)
+      .eq("turf_id", id);
+
+    if (error) {
+      console.error("[deleteTurfComment] error", error);
+      return res.status(400).json({ error: "Failed to delete comment" });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("[deleteTurfComment] unexpected", err);
+    res.status(500).json({ error: "Failed to delete comment" });
+  }
+};
+
+/* =======================
    UPLOAD TURF IMAGES
 ======================= */
 exports.uploadTurfImages = async (req, res) => {

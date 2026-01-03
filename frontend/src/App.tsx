@@ -15,8 +15,6 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import NotFound from "./pages/NotFound";
 
-import PlayerDashboard from "./pages/player/PlayerDashboard";
-import ClientDashboard from "./pages/client/ClientDashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import TurfSlotsPage from "./pages/client/TurfSlotsPage";
 import AddTurfPage from "./pages/client/AddTurfPage";
@@ -91,22 +89,22 @@ const App = () => (
             }
           />
 
-          {/* PLAYER DASHBOARD */}
+          {/* PLAYER DASHBOARD (redirected to unified profile/dashboard) */}
           <Route
             path="/player/dashboard"
             element={
               <ProtectedRoute role="player">
-                <PlayerDashboard />
+                <ProfilePage />
               </ProtectedRoute>
             }
           />
 
-          {/* CLIENT DASHBOARD */}
+          {/* CLIENT DASHBOARD (redirected to unified profile/dashboard) */}
           <Route
             path="/client/dashboard"
             element={
               <ProtectedRoute role="client">
-                <ClientDashboard />
+                <ProfilePage />
               </ProtectedRoute>
             }
           />

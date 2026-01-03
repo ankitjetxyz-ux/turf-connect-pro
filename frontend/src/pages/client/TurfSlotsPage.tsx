@@ -410,7 +410,7 @@ const TurfSlotsPage = () => {
           >
             ← Back
           </button>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Manage Slots</h1>
+          <h1 className="text-3xl font-heading font-bold text-foreground">Modify Slots</h1>
           <p className="text-muted-foreground">Add, edit, and manage time slots for your turf</p>
         </div>
 
@@ -421,7 +421,7 @@ const TurfSlotsPage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Clock className="w-5 h-5 text-primary" />
-                  <CardTitle>Add New Slot</CardTitle>
+                  <CardTitle>Modify Slots</CardTitle>
                 </div>
                 <Button
                   variant="outline"
@@ -489,7 +489,7 @@ const TurfSlotsPage = () => {
                     disabled={submitting}
                     className="w-full gradient-primary"
                   >
-                    {submitting ? "Creating..." : "Add Slot"}
+                    {submitting ? "Saving..." : "Add Slot"}
                   </Button>
                 </div>
               </div>

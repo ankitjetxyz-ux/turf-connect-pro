@@ -22,9 +22,11 @@ import {
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "@/services/authService";
+import { useToast } from "@/components/ui/use-toast";
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"player" | "client">("player");
@@ -44,7 +46,11 @@ const RegisterPage = () => {
     e.preventDefault();
 
     if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match");
+      toast({
+        title: "Passwords do not match",
+        description: "Please re-enter your password and confirmation.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -56,14 +62,20 @@ const RegisterPage = () => {
         role: selectedRole,
       });
 
-      alert("Registration successful. Please login.");
+      toast({
+        title: "Registration successful",
+        description: "Your account has been created. You can now sign in.",
+      });
       navigate("/login");
     } catch (err: unknown) {
       console.error(err);
-      // Extract backend error message if available
       const backendError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
       const message = backendError || (err instanceof Error ? err.message : "Registration failed");
-      alert(message);
+      toast({
+        title: "Unable to register",
+        description: message,
+        variant: "destructive",
+      });
     }
   };
 

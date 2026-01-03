@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Conversation } from "@/pages/ChatPage";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { MoreVertical, Star, Trash2, StarOff } from "lucide-react";
+import { MoreVertical, Star, StarOff } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -18,7 +18,6 @@ const ChatList = ({
 }) => {
   const items = useMemo(() => conversations || [], [conversations]);
   const currentUserId = localStorage.getItem("user_id");
-  const userRole = localStorage.getItem("role");
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const menuRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const { toast } = useToast();
@@ -56,32 +55,6 @@ const ChatList = ({
     }
   };
 
-  const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm("Are you sure you want to delete this chat?")) {
-      setOpenMenuId(null);
-      return;
-    }
-    
-    try {
-      await api.delete(`/chat/${chatId}`);
-      toast({
-        title: "Success",
-        description: "Chat deleted successfully",
-      });
-      if (onRefresh) onRefresh();
-      setOpenMenuId(null);
-      if (activeId === chatId) {
-        onSelect("");
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to delete chat",
-        variant: "destructive",
-      });
-    }
-  };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
@@ -105,9 +78,6 @@ const ChatList = ({
             const displayName = c.other_user?.name || (c.owner_id === currentUserId ? "Player" : "Turf Owner");
             const initial = displayName.charAt(0).toUpperCase();
             const profileImage = c.other_user?.profile_image_url || null;
-
-            const isOwner = c.owner_id === currentUserId;
-            const canDelete = isOwner && userRole === "client";
 
             return (
               <div
@@ -171,15 +141,6 @@ const ChatList = ({
                                 </>
                               )}
                             </button>
-                            {canDelete && (
-                              <button
-                                onClick={(e) => handleDeleteChat(c.id, e)}
-                                className="w-full px-4 py-2 text-sm text-left hover:bg-destructive/10 text-destructive flex items-center gap-2 transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                Delete Chat
-                              </button>
-                            )}
                           </div>
                         )}
                       </div>

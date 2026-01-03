@@ -27,6 +27,7 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import api from "@/services/api";
 import { loadRazorpay } from "@/utils/razorpay";
 import { RazorpayResponse } from "@/types";
+import { useToast } from "@/components/ui/use-toast";
 
 const sportFilters = [
   "All Sports",
@@ -80,6 +81,8 @@ const TournamentsPage = () => {
   const [joinForm, setJoinForm] = useState({ team_name: "", team_members: "", leader_contact_phone: "" });
   const [joining, setJoining] = useState(false);
 
+  const { toast } = useToast();
+
   // Participants modal
   const [isTeamsOpen, setIsTeamsOpen] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -132,7 +135,11 @@ const TournamentsPage = () => {
 
   const openJoinModal = (tournament: Tournament) => {
     if (role !== "player") {
-      alert("Only players can join tournaments");
+      toast({
+        title: "Only players can join",
+        description: "Please sign in as a player to join tournaments.",
+        variant: "destructive",
+      });
       return;
     }
     setSelectedTournament(tournament);
@@ -142,7 +149,11 @@ const TournamentsPage = () => {
 
   const handleJoinSubmit = async () => {
     if (!joinForm.team_name || !selectedTournament || !joinForm.leader_contact_phone) {
-      alert("Team Name and Leader Contact Number are required");
+      toast({
+        title: "Missing details",
+        description: "Team name and leader contact number are required.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -161,7 +172,10 @@ const TournamentsPage = () => {
           team_members: teamMembers,
           leader_contact_phone: joinForm.leader_contact_phone
         });
-        alert("Successfully joined the tournament!");
+        toast({
+          title: "Joined successfully",
+          description: "Your team has been registered for this tournament.",
+        });
         setIsJoinOpen(false);
         fetchTournaments();
         return;
@@ -169,7 +183,11 @@ const TournamentsPage = () => {
 
       const razorLoaded = await loadRazorpay();
       if (!razorLoaded) {
-        alert("Failed to load payment gateway. Please try again.");
+        toast({
+          title: "Payment gateway unavailable",
+          description: "We couldn't load the payment gateway. Please try again.",
+          variant: "destructive",
+        });
         return;
       }
 
@@ -198,16 +216,26 @@ const TournamentsPage = () => {
 
             const verificationCode = verifyRes.data?.verification_code;
             if (verificationCode) {
-              alert(`Registration & payment successful! Your verification code: ${verificationCode}`);
+              toast({
+                title: "Registration successful",
+                description: `Payment confirmed. Your verification code: ${verificationCode}`,
+              });
             } else {
-              alert("Registration & payment successful!");
+              toast({
+                title: "Registration successful",
+                description: "Payment confirmed and your team is registered.",
+              });
             }
             setIsJoinOpen(false);
             fetchTournaments();
           } catch (err: unknown) {
             console.error("verify-payment failed", err);
             const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Payment verification failed. Please contact support.";
-            alert(errorMessage);
+            toast({
+              title: "Payment verification failed",
+              description: errorMessage,
+              variant: "destructive",
+            });
           }
         },
         prefill: {
@@ -246,7 +274,11 @@ const TournamentsPage = () => {
         }
       }
 
-      alert(`Unable to join tournament: ${errorMessage}`);
+      toast({
+        title: "Unable to join tournament",
+        description: errorMessage,
+        variant: "destructive",
+      });
     } finally {
       setJoining(false);
     }

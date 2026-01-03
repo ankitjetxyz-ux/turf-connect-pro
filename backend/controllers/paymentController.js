@@ -106,6 +106,9 @@ exports.verifyPayment = async (req, res, next) => {
       0
     );
 
+    // Determine max end time across all booked slots for auto chat cleanup
+    let latestEndTimeIso = null;
+
     const ownerId = bookings[0].slots?.turfs?.owner_id || null;
     const payerId = bookings[0].user_id;
 
@@ -250,22 +253,45 @@ exports.verifyPayment = async (req, res, next) => {
     const verificationCodes = [];
     for (const booking of bookings) {
       if (booking.slot_id) {
-        // Fetch slot details to get end time
+        // Fetch slot details to get start/end time
         const { data: slotData } = await supabase
           .from("slots")
-          .select("date, end_time")
+          .select("date, start_time, end_time")
           .eq("id", booking.slot_id)
           .single();
 
         if (slotData) {
+          // Build concrete start/end timestamps for this booking
+          const slotStart = new Date(slotData.date);
+          const [sHours, sMinutes] = slotData.start_time.split(":");
+          slotStart.setHours(parseInt(sHours), parseInt(sMinutes), 0, 0);
+
+          const slotEnd = new Date(slotData.date);
+          const [eHours, eMinutes] = slotData.end_time.split(":");
+          slotEnd.setHours(parseInt(eHours), parseInt(eMinutes), 0, 0);
+
+          const startIso = slotStart.toISOString();
+          const endIso = slotEnd.toISOString();
+
+          // Update booking start/end in DB for future reference/analytics
+          await supabase
+            .from("bookings")
+            .update({
+              booking_start_time: startIso,
+              booking_end_time: endIso,
+            })
+            .eq("id", booking.id);
+
+          // Track latest end time for chat auto-delete
+          if (!latestEndTimeIso || new Date(endIso).getTime() > new Date(latestEndTimeIso).getTime()) {
+            latestEndTimeIso = endIso;
+          }
+
           // Generate unique 6-digit code
           const code = Math.floor(100000 + Math.random() * 900000).toString();
           
           // Calculate expiration time (slot end time)
-          const slotDate = new Date(slotData.date);
-          const [hours, minutes] = slotData.end_time.split(':');
-          slotDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-          const expiresAt = slotDate.toISOString();
+          const expiresAt = endIso;
 
           // Store verification code (for turf bookings)
           const { data: vCode, error: vCodeErr } = await supabase
@@ -319,6 +345,21 @@ exports.verifyPayment = async (req, res, next) => {
         }
       } catch (chatErr) {
         console.error("[verifyPayment] chat ensure failed", chatErr);
+      }
+
+      // Attach booking + auto-delete metadata to the chat if we know when the game ends
+      if (chatId && latestEndTimeIso) {
+        try {
+          await supabase
+            .from("chats")
+            .update({
+              related_booking_id: bookingIds[0],
+              auto_delete_at: latestEndTimeIso,
+            })
+            .eq("id", chatId);
+        } catch (metaErr) {
+          console.warn("[verifyPayment] unable to update chat auto-delete metadata", metaErr);
+        }
       }
 
       // Notify owner in real time if Socket.IO is available
