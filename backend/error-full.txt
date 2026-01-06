@@ -1,0 +1,55 @@
+﻿[dotenv@17.2.3] injecting env (19) from .env -- tip: ΓÜÖ∩╕Å  enable debug logging with { debug: true }
+node : Uncaught Exception: 
+TypeError: argument handler 
+must be a function
+At line:1 char:1
++ node server.js 2>&1 | 
+Out-File -FilePath 
+error-full.txt -Encoding 
+utf ...
++ ~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          
+    : NotSpecified: (Uncau  
+  ght Except...t be a fun   
+ ction:String) [], Remot    
+eException
+    + FullyQualifiedErrorId 
+    : NativeCommandError
+ 
+    at router.use (C:\Users\
+ankit\OneDrive\Desktop\smit 
+1\turf-connect-pro\backend\n
+ode_modules\router\index.js:
+392:13)
+    at app.<anonymous> (C:\U
+sers\ankit\OneDrive\Desktop\
+smit 1\turf-connect-pro\back
+end\node_modules\express\lib
+\application.js:222:21)
+    at Array.forEach 
+(<anonymous>)
+    at app.use (C:\Users\ank
+it\OneDrive\Desktop\smit 1\t
+urf-connect-pro\backend\node
+_modules\express\lib\applica
+tion.js:219:7)
+    at Object.<anonymous> (C
+:\Users\ankit\OneDrive\Deskt
+op\smit 1\turf-connect-pro\b
+ackend\server.js:69:5)
+    at Module._compile (node
+:internal/modules/cjs/loader
+:1761:14)
+    at Object..js (node:inte
+rnal/modules/cjs/loader:1893
+:10)
+    at Module.load (node:int
+ernal/modules/cjs/loader:148
+1:32)
+    at Module._load (node:in
+ternal/modules/cjs/loader:13
+00:12)
+    at 
+TracingChannel.traceSync (no
+de:diagnostics_channel:328:1
+4)

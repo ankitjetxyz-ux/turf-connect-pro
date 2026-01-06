@@ -24,6 +24,7 @@ const AddTurfPage = () => {
     price_per_slot: "",
     facilities: "",
     images: "",
+    google_maps_link: "",
   });
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -206,6 +207,23 @@ const AddTurfPage = () => {
                     onChange={handleChange}
                     className="bg-secondary/30 border-white/10 focus:border-primary/60"
                   />
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground">
+                    Google Maps Link
+                  </label>
+                  <Input
+                    name="google_maps_link"
+                    type="url"
+                    placeholder="https://maps.google.com/..."
+                    value={form.google_maps_link}
+                    onChange={handleChange}
+                    className="bg-secondary/30 border-white/10 focus:border-primary/60"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Paste the full Google Maps URL for your turf location
+                  </p>
                 </div>
 
                 <div>

@@ -716,14 +716,24 @@ const TurfDetailPage = () => {
               </Card>
 
               {/* Google Maps */}
-              {(turf.latitude && turf.longitude) || turf.location ? (
+              {(turf as any).google_maps_link || (turf.latitude && turf.longitude) || turf.location ? (
                 <Card variant="default">
                   <CardHeader>
                     <CardTitle>Location</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="w-full h-[400px] rounded-lg overflow-hidden">
-                      {turf.latitude && turf.longitude ? (
+                      {(turf as any).google_maps_link ? (
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={(turf as any).google_maps_link.replace('/view', '/embed')}
+                        />
+                      ) : turf.latitude && turf.longitude ? (
                         <iframe
                           width="100%"
                           height="100%"
@@ -749,6 +759,16 @@ const TurfDetailPage = () => {
                       <MapPin className="w-4 h-4" />
                       {turf.location}
                     </p>
+                    {(turf as any).google_maps_link && (
+                      <a
+                        href={(turf as any).google_maps_link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-primary hover:underline mt-2 inline-block"
+                      >
+                        Open in Google Maps →
+                      </a>
+                    )}
                   </CardContent>
                 </Card>
               ) : null}

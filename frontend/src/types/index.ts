@@ -20,6 +20,7 @@ export interface Turf {
   is_popular?: boolean;
   latitude?: number;
   longitude?: number;
+  google_maps_link?: string;
 }
 
 export interface Slot {
@@ -82,6 +83,7 @@ export interface Tournament {
 export interface UserProfile {
   name: string;
   email: string;
+  phone?: string;
   profile_image_url?: string | null;
 }
 

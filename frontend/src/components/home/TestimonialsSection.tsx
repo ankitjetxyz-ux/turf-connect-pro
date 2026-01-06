@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Star, ChevronLeft, ChevronRight, Quote } from "lucide-react";
+import { Star, ChevronLeft, ChevronRight, Quote, Play, ThumbsUp, User } from "lucide-react";
 import { useState } from "react";
 
 const testimonials = [
@@ -11,6 +11,9 @@ const testimonials = [
     avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150",
     rating: 5,
     text: "TurfBook has completely changed how I book turfs. The app is super easy to use and I can find great turfs near me in seconds. Highly recommend!",
+    videoSrc: "/videos/testimonial1.mp4",
+    thumbnail: "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?w=400&h=300&fit=crop",
+    duration: "1:45"
   },
   {
     id: 2,
@@ -19,6 +22,9 @@ const testimonials = [
     avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150",
     rating: 5,
     text: "As a turf owner, this platform has helped me increase my bookings by 60%. The management dashboard is fantastic and the support team is always helpful.",
+    videoSrc: "/videos/testimonial2.mp4",
+    thumbnail: "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop",
+    duration: "2:15"
   },
   {
     id: 3,
@@ -27,6 +33,9 @@ const testimonials = [
     avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150",
     rating: 5,
     text: "The collaborative play feature is amazing! I've met so many great players through this platform. Now I never have to worry about incomplete teams.",
+    videoSrc: "/videos/testimonial3.mp4",
+    thumbnail: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop",
+    duration: "1:30"
   },
   {
     id: 4,
@@ -35,11 +44,15 @@ const testimonials = [
     avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
     rating: 4,
     text: "Love the real-time availability feature. No more calling multiple turfs to check slots. Everything is just one click away!",
+    videoSrc: "/videos/testimonial4.mp4",
+    thumbnail: "https://images.unsplash.com/photo-1519861531473-920034658307?w=400&h=300&fit=crop",
+    duration: "1:55"
   },
 ];
 
 const TestimonialsSection = () => {
   const [activeIndex, setActiveIndex] = useState(0);
+  const [activeVideo, setActiveVideo] = useState<number | null>(null);
 
   const nextTestimonial = () => {
     setActiveIndex((prev) => (prev + 1) % testimonials.length);
@@ -49,12 +62,20 @@ const TestimonialsSection = () => {
     setActiveIndex((prev) => (prev - 1 + testimonials.length) % testimonials.length);
   };
 
+  const handleVideoPlay = (id: number) => {
+    setActiveVideo(id);
+  };
+
+  const handleVideoClose = () => {
+    setActiveVideo(null);
+  };
+
   return (
     <section className="py-24 relative overflow-hidden">
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
       <div className="absolute inset-0 dot-pattern opacity-50" />
-      
+
       {/* Ambient glow */}
       <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
 
@@ -62,14 +83,14 @@ const TestimonialsSection = () => {
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
           <Badge variant="premium" className="mb-4">
-            <Quote className="w-4 h-4 mr-1" />
-            Testimonials
+            <ThumbsUp className="w-4 h-4 mr-1" />
+            Video Testimonials
           </Badge>
           <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            What Our <span className="text-gradient">Users Say</span>
+            Watch <span className="text-gradient">Real Experiences</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Join thousands of happy players and turf owners on our platform
+            Hear directly from players and turf owners about their TurfBook journey
           </p>
         </div>
 
@@ -79,50 +100,69 @@ const TestimonialsSection = () => {
             <Card
               key={testimonial.id}
               variant="interactive"
-              className="animate-slide-up opacity-0 hover-lift glass-card group"
+              className="animate-slide-up opacity-0 hover-lift glass-card group overflow-hidden"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
-              <CardContent className="p-6 relative">
-                {/* Quote icon */}
-                <Quote className="absolute top-4 right-4 w-8 h-8 text-primary/10 group-hover:text-primary/20 transition-colors" />
-                
-                {/* Rating */}
-                <div className="flex gap-1 mb-4">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-4 h-4 transition-colors ${
-                        i < testimonial.rating
-                          ? "text-primary fill-primary"
-                          : "text-muted/50"
-                      }`}
+              <CardContent className="p-0">
+                {/* Video Thumbnail */}
+                <div className="relative h-40 bg-secondary/30 overflow-hidden">
+                  <div className="relative h-full">
+                    <img
+                      src={testimonial.thumbnail}
+                      alt={testimonial.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                  ))}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                    <button
+                      onClick={() => handleVideoPlay(testimonial.id)}
+                      className="absolute inset-0 flex items-center justify-center group/play"
+                    >
+                      <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center group-hover/play:scale-110 transition-transform shadow-lg">
+                        <Play className="w-5 h-5 text-white fill-white" />
+                      </div>
+                      <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {testimonial.duration}
+                      </div>
+                    </button>
+                  </div>
                 </div>
 
-                {/* Quote */}
-                <p className="text-muted-foreground text-sm mb-6 line-clamp-4 leading-relaxed">
-                  "{testimonial.text}"
-                </p>
-
-                {/* Author */}
-                <div className="flex items-center gap-3">
-                  <div className="relative">
-                    <img
-                      src={testimonial.avatar}
-                      alt={testimonial.name}
-                      className="w-11 h-11 rounded-full object-cover border-2 border-primary/30 group-hover:border-primary/60 transition-colors"
-                    />
-                    <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary flex items-center justify-center">
-                      <Star className="w-2.5 h-2.5 text-primary-foreground fill-primary-foreground" />
-                    </div>
+                {/* Content */}
+                <div className="p-5">
+                  {/* Rating */}
+                  <div className="flex gap-1 mb-3">
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <Star
+                        key={i}
+                        className={`w-3 h-3 transition-colors ${i < testimonial.rating
+                            ? "text-primary fill-primary"
+                            : "text-muted/50"
+                          }`}
+                      />
+                    ))}
                   </div>
-                  <div>
-                    <div className="font-heading font-semibold text-foreground text-sm">
-                      {testimonial.name}
+
+                  {/* Quote */}
+                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3 leading-relaxed">
+                    "{testimonial.text}"
+                  </p>
+
+                  {/* Author */}
+                  <div className="flex items-center gap-3 pt-3 border-t border-border/50">
+                    <div className="relative">
+                      <img
+                        src={testimonial.avatar}
+                        alt={testimonial.name}
+                        className="w-9 h-9 rounded-full object-cover border-2 border-primary/30 group-hover:border-primary/60 transition-colors"
+                      />
                     </div>
-                    <div className="text-muted-foreground text-xs">
-                      {testimonial.role}
+                    <div>
+                      <div className="font-heading font-semibold text-foreground text-sm">
+                        {testimonial.name}
+                      </div>
+                      <div className="text-muted-foreground text-xs">
+                        {testimonial.role}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -134,42 +174,66 @@ const TestimonialsSection = () => {
         {/* Testimonials Carousel (Mobile) */}
         <div className="md:hidden relative">
           <Card variant="glass" className="overflow-hidden glass-card">
-            <CardContent className="p-8">
-              {/* Quote icon */}
-              <Quote className="w-10 h-10 text-primary/20 mx-auto mb-4" />
-              
-              {/* Rating */}
-              <div className="flex gap-1 mb-4 justify-center">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    className={`w-5 h-5 ${
-                      i < testimonials[activeIndex].rating
-                        ? "text-primary fill-primary"
-                        : "text-muted/50"
-                    }`}
+            <CardContent className="p-0">
+              {/* Video Thumbnail */}
+              <div className="relative h-48 bg-secondary/30">
+                <div className="relative h-full">
+                  <img
+                    src={testimonials[activeIndex].thumbnail}
+                    alt={testimonials[activeIndex].name}
+                    className="w-full h-full object-cover"
                   />
-                ))}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                  <button
+                    onClick={() => handleVideoPlay(testimonials[activeIndex].id)}
+                    className="absolute inset-0 flex items-center justify-center"
+                  >
+                    <div className="w-16 h-16 rounded-full bg-primary/90 flex items-center justify-center shadow-xl">
+                      <Play className="w-6 h-6 text-white fill-white" />
+                    </div>
+                    <div className="absolute bottom-4 right-4 bg-black/70 text-white text-sm px-3 py-1 rounded">
+                      {testimonials[activeIndex].duration}
+                    </div>
+                  </button>
+                </div>
               </div>
 
-              {/* Quote */}
-              <p className="text-muted-foreground text-center mb-6 leading-relaxed">
-                "{testimonials[activeIndex].text}"
-              </p>
+              <div className="p-6">
+                {/* Quote icon */}
+                <Quote className="w-8 h-8 text-primary/20 mx-auto mb-4" />
 
-              {/* Author */}
-              <div className="flex flex-col items-center gap-3">
-                <img
-                  src={testimonials[activeIndex].avatar}
-                  alt={testimonials[activeIndex].name}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-primary shadow-glow-sm"
-                />
-                <div className="text-center">
-                  <div className="font-heading font-semibold text-foreground">
-                    {testimonials[activeIndex].name}
-                  </div>
-                  <div className="text-muted-foreground text-sm">
-                    {testimonials[activeIndex].role}
+                {/* Rating */}
+                <div className="flex gap-1 mb-4 justify-center">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Star
+                      key={i}
+                      className={`w-5 h-5 ${i < testimonials[activeIndex].rating
+                          ? "text-primary fill-primary"
+                          : "text-muted/50"
+                        }`}
+                    />
+                  ))}
+                </div>
+
+                {/* Quote */}
+                <p className="text-muted-foreground text-center mb-6 leading-relaxed">
+                  "{testimonials[activeIndex].text}"
+                </p>
+
+                {/* Author */}
+                <div className="flex flex-col items-center gap-3">
+                  <img
+                    src={testimonials[activeIndex].avatar}
+                    alt={testimonials[activeIndex].name}
+                    className="w-14 h-14 rounded-full object-cover border-2 border-primary shadow-glow-sm"
+                  />
+                  <div className="text-center">
+                    <div className="font-heading font-semibold text-foreground">
+                      {testimonials[activeIndex].name}
+                    </div>
+                    <div className="text-muted-foreground text-sm">
+                      {testimonials[activeIndex].role}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -189,9 +253,8 @@ const TestimonialsSection = () => {
                 <button
                   key={i}
                   onClick={() => setActiveIndex(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                    i === activeIndex ? "bg-primary w-6" : "bg-muted hover:bg-muted-foreground/50"
-                  }`}
+                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${i === activeIndex ? "bg-primary w-6" : "bg-muted hover:bg-muted-foreground/50"
+                    }`}
                 />
               ))}
             </div>
@@ -201,6 +264,49 @@ const TestimonialsSection = () => {
             >
               <ChevronRight className="w-5 h-5" />
             </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Video Modal */}
+      {activeVideo && (
+        <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
+          <div className="relative w-full max-w-4xl">
+            <button
+              onClick={handleVideoClose}
+              className="absolute -top-12 right-0 text-white hover:text-primary transition-colors text-lg"
+            >
+              ✕ Close
+            </button>
+            <div className="aspect-video bg-black rounded-lg overflow-hidden">
+              <video
+                src={testimonials.find(t => t.id === activeVideo)?.videoSrc}
+                controls
+                autoPlay
+                className="w-full h-full"
+              />
+            </div>
+            <div className="mt-4 text-white text-center">
+              <p className="font-semibold">{testimonials.find(t => t.id === activeVideo)?.name}</p>
+              <p className="text-sm text-gray-300">{testimonials.find(t => t.id === activeVideo)?.role}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats */}
+      <div className="text-center mt-12">
+        <div className="inline-flex items-center gap-6 bg-secondary/30 px-6 py-3 rounded-full">
+          <div className="flex items-center gap-2">
+            <User className="w-4 h-4 text-primary" />
+            <span className="font-semibold">50K+</span>
+            <span className="text-sm text-muted-foreground">Happy Users</span>
+          </div>
+          <div className="h-6 w-px bg-border" />
+          <div className="flex items-center gap-2">
+            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+            <span className="font-semibold">4.9</span>
+            <span className="text-sm text-muted-foreground">Rating</span>
           </div>
         </div>
       </div>

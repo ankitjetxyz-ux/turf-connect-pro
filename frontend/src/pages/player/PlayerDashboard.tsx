@@ -3,336 +3,632 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, XCircle, User, Calendar, Users } from "lucide-react";
+import { MapPin, Clock, XCircle, User, Calendar, Users, MoreVertical, History, LogOut, Edit, Save, X, Trophy } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Booking, Conversation, Tournament, UserProfile } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const PlayerDashboard = () => {
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [bookings, setBookings] = useState<Booking[]>([]);
+    const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+    const [conversations, setConversations] = useState<Conversation[]>([]);
+    const [isEditingProfile, setIsEditingProfile] = useState(false);
+    const [profileName, setProfileName] = useState("");
+    const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+    const [avatarFile, setAvatarFile] = useState<File | null>(null);
+    const [savingProfile, setSavingProfile] = useState(false);
+    const [activeSection, setActiveSection] = useState<"bookings" | "tournaments">("bookings");
+    const [historyOpen, setHistoryOpen] = useState(false);
+    const [historyData, setHistoryData] = useState<Booking[]>([]);
 
-  const loadConversations = async () => {
-    const userId = localStorage.getItem("user_id");
-    if (!userId) return;
-    try {
-      // Conversations are resolved on the server from the authenticated user
-      const res = await api.get("/chat/conversations");
-      setConversations(res.data || []);
-    } catch (e) {
-      console.warn("Failed to load conversations", e);
-    }
-  };
+    const loadConversations = async () => {
+        const userId = localStorage.getItem("user_id");
+        if (!userId) return;
+        try {
+            // Conversations are resolved on the server from the authenticated user
+            const res = await api.get("/chat/conversations");
+            setConversations(res.data || []);
+        } catch (e) {
+            console.warn("Failed to load conversations", e);
+        }
+    };
 
-  const fetchBookings = async () => {
-    try {
-      const res = await api.get("/bookings/my");
-      setBookings(res.data);
-    } catch {
-      toast({
-        title: "Unable to load bookings",
-        description: "Please try again in a moment.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
+    const fetchBookings = async () => {
+        try {
+            const res = await api.get("/bookings/my");
+            setBookings(res.data);
+        } catch {
+            toast({
+                title: "Unable to load bookings",
+                description: "Please try again in a moment.",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
 
-  const [tournamentStats, setTournamentStats] = useState({ total: 0, upcoming: 0, past: 0 });
+    const [tournamentStats, setTournamentStats] = useState({ total: 0, upcoming: 0, past: 0 });
 
-  const [tournamentBookings, setTournamentBookings] = useState<Tournament[]>([]);
+    const [tournamentBookings, setTournamentBookings] = useState<Tournament[]>([]);
 
-  const fetchTournamentStats = async () => {
-    try {
-      const res = await api.get("/tournaments/player-stats");
-      const list = Array.isArray(res.data) ? res.data : [];
-      const now = new Date();
-      const upcoming = list.filter((t: Tournament) => new Date(t.start_date) > now).length;
-      const past = list.filter((t: Tournament) => new Date(t.start_date) <= now).length; // Approximating past as started
-      setTournamentStats({ total: list.length, upcoming, past });
-      setTournamentBookings(list);
-    } catch (e) {
-      console.warn("Failed to load tournament stats");
-    }
-  };
+    const fetchTournamentStats = async () => {
+        try {
+            const res = await api.get("/tournaments/player-stats");
+            const list = Array.isArray(res.data) ? res.data : [];
+            const now = new Date();
+            const upcoming = list.filter((t: Tournament) => new Date(t.start_date) > now).length;
+            const past = list.filter((t: Tournament) => new Date(t.start_date) <= now).length; // Approximating past as started
+            setTournamentStats({ total: list.length, upcoming, past });
+            setTournamentBookings(list);
+        } catch (e) {
+            console.warn("Failed to load tournament stats");
+        }
+    };
 
-  const fetchProfile = async () => {
-    try {
-      const res = await api.get("/profile/me");
-      const { user } = res.data;
-      setProfile(user);
-      if (user?.name) localStorage.setItem("name", user.name);
-      if (user?.profile_image_url) {
-        localStorage.setItem("profile_image_url", user.profile_image_url);
-      }
-    } catch (e) {
-      console.warn("Failed to load profile for dashboard");
-    }
-  };
+    const fetchProfile = async () => {
+        try {
+            const res = await api.get("/profile/me");
+            const { user } = res.data;
+            setProfile(user);
+            setProfileName(user?.name || "");
+            if (user?.name) localStorage.setItem("name", user.name);
+            if (user?.profile_image_url) {
+                localStorage.setItem("profile_image_url", user.profile_image_url);
+            }
+        } catch (e) {
+            console.warn("Failed to load profile for dashboard");
+        }
+    };
 
-  useEffect(() => {
-    fetchBookings();
-    loadConversations();
-    fetchTournamentStats();
-    fetchProfile();
-  }, []);
+    const loadHistory = async () => {
+        try {
+            const res = await api.get("/bookings/my");
+            setHistoryData(Array.isArray(res.data) ? res.data : []);
+        } catch (e) {
+            console.error("Failed to load history", e);
+        }
+    };
 
-  const cancelBooking = async (bookingId: number | string) => {
-    if (!confirm("Cancel this booking? Refund will be processed after 5% deduction.")) return;
+    const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setAvatarFile(file);
+        setAvatarPreview(URL.createObjectURL(file));
+    };
 
-    try {
-      await api.post("/bookings/cancel", { booking_id: bookingId });
-      // Instantly remove from UI
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
-      toast({
-        title: "Booking cancelled",
-        description: "Your booking has been cancelled successfully.",
-      });
-    } catch {
-      toast({
-        title: "Cancellation failed",
-        description: "We couldn't cancel this booking. Please try again.",
-        variant: "destructive",
-      });
-    }
-  };
+    const handleSaveProfile = async () => {
+        if (!profile) return;
+        setSavingProfile(true);
 
-  return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
-      <div className="absolute inset-0 grid-overlay opacity-20" />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+        try {
+            let profileImageUrl = profile.profile_image_url || undefined;
 
-      <Navbar />
+            if (avatarFile) {
+                const form = new FormData();
+                form.append("avatar", avatarFile);
+                const uploadRes = await api.post("/profile/avatar", form, {
+                    headers: { "Content-Type": "multipart/form-data" },
+                });
+                profileImageUrl = uploadRes.data.profile_image_url;
+            }
 
-      <main className="pt-24 pb-12 relative z-10">
-        <div className="container px-4">
+            const updateRes = await api.put("/profile", {
+                name: profileName,
+                profile_image_url: profileImageUrl,
+            });
 
-          {/* PROFILE HEADER */}
-          {profile && (
-            <div className="flex items-center gap-4 mb-6 animate-fade-in">
-              <Avatar className="h-12 w-12">
-                {profile.profile_image_url && (
-                  <AvatarImage
-                    src={profile.profile_image_url}
-                    alt={profile.name}
-                  />
-                )}
-                <AvatarFallback>
-                  {profile.name
-                    .split(" ")
-                    .map((n) => n[0])
-                    .join("")
-                    .toUpperCase()
-                    .slice(0, 2)}
-                </AvatarFallback>
-              </Avatar>
-              <div>
-                <p className="text-sm text-muted-foreground">Welcome back,</p>
-                <h1 className="text-xl font-heading font-bold">{profile.name}</h1>
-              </div>
-            </div>
-          )}
+            setProfile(updateRes.data);
+            setIsEditingProfile(false);
+            setAvatarFile(null);
+            setAvatarPreview(null);
 
-          {/* STATS SECTION */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 animate-fade-in">
-            <Card className="glass-card border-white/10 p-6">
-              <h3 className="text-muted-foreground font-medium mb-2">Total Tournaments</h3>
-              <div className="text-3xl font-bold font-heading">{tournamentStats.total}</div>
-              <p className="text-xs text-muted-foreground mt-1">You have joined {tournamentStats.total} tournaments</p>
-            </Card>
-            <Card className="glass-card border-white/10 p-6">
-              <h3 className="text-muted-foreground font-medium mb-2">Upcoming Events</h3>
-              <div className="text-3xl font-bold font-heading text-primary">{tournamentStats.upcoming}</div>
-              <p className="text-xs text-muted-foreground mt-1">Get ready to compete!</p>
-            </Card>
-            <Card className="glass-card border-white/10 p-6">
-              <h3 className="text-muted-foreground font-medium mb-2">Past Events</h3>
-              <div className="text-3xl font-bold font-heading">{tournamentStats.past}</div>
-              <p className="text-xs text-muted-foreground mt-1">Completed tournaments</p>
-            </Card>
-          </div>
+            if (updateRes.data?.name) {
+                localStorage.setItem("name", updateRes.data.name);
+            }
+            if (updateRes.data?.profile_image_url) {
+                localStorage.setItem("profile_image_url", updateRes.data.profile_image_url);
+            }
 
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 animate-fade-in">
-            <div>
-              <h1 className="text-3xl font-heading font-bold text-foreground">My Bookings</h1>
-              <p className="text-muted-foreground mt-1">Manage your turf bookings and schedule</p>
-            </div>
-          </div>
+            toast({
+                title: "Profile updated",
+                description: "Your profile has been saved successfully.",
+            });
+        } catch (e) {
+            console.error("Failed to save profile", e);
+            toast({
+                title: "Failed to save profile",
+                description: "Please try again.",
+                variant: "destructive",
+            });
+        } finally {
+            setSavingProfile(false);
+        }
+    };
 
-          {loading && (
-            <div className="flex justify-center py-12">
-              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            </div>
-          )}
+    const handleLogout = () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("role");
+        localStorage.removeItem("user_id");
+        localStorage.removeItem("name");
+        localStorage.removeItem("email");
+        localStorage.removeItem("profile_image_url");
+        navigate("/login");
+    };
 
-          {!loading && bookings.length === 0 && (
-            <Card className="glass-card border-white/10 p-12 text-center animate-slide-up">
-              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-primary" />
-              </div>
-              <h3 className="text-xl font-bold mb-2">No bookings yet</h3>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                You haven’t booked any turfs yet. Browse our selection of premium turfs and book your first game!
-              </p>
-              <Button onClick={() => navigate("/turfs")} className="gradient-primary hover:opacity-90">
-                Browse Turfs
-              </Button>
-            </Card>
-          )}
+    useEffect(() => {
+        fetchBookings();
+        loadConversations();
+        fetchTournamentStats();
+        fetchProfile();
+    }, []);
 
-          {/* Tournament Bookings Section */}
-          {tournamentBookings.length > 0 && (
-            <div className="mb-8">
-              <h2 className="text-2xl font-heading font-bold text-foreground mb-4">
-                My Tournament Bookings
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {tournamentBookings.map((tournament, index) => (
-                  <Card
-                    key={tournament.id}
-                    className="glass-card hover-lift border-white/10 overflow-hidden animate-slide-up"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <CardContent className="p-0">
-                      <div className="p-5 border-b border-white/5 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <h3 className="font-heading font-bold text-xl text-foreground line-clamp-1">
-                            {tournament.name}
-                          </h3>
-                          <Badge
-                            variant="outline"
-                            className={`capitalize border-0 ${
-                              tournament.status === "upcoming"
-                                ? "bg-amber-500/10 text-amber-500"
-                                : tournament.status === "completed"
-                                ? "bg-gray-500/10 text-gray-500"
-                                : "bg-secondary text-muted-foreground"
-                            }`}
-                          >
-                            {tournament.status}
-                          </Badge>
+    const cancelBooking = async (bookingId: number | string) => {
+        if (!confirm("Cancel this booking? Refund will be processed after 5% deduction.")) return;
+
+        try {
+            await api.post("/bookings/cancel", { booking_id: bookingId });
+            // Instantly remove from UI
+            setBookings(prev => prev.filter(b => b.id !== bookingId));
+            toast({
+                title: "Booking cancelled",
+                description: "Your booking has been cancelled successfully.",
+            });
+        } catch {
+            toast({
+                title: "Cancellation failed",
+                description: "We couldn't cancel this booking. Please try again.",
+                variant: "destructive",
+            });
+        }
+    };
+
+    const displayAvatar = avatarPreview || profile?.profile_image_url || undefined;
+    const initials = profile?.name
+        ?.split(" ")
+        .map((n) => n[0])
+        .join("")
+        .toUpperCase()
+        .slice(0, 2) || "U";
+
+    return (
+        <div className="min-h-screen bg-background relative overflow-hidden">
+            <div className="absolute inset-0 grid-overlay opacity-20" />
+            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
+
+            <Navbar />
+
+            <main className="pt-24 pb-12 relative z-10">
+                <div className="container px-4">
+                    <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
+                        {/* LEFT SIDEBAR - PROFILE */}
+                        <div className="lg:sticky lg:top-24 h-fit">
+                            <Card className="glass-card border-white/10 p-6">
+                                {!isEditingProfile ? (
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <Avatar className="h-20 w-20">
+                                                {displayAvatar && (
+                                                    <AvatarImage src={displayAvatar} alt={profile?.name} />
+                                                )}
+                                                <AvatarFallback>{initials}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="text-center">
+                                                <h3 className="font-bold text-lg">{profile?.name || "User"}</h3>
+                                                <p className="text-sm text-muted-foreground">{profile?.email || ""}</p>
+                                            </div>
+                                        </div>
+                                        <Button
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => setIsEditingProfile(true)}
+                                        >
+                                            <Edit className="w-4 h-4 mr-2" />
+                                            Edit Profile
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="flex flex-col items-center gap-4">
+                                            <Avatar className="h-20 w-20">
+                                                {displayAvatar && (
+                                                    <AvatarImage src={displayAvatar} alt={profile?.name} />
+                                                )}
+                                                <AvatarFallback>{initials}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="w-full space-y-2">
+                                                <Label htmlFor="name">Full Name</Label>
+                                                <Input
+                                                    id="name"
+                                                    value={profileName}
+                                                    onChange={(e) => setProfileName(e.target.value)}
+                                                />
+                                            </div>
+                                            <div className="w-full space-y-2">
+                                                <Label>Email</Label>
+                                                <Input value={profile?.email || ""} disabled />
+                                            </div>
+                                            <div className="w-full space-y-2">
+                                                <Label htmlFor="avatar">Profile Picture</Label>
+                                                <Input
+                                                    id="avatar"
+                                                    type="file"
+                                                    accept="image/*"
+                                                    onChange={handleAvatarChange}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <Button
+                                                variant="outline"
+                                                className="flex-1"
+                                                onClick={() => {
+                                                    setIsEditingProfile(false);
+                                                    setAvatarFile(null);
+                                                    setAvatarPreview(null);
+                                                    setProfileName(profile?.name || "");
+                                                }}
+                                            >
+                                                <X className="w-4 h-4 mr-2" />
+                                                Cancel
+                                            </Button>
+                                            <Button
+                                                className="flex-1"
+                                                onClick={handleSaveProfile}
+                                                disabled={savingProfile}
+                                            >
+                                                <Save className="w-4 h-4 mr-2" />
+                                                {savingProfile ? "Saving..." : "Save"}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </Card>
                         </div>
 
-                        <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Calendar className="w-4 h-4 text-primary" />
-                            <span>
-                              {tournament.start_date} - {tournament.end_date}
-                            </span>
-                          </div>
-                          {tournament.team_name && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                              <Users className="w-4 h-4 text-primary" />
-                              <span>Team: {tournament.team_name}</span>
+                        {/* MAIN CONTENT */}
+                        <div className="space-y-6">
+                            {/* HEADER */}
+                            <div>
+                                <h1 className="text-3xl font-heading font-bold text-foreground">Player Dashboard</h1>
+                                <p className="text-muted-foreground mt-1">Manage your turf bookings and schedule</p>
                             </div>
-                          )}
-                        </div>
-                      </div>
 
-                      {tournament.verification_code && (
-                        <div className="p-4 bg-primary/10 border-t border-primary/30">
-                          <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
-                          <div className="text-2xl font-mono font-bold text-primary tracking-wider text-center">
-                            {tournament.verification_code}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-2 text-center">
-                            Show this code at the tournament
-                          </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          )}
+                            {/* STATS SECTION - Single Row */}
+                            <Card className="glass-card border-white/10">
+                                <CardContent className="p-5">
+                                    <div className="flex flex-wrap items-center justify-around gap-6">
+                                        <div className="text-center flex-1 min-w-[120px]">
+                                            <div className="text-3xl font-bold font-heading">{tournamentStats.total}</div>
+                                            <p className="text-muted-foreground text-sm mt-1">Total Tournaments</p>
+                                        </div>
+                                        <div className="w-px h-12 bg-border/50" />
+                                        <div className="text-center flex-1 min-w-[120px]">
+                                            <div className="text-3xl font-bold font-heading text-primary">{tournamentStats.upcoming}</div>
+                                            <p className="text-muted-foreground text-sm mt-1">Upcoming Events</p>
+                                        </div>
+                                        <div className="w-px h-12 bg-border/50" />
+                                        <div className="text-center flex-1 min-w-[120px]">
+                                            <div className="text-3xl font-bold font-heading">{tournamentStats.past}</div>
+                                            <p className="text-muted-foreground text-sm mt-1">Past Events</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {bookings.map((booking, index) => (
-              <Card
-                key={booking.id}
-                className="glass-card hover-lift border-white/10 overflow-hidden animate-slide-up"
-                style={{ animationDelay: `${index * 100}ms` }}
-              >
-                <CardContent className="p-0">
-                  <div className="p-5 border-b border-white/5 space-y-4">
-                    <div className="flex justify-between items-start">
-                      <h3 className="font-heading font-bold text-xl text-foreground line-clamp-1">
-                        {booking.turf_name}
-                      </h3>
-                      <Badge
-                        variant="outline"
-                        className={`capitalize border-0 ${booking.status === "confirmed"
-                          ? "bg-green-500/10 text-green-500"
-                          : booking.status?.includes("cancelled")
-                            ? "bg-red-500/10 text-red-500"
-                            : "bg-secondary text-muted-foreground"
-                          }`}
-                      >
-                        {booking.status?.replace(/_/g, " ")}
-                      </Badge>
+                            {/* INTERNAL NAVBAR */}
+                            <div className="flex gap-2 border-b border-border/40 pb-2">
+                                <button
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                                        activeSection === "bookings"
+                                            ? "text-primary border-b-2 border-primary"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                    onClick={() => setActiveSection("bookings")}
+                                >
+                                    My Bookings
+                                </button>
+                                <button
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                                        activeSection === "tournaments"
+                                            ? "text-primary border-b-2 border-primary"
+                                            : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                    onClick={() => setActiveSection("tournaments")}
+                                >
+                                    My Tournaments
+                                </button>
+                            </div>
+
+                            {/* CONTENT SECTIONS */}
+                            {activeSection === "bookings" && (
+                                <>
+                                    {loading && (
+                                        <div className="flex justify-center py-12">
+                                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                                        </div>
+                                    )}
+
+                                    {!loading && bookings.length === 0 && (
+                                        <Card className="glass-card border-white/10 p-12 text-center">
+                                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                                <Clock className="w-8 h-8 text-primary" />
+                                            </div>
+                                            <h3 className="text-xl font-bold mb-2">No bookings yet</h3>
+                                            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                                                You haven't booked any turfs yet. Browse our selection of premium turfs and book your first game!
+                                            </p>
+                                            <Button onClick={() => navigate("/turfs")} className="gradient-primary hover:opacity-90">
+                                                Browse Turfs
+                                            </Button>
+                                        </Card>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {bookings.map((booking, index) => (
+                                            <Card
+                                                key={booking.id}
+                                                className="glass-card hover-lift border-white/10 overflow-hidden relative"
+                                                style={{ animationDelay: `${index * 100}ms` }}
+                                            >
+                                                <CardContent className="p-0">
+                                                    <div className="p-5 border-b border-white/5 space-y-4">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex-1">
+                                                                <h3 className="font-heading font-bold text-xl text-foreground line-clamp-1">
+                                                                    {booking.turf_name}
+                                                                </h3>
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className={`capitalize border-0 mt-1 ${booking.status === "confirmed"
+                                                                        ? "bg-green-500/10 text-green-500"
+                                                                        : booking.status?.includes("cancelled")
+                                                                            ? "bg-red-500/10 text-red-500"
+                                                                            : "bg-secondary text-muted-foreground"
+                                                                        }`}
+                                                                >
+                                                                    {booking.status?.replace(/_/g, " ")}
+                                                                </Badge>
+                                                            </div>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => {
+                                                                        loadHistory();
+                                                                        setHistoryOpen(true);
+                                                                    }}>
+                                                                        <History className="w-4 h-4 mr-2" />
+                                                                        History
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={handleLogout}>
+                                                                        <LogOut className="w-4 h-4 mr-2" />
+                                                                        Logout
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <MapPin className="w-4 h-4 text-primary" />
+                                                                <span className="truncate">{booking.location || "Location not available"}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <Clock className="w-4 h-4 text-primary" />
+                                                                <span>{booking.slot_time || "Time not set"}</span>
+                                                            </div>
+                                                            {booking.turf_owner_name && (
+                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                    <User className="w-4 h-4 text-primary" />
+                                                                    <span>Owner: {booking.turf_owner_name}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {booking.status === "confirmed" && (
+                                                        <div className="p-4 bg-secondary/30 space-y-3">
+                                                            {booking.verification_code && (
+                                                                <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
+                                                                    <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
+                                                                    <div className="text-2xl font-mono font-bold text-primary tracking-wider text-center">
+                                                                        {booking.verification_code}
+                                                                    </div>
+                                                                    <div className="text-xs text-muted-foreground mt-2 text-center">
+                                                                        Show this code to the turf owner
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                            <Button
+                                                                variant="destructive"
+                                                                className="w-full gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"
+                                                                onClick={() => cancelBooking(booking.id)}
+                                                            >
+                                                                <XCircle className="w-4 h-4" />
+                                                                Cancel Booking
+                                                            </Button>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+
+                            {activeSection === "tournaments" && (
+                                <>
+                                    {tournamentBookings.length === 0 && (
+                                        <Card className="glass-card border-white/10 p-12 text-center">
+                                            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                                                <Trophy className="w-8 h-8 text-primary" />
+                                            </div>
+                                            <h3 className="text-xl font-bold mb-2">No tournaments yet</h3>
+                                            <p className="text-muted-foreground mb-6 max-w-md mx-auto">
+                                                You haven't joined any tournaments yet. Browse available tournaments and join one!
+                                            </p>
+                                            <Button onClick={() => navigate("/tournaments")} className="gradient-primary hover:opacity-90">
+                                                Browse Tournaments
+                                            </Button>
+                                        </Card>
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                        {tournamentBookings.map((tournament, index) => (
+                                            <Card
+                                                key={tournament.id}
+                                                className="glass-card hover-lift border-white/10 overflow-hidden relative"
+                                                style={{ animationDelay: `${index * 100}ms` }}
+                                            >
+                                                <CardContent className="p-0">
+                                                    <div className="p-5 border-b border-white/5 space-y-4">
+                                                        <div className="flex justify-between items-start">
+                                                            <div className="flex-1">
+                                                                <h3 className="font-heading font-bold text-xl text-foreground line-clamp-1">
+                                                                    {tournament.name}
+                                                                </h3>
+                                                                <Badge
+                                                                    variant="outline"
+                                                                    className={`capitalize border-0 mt-1 ${tournament.status === "upcoming"
+                                                                        ? "bg-amber-500/10 text-amber-500"
+                                                                        : tournament.status === "completed"
+                                                                            ? "bg-gray-500/10 text-gray-500"
+                                                                            : "bg-secondary text-muted-foreground"
+                                                                        }`}
+                                                                >
+                                                                    {tournament.status}
+                                                                </Badge>
+                                                            </div>
+                                                            <DropdownMenu>
+                                                                <DropdownMenuTrigger asChild>
+                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                        <MoreVertical className="h-4 w-4" />
+                                                                    </Button>
+                                                                </DropdownMenuTrigger>
+                                                                <DropdownMenuContent align="end">
+                                                                    <DropdownMenuItem onClick={() => {
+                                                                        loadHistory();
+                                                                        setHistoryOpen(true);
+                                                                    }}>
+                                                                        <History className="w-4 h-4 mr-2" />
+                                                                        History
+                                                                    </DropdownMenuItem>
+                                                                    <DropdownMenuItem onClick={handleLogout}>
+                                                                        <LogOut className="w-4 h-4 mr-2" />
+                                                                        Logout
+                                                                    </DropdownMenuItem>
+                                                                </DropdownMenuContent>
+                                                            </DropdownMenu>
+                                                        </div>
+
+                                                        <div className="space-y-2">
+                                                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                <Calendar className="w-4 h-4 text-primary" />
+                                                                <span>
+                                                                    {tournament.start_date} - {tournament.end_date}
+                                                                </span>
+                                                            </div>
+                                                            {tournament.team_name && (
+                                                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                                                    <Users className="w-4 h-4 text-primary" />
+                                                                    <span>Team: {tournament.team_name}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {tournament.verification_code && (
+                                                        <div className="p-4 bg-primary/10 border-t border-primary/30">
+                                                            <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
+                                                            <div className="text-2xl font-mono font-bold text-primary tracking-wider text-center">
+                                                                {tournament.verification_code}
+                                                            </div>
+                                                            <div className="text-xs text-muted-foreground mt-2 text-center">
+                                                                Show this code at the tournament
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </CardContent>
+                                            </Card>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
+                </div>
+            </main>
 
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <MapPin className="w-4 h-4 text-primary" />
-                        <span className="truncate">{booking.location || "Location not available"}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Clock className="w-4 h-4 text-primary" />
-                        <span>{booking.slot_time || "Time not set"}</span>
-                      </div>
-                      {booking.turf_owner_name && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <User className="w-4 h-4 text-primary" />
-                          <span>Owner: {booking.turf_owner_name}</span>
-                        </div>
-                      )}
+            {/* HISTORY DIALOG */}
+            <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+                <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle>Booking History</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        {historyData.length === 0 ? (
+                            <p className="text-muted-foreground text-center py-8">No history available</p>
+                        ) : (
+                            historyData.map((booking) => (
+                                <Card key={booking.id} className="glass-card border-white/10">
+                                    <CardContent className="p-4 space-y-2">
+                                        <div className="flex justify-between items-start">
+                                            <div>
+                                                <h4 className="font-semibold">{booking.turf_name}</h4>
+                                                <p className="text-sm text-muted-foreground">{booking.player_name || "Guest"}</p>
+                                            </div>
+                                            <Badge variant={booking.status === "confirmed" ? "success" : "secondary"}>
+                                                {booking.status}
+                                            </Badge>
+                                        </div>
+                                        <div className="text-sm text-muted-foreground">
+                                            <div className="flex items-center gap-2">
+                                                <Clock className="w-4 h-4" />
+                                                {booking.slot_time || "N/A"}
+                                            </div>
+                                        </div>
+                                        {booking.verification_code && (
+                                            <div className="p-2 bg-primary/10 border border-primary/30 rounded text-sm">
+                                                <span className="text-muted-foreground">Code: </span>
+                                                <span className="font-mono font-bold text-primary">{booking.verification_code}</span>
+                                            </div>
+                                        )}
+                                    </CardContent>
+                                </Card>
+                            ))
+                        )}
                     </div>
-                  </div>
+                </DialogContent>
+            </Dialog>
 
-                  {booking.status === "confirmed" && (
-                    <div className="p-4 bg-secondary/30 space-y-3">
-                      {booking.verification_code && (
-                        <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
-                          <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
-                          <div className="text-2xl font-mono font-bold text-primary tracking-wider text-center">
-                            {booking.verification_code}
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-2 text-center">
-                            Show this code to the turf owner
-                          </div>
-                        </div>
-                      )}
-                      <Button
-                        variant="destructive"
-                        className="w-full gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"
-                        onClick={() => cancelBooking(booking.id)}
-                      >
-                        <XCircle className="w-4 h-4" />
-                        Cancel Booking
-                      </Button>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+            <Footer />
         </div>
-      </main>
-
-      <Footer />
-    </div>
-  );
+    );
 };
 
 export default PlayerDashboard;

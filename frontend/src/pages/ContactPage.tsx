@@ -9,11 +9,11 @@ import { useToast } from "@/components/ui/use-toast";
 import api from "@/services/api";
 import SocialMediaLinks from "@/components/common/SocialMediaLinks";
 import { useState, useEffect } from "react";
-import { 
-  Mail, 
-  Phone, 
-  MapPin, 
-  MessageSquare, 
+import {
+  Mail,
+  Phone,
+  MapPin,
+  MessageSquare,
   Send,
   HelpCircle,
   ChevronDown,
@@ -25,7 +25,7 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
 
   return (
     <div className="border-b border-white/10 last:border-0">
-      <button 
+      <button
         className="w-full py-4 flex items-center justify-between text-left hover:text-primary transition-colors"
         onClick={() => setIsOpen(!isOpen)}
       >
@@ -56,14 +56,14 @@ const ContactPage = () => {
     const token = localStorage.getItem("token");
     const name = localStorage.getItem("name") || "";
     const email = localStorage.getItem("email") || "";
-    
+
     if (token) {
-        setIsLoggedIn(true);
-        setFormData(prev => ({ 
-            ...prev, 
-            name: name, 
-            email: email 
-        }));
+      setIsLoggedIn(true);
+      setFormData(prev => ({
+        ...prev,
+        name: name,
+        email: email
+      }));
     }
   }, []);
 
@@ -84,9 +84,9 @@ const ContactPage = () => {
       });
       // Reset only non-prefilled fields if logged in
       if (isLoggedIn) {
-          setFormData(prev => ({ ...prev, subject: "", message: "" }));
+        setFormData(prev => ({ ...prev, subject: "", message: "" }));
       } else {
-          setFormData({ name: "", email: "", subject: "", message: "" });
+        setFormData({ name: "", email: "", subject: "", message: "" });
       }
     } catch (error) {
       console.error(error);
@@ -122,7 +122,7 @@ const ContactPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-      
+
       <main className="pt-24 pb-16 relative">
         {/* Background Effects */}
         <div className="absolute inset-0 grid-overlay-intense" />
@@ -139,7 +139,7 @@ const ContactPage = () => {
               We'd Love to <span className="text-gradient">Hear From You</span>
             </h1>
             <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Have a question about booking, listing your turf, or just want to say hello? 
+              Have a question about booking, listing your turf, or just want to say hello?
               Our team is ready to answer all your questions.
             </p>
           </div>
@@ -168,7 +168,7 @@ const ContactPage = () => {
                         </div>
                         <div>
                           <p className="font-medium text-foreground">Call Us</p>
-                          <p className="text-sm text-muted-foreground">+91 9876 543 210</p>
+                          <p className="text-sm text-muted-foreground">+91 9328 063 509</p>
                           <p className="text-sm text-muted-foreground">Mon-Fri, 9am - 6pm</p>
                         </div>
                       </div>
@@ -180,9 +180,9 @@ const ContactPage = () => {
                         <div>
                           <p className="font-medium text-foreground">Visit Us</p>
                           <p className="text-sm text-muted-foreground">
-                            123 Sports Complex,<br />
-                            Andheri West, Mumbai,<br />
-                            Maharashtra 400053
+                            Contact us ,<br />
+                            For more address info,<br />
+                            Gujarat, 390001
                           </p>
                         </div>
                       </div>
@@ -206,56 +206,56 @@ const ContactPage = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Name</label>
-                        <Input 
+                        <Input
                           name="name"
                           value={formData.name}
                           onChange={handleChange}
-                          placeholder="Your Name" 
-                          className="bg-secondary/30 border-white/10 focus:border-primary/50" 
+                          placeholder="Your Name"
+                          className="bg-secondary/30 border-white/10 focus:border-primary/50"
                           required
-                          disabled={isLoggedIn} 
+                          disabled={isLoggedIn}
                         />
                       </div>
                       <div className="space-y-2">
                         <label className="text-sm font-medium text-muted-foreground">Email</label>
                         {isLoggedIn ? (
-                             <div className="p-3 bg-secondary/30 border border-white/10 rounded-md text-muted-foreground">
-                                Using registered email: <span className="text-foreground font-medium">{formData.email}</span>
-                             </div>
+                          <div className="p-3 bg-secondary/30 border border-white/10 rounded-md text-muted-foreground">
+                            Using registered email: <span className="text-foreground font-medium">{formData.email}</span>
+                          </div>
                         ) : (
-                            <Input 
-                              name="email"
-                              type="email"
-                              value={formData.email}
-                              onChange={handleChange}
-                              placeholder="your@email.com" 
-                              className="bg-secondary/30 border-white/10 focus:border-primary/50" 
-                              required
-                            />
+                          <Input
+                            name="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={handleChange}
+                            placeholder="your@email.com"
+                            className="bg-secondary/30 border-white/10 focus:border-primary/50"
+                            required
+                          />
                         )}
                       </div>
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Subject</label>
-                      <Input 
+                      <Input
                         name="subject"
                         value={formData.subject}
                         onChange={handleChange}
-                        placeholder="How can we help?" 
-                        className="bg-secondary/30 border-white/10 focus:border-primary/50" 
+                        placeholder="How can we help?"
+                        className="bg-secondary/30 border-white/10 focus:border-primary/50"
                         required
                       />
                     </div>
 
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-muted-foreground">Message</label>
-                      <Textarea 
+                      <Textarea
                         name="message"
                         value={formData.message}
                         onChange={handleChange}
-                        placeholder="Tell us more about your inquiry..." 
-                        className="min-h-[150px] bg-secondary/30 border-white/10 focus:border-primary/50" 
+                        placeholder="Tell us more about your inquiry..."
+                        className="min-h-[150px] bg-secondary/30 border-white/10 focus:border-primary/50"
                         required
                       />
                     </div>
@@ -272,23 +272,23 @@ const ContactPage = () => {
 
           {/* FAQ Section */}
           <div className="max-w-4xl mx-auto animate-slide-up opacity-0 stagger-3">
-             <div className="text-center mb-8">
-                <Badge variant="outline" className="mb-2 border-primary/20 text-primary">
-                  <HelpCircle className="w-3 h-3 mr-1" />
-                  Common Questions
-                </Badge>
-                <h2 className="font-heading text-3xl font-bold">Frequently Asked Questions</h2>
-             </div>
-             
-             <Card variant="glass" className="glass-card">
-                <CardContent className="p-8">
-                   <div className="space-y-2">
-                      {faqs.map((faq, index) => (
-                         <FAQItem key={index} question={faq.question} answer={faq.answer} />
-                      ))}
-                   </div>
-                </CardContent>
-             </Card>
+            <div className="text-center mb-8">
+              <Badge variant="outline" className="mb-2 border-primary/20 text-primary">
+                <HelpCircle className="w-3 h-3 mr-1" />
+                Common Questions
+              </Badge>
+              <h2 className="font-heading text-3xl font-bold">Frequently Asked Questions</h2>
+            </div>
+
+            <Card variant="glass" className="glass-card">
+              <CardContent className="p-8">
+                <div className="space-y-2">
+                  {faqs.map((faq, index) => (
+                    <FAQItem key={index} question={faq.question} answer={faq.answer} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
         </div>

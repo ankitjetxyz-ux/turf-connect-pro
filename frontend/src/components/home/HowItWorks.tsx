@@ -61,70 +61,50 @@ const HowItWorks = () => {
       <div className="container px-4 relative z-10">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <Badge variant="success" className="mb-4">Get Started</Badge>
+          <Badge variant="success" className="mb-4">How It Works</Badge>
           <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Choose Your <span className="text-gradient">Role</span>
+            Simple Steps to <span className="text-gradient">Get Started</span>
           </h2>
           <p className="text-muted-foreground text-lg">
-            Whether you're a player or turf owner, we have the perfect solution for you
+            Book your favorite turf in just a few easy steps
           </p>
         </div>
 
-        {/* Role Cards */}
+        {/* Steps */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8 max-w-5xl mx-auto">
-          {roles.map((role, index) => (
+          {[
+            {
+              step: "1",
+              title: "Browse Turfs",
+              description: "Explore our wide selection of premium sports turfs in your area",
+            },
+            {
+              step: "2",
+              title: "Select & Book",
+              description: "Choose your preferred date and time slot, then complete your booking",
+            },
+            {
+              step: "3",
+              title: "Play & Enjoy",
+              description: "Show up at the turf with your verification code and enjoy the game",
+            },
+          ].map((item, index) => (
             <Card
-              key={role.title}
-              variant={role.variant}
-              className={`group animate-slide-up opacity-0 hover-lift glass-card relative ${
-                role.popular ? "md:-translate-y-4 ring-2 ring-primary/50 shadow-glow" : ""
-              }`}
+              key={item.step}
+              variant="default"
+              className="group animate-slide-up opacity-0 hover-lift glass-card"
               style={{ animationDelay: `${index * 0.15}s` }}
             >
-              {/* Popular Badge */}
-              {role.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge variant="featured" className="shadow-glow-sm">Most Popular</Badge>
-                </div>
-              )}
-
               <CardContent className="p-8 text-center">
-                {/* Icon */}
                 <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow group-hover:scale-110 transition-transform duration-300">
-                  <role.icon className="w-8 h-8 text-primary-foreground" />
+                  <span className="text-2xl font-bold text-primary-foreground">{item.step}</span>
                 </div>
-
-                {/* Title */}
-                <h3 className="font-heading text-2xl font-bold text-foreground mb-2">
-                  {role.title}
+                <h3 className="font-heading text-xl font-bold text-foreground mb-2">
+                  {item.title}
                 </h3>
-                <p className="text-muted-foreground text-sm mb-6">
-                  {role.description}
+                <p className="text-muted-foreground text-sm">
+                  {item.description}
                 </p>
-
-                {/* Features List */}
-                <ul className="space-y-3 mb-8">
-                  {role.features.map((feature) => (
-                    <li
-                      key={feature}
-                      className="flex items-center gap-3 text-sm text-muted-foreground"
-                    >
-                      <div className="w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <Check className="w-3 h-3 text-primary" />
-                      </div>
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-
-                {/* CTA */}
-                <Button
-                  variant={role.popular ? "hero" : "outline"}
-                  className={`w-full group/btn ${role.popular ? 'shadow-glow-sm hover:shadow-glow' : 'hover:border-primary/50'} transition-all duration-300`}
-                >
-                  {role.cta}
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-1" />
-                </Button>
               </CardContent>
             </Card>
           ))}
