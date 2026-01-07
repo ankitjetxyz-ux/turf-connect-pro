@@ -6,7 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { useEffect, useState, useMemo } from "react";
 import { getAllTurfs } from "@/services/turfService";
 import { Turf } from "@/types";
-import { Building2, Trophy, Gamepad2 } from "lucide-react";
+import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
 
 const TurfPage = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
@@ -51,45 +51,15 @@ const TurfPage = () => {
           </p>
         </div>
 
-        {/* Platform Stats Bar - single horizontal line */}
+        {/* Platform Stats Bar - Animated */}
         {!loading && !error && turfs.length > 0 && (
-          <Card className="mb-10 bg-gradient-to-r from-blue-500/10 via-purple-500/10 to-emerald-500/10 border-blue-500/20">
-            <CardContent className="p-4 md:p-5 flex flex-col sm:flex-row items-stretch justify-between gap-4 text-sm">
-              <div className="flex-1 flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-blue-400" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-blue-400">{stats.totalTurfs}</div>
-                  <p className="text-xs text-muted-foreground">Active Turfs</p>
-                </div>
-              </div>
-
-              <div className="hidden sm:block w-px bg-border/40" />
-
-              <div className="flex-1 flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                  <Trophy className="w-5 h-5 text-purple-400" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-purple-400">{stats.totalTournaments}</div>
-                  <p className="text-xs text-muted-foreground">Tournaments Hosted</p>
-                </div>
-              </div>
-
-              <div className="hidden sm:block w-px bg-border/40" />
-
-              <div className="flex-1 flex items-center justify-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 flex items-center justify-center">
-                  <Gamepad2 className="w-5 h-5 text-emerald-400" />
-                </div>
-                <div>
-                  <div className="text-xl font-bold text-emerald-400">{stats.totalMatches}</div>
-                  <p className="text-xs text-muted-foreground">Matches Played</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <AnimatedStatsBar
+            stats={[
+              { value: stats.totalTurfs, label: "Active Turfs" },
+              { value: stats.totalTournaments, label: "Tournaments Hosted" },
+              { value: stats.totalMatches, label: "Matches Played" },
+            ]}
+          />
         )}
 
         {loading && (

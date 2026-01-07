@@ -17,7 +17,9 @@ import {
   Edit,
   Save,
   X,
+  TrendingUp,
 } from "lucide-react";
+import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
@@ -233,9 +235,15 @@ const ClientDashboard = () => {
       <main className="pt-24 pb-12">
         <div className="container px-4">
           <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
-            {/* LEFT SIDEBAR - PROFILE */}
+            {/* LEFT SIDEBAR - PROFILE EDIT */}
             <div className="lg:sticky lg:top-24 h-fit">
-              <Card variant="glass" className="p-6">
+              <Card
+                className="border-green-500/20 p-6"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.1) 100%)',
+                  boxShadow: '0 0 20px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                }}
+              >
                 {!isEditingProfile ? (
                   <div className="space-y-4">
                     <div className="flex flex-col items-center gap-4">
@@ -246,8 +254,9 @@ const ClientDashboard = () => {
                         <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
                       <div className="text-center">
-                        <h3 className="font-bold text-lg">{profile?.name || "User"}</h3>
-                        <p className="text-sm text-muted-foreground">{profile?.email || ""}</p>
+                        <h3 className="font-bold text-lg text-green-400">{profile?.name || "User"}</h3>
+                        <p className="text-sm text-green-300/70">{profile?.email || ""}</p>
+                        <Badge variant="outline" className="mt-2 border-green-500/30 bg-green-500/10 text-green-400">Client</Badge>
                       </div>
                     </div>
                     <Button
@@ -328,71 +337,71 @@ const ClientDashboard = () => {
                     Manage your turfs, slots & bookings
                   </p>
                 </div>
-                <Button
-                  className="gradient-primary"
-                  onClick={() => navigate("/client/add-turf")}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Add Turf
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    className="gradient-primary"
+                    onClick={() => navigate("/client/add-turf")}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Turf
+                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-10 w-10 p-0">
+                        <MoreVertical className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => {
+                        loadHistory();
+                        setHistoryOpen(true);
+                      }}>
+                        <History className="w-4 h-4 mr-2" />
+                        History
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={handleLogout}>
+                        <LogOut className="w-4 h-4 mr-2" />
+                        Logout
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </div>
 
-              {/* STATS - Single Row */}
-              <Card variant="glass">
-                <CardContent className="p-5">
-                  <div className="flex flex-wrap items-center justify-around gap-6">
-                    <div className="text-center flex-1 min-w-[120px]">
-                      <div className="text-3xl font-bold text-primary">
-                        {turfs.length}
-                      </div>
-                      <p className="text-muted-foreground text-sm">Total Turfs</p>
-                    </div>
-                    <div className="w-px h-12 bg-border/50" />
-                    <div className="text-center flex-1 min-w-[120px]">
-                      <div className="text-3xl font-bold text-primary">
-                        {bookings.length}
-                      </div>
-                      <p className="text-muted-foreground text-sm">Total Bookings</p>
-                    </div>
-                    <div className="w-px h-12 bg-border/50" />
-                    <div className="text-center flex-1 min-w-[120px]">
-                      <div className="text-3xl font-bold text-primary">
-                        Active
-                      </div>
-                      <p className="text-muted-foreground text-sm">Business Status</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* STATS - Animated */}
+              <AnimatedStatsBar
+                stats={[
+                  { value: turfs.length, label: "Total Turfs" },
+                  { value: bookings.length, label: "Total Bookings" },
+                  { value: 1, label: "Business Status", prefix: "Active" },
+                ]}
+              />
 
               {/* INTERNAL NAVBAR */}
               <div className="flex gap-2 border-b border-border/40 pb-2">
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    activeSection === "turfs"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "turfs"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                   onClick={() => setActiveSection("turfs")}
                 >
                   My Turfs
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    activeSection === "tournaments"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "tournaments"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                   onClick={() => setActiveSection("tournaments")}
                 >
                   My Tournaments
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${
-                    activeSection === "bookings"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "bookings"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
                   onClick={() => setActiveSection("bookings")}
                 >
                   Recent Bookings
@@ -424,26 +433,6 @@ const ClientDashboard = () => {
                               <h3 className="font-bold text-lg">{turf.name}</h3>
                               <Badge variant="outline" className="mt-1">Active</Badge>
                             </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => {
-                                  loadHistory();
-                                  setHistoryOpen(true);
-                                }}>
-                                  <History className="w-4 h-4 mr-2" />
-                                  History
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleLogout}>
-                                  <LogOut className="w-4 h-4 mr-2" />
-                                  Logout
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
                           </div>
 
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -515,29 +504,7 @@ const ClientDashboard = () => {
                               <h3 className="font-bold text-lg">{t.name}</h3>
                               <Badge variant="outline" className="mt-1">{t.sport}</Badge>
                             </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={t.status === 'upcoming' ? 'secondary' : 'default'}>{t.status || 'Active'}</Badge>
-                              <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                    <MoreVertical className="h-4 w-4" />
-                                  </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem onClick={() => {
-                                    loadHistory();
-                                    setHistoryOpen(true);
-                                  }}>
-                                    <History className="w-4 h-4 mr-2" />
-                                    History
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem onClick={handleLogout}>
-                                    <LogOut className="w-4 h-4 mr-2" />
-                                    Logout
-                                  </DropdownMenuItem>
-                                </DropdownMenuContent>
-                              </DropdownMenu>
-                            </div>
+                            <Badge variant={t.status === 'upcoming' ? 'secondary' : 'default'}>{t.status || 'Active'}</Badge>
                           </div>
 
                           <div className="text-sm text-muted-foreground space-y-1">
@@ -605,38 +572,17 @@ const ClientDashboard = () => {
                     {bookings.map((b) => (
                       <Card key={b.id} variant="glass" className="relative">
                         <CardContent className="p-5 space-y-3">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h3 className="font-semibold">{b.turf_name}</h3>
-                              <Badge
-                                variant={
-                                  b.status === "confirmed" ? "success" : "secondary"
-                                }
-                                className="mt-1"
-                              >
-                                {b.status}
-                              </Badge>
-                            </div>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => {
-                                  loadHistory();
-                                  setHistoryOpen(true);
-                                }}>
-                                  <History className="w-4 h-4 mr-2" />
-                                  History
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={handleLogout}>
-                                  <LogOut className="w-4 h-4 mr-2" />
-                                  Logout
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                          <div className="flex justify-between items-start"><div className="flex-1">
+                            <h3 className="font-semibold">{b.turf_name}</h3>
+                            <Badge
+                              variant={
+                                b.status === "confirmed" ? "success" : "secondary"
+                              }
+                              className="mt-1"
+                            >
+                              {b.status}
+                            </Badge>
+                          </div>
                           </div>
 
                           <div className="text-sm text-muted-foreground flex items-center gap-2">

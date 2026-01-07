@@ -449,29 +449,29 @@ exports.verifyOTP = async (req, res) => {
       });
     }
 
-    // OTP is valid - mark as used
-    await supabase
-      .from("otp_verifications")
-      .update({
-        is_used: true,
-        attempt_count: otpRecord.attempt_count + 1
-      })
-      .eq("id", otpRecord.id);
-
-    // For email verification: update user record
-    if (purpose === 'email_verification') {
-      const { error: updateError } = await supabase
-        .from("users")
+    // OTP is valid
+    // For password_reset: mark as used immediately (one-time use for password reset)
+    // For email_verification: DON'T mark as used yet - registration endpoint will mark it
+    if (purpose === 'password_reset') {
+      await supabase
+        .from("otp_verifications")
         .update({
-          email_verified: true,
-          email_verified_at: new Date().toISOString()
+          is_used: true,
+          attempt_count: otpRecord.attempt_count + 1
         })
-        .eq("email", email);
-
-      if (updateError) {
-        console.error("Failed to update user verification:", updateError);
-      }
+        .eq("id", otpRecord.id);
+    } else {
+      // For email_verification, just increment attempt count but keep is_used = false
+      await supabase
+        .from("otp_verifications")
+        .update({
+          attempt_count: otpRecord.attempt_count + 1
+        })
+        .eq("id", otpRecord.id);
     }
+
+    // DO NOT update user record here for email verification
+    // The registration endpoint will handle that after successful registration
 
     // For password reset: generate reset token (or we can just return success)
     if (purpose === 'password_reset') {

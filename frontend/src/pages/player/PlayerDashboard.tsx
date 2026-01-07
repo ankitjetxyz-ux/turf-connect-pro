@@ -11,19 +11,20 @@ import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Booking, Conversation, Tournament, UserProfile } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
 } from "@/components/ui/dialog";
+import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
 
 const PlayerDashboard = () => {
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -224,7 +225,13 @@ const PlayerDashboard = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
                         {/* LEFT SIDEBAR - PROFILE */}
                         <div className="lg:sticky lg:top-24 h-fit">
-                            <Card className="glass-card border-white/10 p-6">
+                            <Card
+                                className="border-green-500/20 p-6"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.1) 100%)',
+                                    boxShadow: '0 0 20px rgba(34, 197, 94, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+                                }}
+                            >
                                 {!isEditingProfile ? (
                                     <div className="space-y-4">
                                         <div className="flex flex-col items-center gap-4">
@@ -235,18 +242,29 @@ const PlayerDashboard = () => {
                                                 <AvatarFallback>{initials}</AvatarFallback>
                                             </Avatar>
                                             <div className="text-center">
-                                                <h3 className="font-bold text-lg">{profile?.name || "User"}</h3>
-                                                <p className="text-sm text-muted-foreground">{profile?.email || ""}</p>
+                                                <h3 className="font-bold text-lg text-green-400">{profile?.name || "User"}</h3>
+                                                <p className="text-sm text-green-300/70">{profile?.email || ""}</p>
+                                                <Badge variant="outline" className="mt-2 border-green-500/30 bg-green-500/10 text-green-400">Player</Badge>
+                                            </div>
+                                            <Button
+                                                variant="outline"
+                                                className="w-full"
+                                                onClick={() => setIsEditingProfile(true)}
+                                            >
+                                                <Edit className="w-4 h-4 mr-2" />
+                                                Edit Profile
+                                            </Button>
+                                            <div className="space-y-2 text-sm pt-4 border-t border-green-500/20">
+                                                <div className="flex justify-between">
+                                                    <span className="text-green-300/60">Phone</span>
+                                                    <span className="font-medium text-green-400">{profile?.phone || "Not set"}</span>
+                                                </div>
+                                                <div className="flex justify-between">
+                                                    <span className="text-green-300/60">Joined</span>
+                                                    <span className="font-medium text-green-400">Member</span>
+                                                </div>
                                             </div>
                                         </div>
-                                        <Button
-                                            variant="outline"
-                                            className="w-full"
-                                            onClick={() => setIsEditingProfile(true)}
-                                        >
-                                            <Edit className="w-4 h-4 mr-2" />
-                                            Edit Profile
-                                        </Button>
                                     </div>
                                 ) : (
                                     <div className="space-y-4">
@@ -310,51 +328,58 @@ const PlayerDashboard = () => {
                         {/* MAIN CONTENT */}
                         <div className="space-y-6">
                             {/* HEADER */}
-                            <div>
-                                <h1 className="text-3xl font-heading font-bold text-foreground">Player Dashboard</h1>
-                                <p className="text-muted-foreground mt-1">Manage your turf bookings and schedule</p>
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h1 className="text-3xl font-heading font-bold text-foreground">Player Dashboard</h1>
+                                    <p className="text-muted-foreground mt-1">Manage your turf bookings and schedule</p>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="sm" className="h-9 w-9 p-0">
+                                            <MoreVertical className="h-5 w-5" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onClick={() => {
+                                            loadHistory();
+                                            setHistoryOpen(true);
+                                        }}>
+                                            <History className="w-4 h-4 mr-2" />
+                                            History
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onClick={handleLogout}>
+                                            <LogOut className="w-4 h-4 mr-2" />
+                                            Logout
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
 
-                            {/* STATS SECTION - Single Row */}
-                            <Card className="glass-card border-white/10">
-                                <CardContent className="p-5">
-                                    <div className="flex flex-wrap items-center justify-around gap-6">
-                                        <div className="text-center flex-1 min-w-[120px]">
-                                            <div className="text-3xl font-bold font-heading">{tournamentStats.total}</div>
-                                            <p className="text-muted-foreground text-sm mt-1">Total Tournaments</p>
-                                        </div>
-                                        <div className="w-px h-12 bg-border/50" />
-                                        <div className="text-center flex-1 min-w-[120px]">
-                                            <div className="text-3xl font-bold font-heading text-primary">{tournamentStats.upcoming}</div>
-                                            <p className="text-muted-foreground text-sm mt-1">Upcoming Events</p>
-                                        </div>
-                                        <div className="w-px h-12 bg-border/50" />
-                                        <div className="text-center flex-1 min-w-[120px]">
-                                            <div className="text-3xl font-bold font-heading">{tournamentStats.past}</div>
-                                            <p className="text-muted-foreground text-sm mt-1">Past Events</p>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            {/* STATS SECTION - Animated */}
+                            <AnimatedStatsBar
+                                stats={[
+                                    { value: bookings.length, label: "Turf Booked" },
+                                    { value: tournamentStats.total, label: "Total Tournaments" },
+                                    { value: tournamentStats.upcoming, label: "Upcoming Events" },
+                                ]}
+                            />
 
                             {/* INTERNAL NAVBAR */}
                             <div className="flex gap-2 border-b border-border/40 pb-2">
                                 <button
-                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                        activeSection === "bookings"
-                                            ? "text-primary border-b-2 border-primary"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "bookings"
+                                        ? "text-primary border-b-2 border-primary"
+                                        : "text-muted-foreground hover:text-foreground"
+                                        }`}
                                     onClick={() => setActiveSection("bookings")}
                                 >
                                     My Bookings
                                 </button>
                                 <button
-                                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                                        activeSection === "tournaments"
-                                            ? "text-primary border-b-2 border-primary"
-                                            : "text-muted-foreground hover:text-foreground"
-                                    }`}
+                                    className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "tournaments"
+                                        ? "text-primary border-b-2 border-primary"
+                                        : "text-muted-foreground hover:text-foreground"
+                                        }`}
                                     onClick={() => setActiveSection("tournaments")}
                                 >
                                     My Tournaments
@@ -389,8 +414,12 @@ const PlayerDashboard = () => {
                                         {bookings.map((booking, index) => (
                                             <Card
                                                 key={booking.id}
-                                                className="glass-card hover-lift border-white/10 overflow-hidden relative"
-                                                style={{ animationDelay: `${index * 100}ms` }}
+                                                className="hover-lift border-green-500/20 overflow-hidden relative"
+                                                style={{
+                                                    animationDelay: `${index * 100}ms`,
+                                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.1) 100%)',
+                                                    boxShadow: '0 0 20px rgba(34, 197, 94, 0.1)',
+                                                }}
                                             >
                                                 <CardContent className="p-0">
                                                     <div className="p-5 border-b border-white/5 space-y-4">
@@ -411,26 +440,6 @@ const PlayerDashboard = () => {
                                                                     {booking.status?.replace(/_/g, " ")}
                                                                 </Badge>
                                                             </div>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => {
-                                                                        loadHistory();
-                                                                        setHistoryOpen(true);
-                                                                    }}>
-                                                                        <History className="w-4 h-4 mr-2" />
-                                                                        History
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={handleLogout}>
-                                                                        <LogOut className="w-4 h-4 mr-2" />
-                                                                        Logout
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
                                                         </div>
 
                                                         <div className="space-y-2">
@@ -502,8 +511,12 @@ const PlayerDashboard = () => {
                                         {tournamentBookings.map((tournament, index) => (
                                             <Card
                                                 key={tournament.id}
-                                                className="glass-card hover-lift border-white/10 overflow-hidden relative"
-                                                style={{ animationDelay: `${index * 100}ms` }}
+                                                className="hover-lift border-green-500/20 overflow-hidden relative"
+                                                style={{
+                                                    animationDelay: `${index * 100}ms`,
+                                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.05) 0%, rgba(34, 197, 94, 0.1) 100%)',
+                                                    boxShadow: '0 0 20px rgba(34, 197, 94, 0.1)',
+                                                }}
                                             >
                                                 <CardContent className="p-0">
                                                     <div className="p-5 border-b border-white/5 space-y-4">
@@ -524,26 +537,6 @@ const PlayerDashboard = () => {
                                                                     {tournament.status}
                                                                 </Badge>
                                                             </div>
-                                                            <DropdownMenu>
-                                                                <DropdownMenuTrigger asChild>
-                                                                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                                        <MoreVertical className="h-4 w-4" />
-                                                                    </Button>
-                                                                </DropdownMenuTrigger>
-                                                                <DropdownMenuContent align="end">
-                                                                    <DropdownMenuItem onClick={() => {
-                                                                        loadHistory();
-                                                                        setHistoryOpen(true);
-                                                                    }}>
-                                                                        <History className="w-4 h-4 mr-2" />
-                                                                        History
-                                                                    </DropdownMenuItem>
-                                                                    <DropdownMenuItem onClick={handleLogout}>
-                                                                        <LogOut className="w-4 h-4 mr-2" />
-                                                                        Logout
-                                                                    </DropdownMenuItem>
-                                                                </DropdownMenuContent>
-                                                            </DropdownMenu>
                                                         </div>
 
                                                         <div className="space-y-2">

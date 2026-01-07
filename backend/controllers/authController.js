@@ -204,7 +204,7 @@ exports.login = async (req, res) => {
       .from("users")
       .select("*")
       .eq("email", email)
-      .eq("deleted_at", null) // Exclude soft-deleted users
+      .is("deleted_at", null) // Exclude soft-deleted users
       .single();
 
     if (userError || !user) {
@@ -221,49 +221,19 @@ exports.login = async (req, res) => {
       });
     }
 
-    // Check if account is locked (for too many failed attempts)
-    if (user.failed_login_attempts >= 5) {
-      const lockTime = new Date(user.last_failed_login);
-      const unlockTime = new Date(lockTime.getTime() + 15 * 60 * 1000); // 15 minutes
-
-      if (new Date() < unlockTime) {
-        return res.status(401).json({
-          error: "Account temporarily locked. Try again in 15 minutes."
-        });
-      } else {
-        // Reset failed attempts after lock period
-        await supabase
-          .from("users")
-          .update({ failed_login_attempts: 0 })
-          .eq("id", user.id);
-      }
-    }
-
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
-      // Increment failed login attempts
-      const newAttempts = (user.failed_login_attempts || 0) + 1;
-
-      await supabase
-        .from("users")
-        .update({
-          failed_login_attempts: newAttempts,
-          last_failed_login: new Date().toISOString()
-        })
-        .eq("id", user.id);
-
       return res.status(401).json({
         error: "Invalid email or password"
       });
     }
 
-    // Reset failed login attempts on successful login
+    // Update last login timestamp
     await supabase
       .from("users")
       .update({
-        failed_login_attempts: 0,
         last_login: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -299,7 +269,7 @@ exports.login = async (req, res) => {
       });
 
     // Remove password from response
-    const { password: _, failed_login_attempts, ...userWithoutSensitiveData } = user;
+    const { password: _, ...userWithoutSensitiveData } = user;
 
     res.json({
       success: true,

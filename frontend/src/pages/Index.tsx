@@ -7,7 +7,6 @@ import TournamentsSection from "@/components/home/TournamentsSection";
 import HowItWorks from "@/components/home/HowItWorks";
 import TestimonialsSection from "@/components/home/TestimonialsSection";
 import PromotionalVideos from "@/components/home/PromotionalVideos";
-import CTASection from "@/components/home/CTASection";
 import AboutUsSection from "../components/home/AboutUsSection";
 import ContactUsSection from "../components/home/ContactUsSection";
 
@@ -27,10 +26,9 @@ const Index = () => {
 
         <AboutUsSection /> {/* New About Us section */}
         <ContactUsSection /> {/* New Contact Us section at the end */}
-        <CTASection />
       </main>
       <Footer />
-    </div>
+    </div >
   );
 };
 

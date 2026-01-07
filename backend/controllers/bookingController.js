@@ -54,7 +54,7 @@ exports.bookSlot = async (req, res) => {
       .from("slots")
       .update({ is_booked: true })
       .eq("id", slot_id);
-    
+
     if (slotUpdateError) {
       console.error("[bookSlot] Error updating slot:", slotUpdateError);
       // Booking already created, but slot wasn't marked as booked
@@ -206,7 +206,7 @@ exports.getMyBookings = async (req, res) => {
         .select("booking_id, verification_code, expires_at")
         .in("booking_id", bookingIds)
         .eq("booking_type", "turf");
-      
+
       if (vCodes) {
         vCodes.forEach(vc => {
           verificationCodesMap[vc.booking_id] = {
@@ -322,7 +322,7 @@ exports.getClientBookings = async (req, res) => {
       .select(`
         id,
         status,
-        users(id, name, email),
+        users!bookings_user_id_fkey(id, name, email),
         slots(date, start_time, end_time,
           turfs(name, owner_id)
         )
@@ -348,7 +348,7 @@ exports.getClientBookings = async (req, res) => {
         .select("booking_id, verification_code, expires_at")
         .in("booking_id", bookingIds)
         .eq("booking_type", "turf");
-      
+
       if (vCodes) {
         vCodes.forEach(vc => {
           verificationCodesMap[vc.booking_id] = {

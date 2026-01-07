@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import TurfCard from "@/components/turfs/TurfCard";
-import { ArrowRight, Zap } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import api from "@/services/api";
@@ -53,14 +53,6 @@ const FeaturedTurfs = () => {
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center shadow-glow-sm">
-                <Zap className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <Badge variant="success" className="animate-pulse-glow">
-                🔥 Popular Near You
-              </Badge>
-            </div>
             <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold">
               Featured <span className="text-gradient">Turfs</span>
             </h2>

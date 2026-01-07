@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import api from "@/services/api";
+import ClientDashboard from "./client/ClientDashboard";
+import PlayerDashboard from "./player/PlayerDashboard";
 
 interface ProfileStats {
   turfs_booked: number;
@@ -178,247 +180,28 @@ const ProfilePage = () => {
     .join("")
     .toUpperCase() || "U";
 
+  // If user is a client, show ClientDashboard
+  if (!loading && user?.role === "client") {
+    return <ClientDashboard />;
+  }
+
+  // If user is a player, show PlayerDashboard
+  if (!loading && user?.role === "player") {
+    return <PlayerDashboard />;
+  }
+
+  // Loading or unknown role - show loading/error
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
-
       <main className="pt-24 pb-12 container mx-auto px-4">
         {loading && (
           <p className="text-center text-muted-foreground">Loading profile...</p>
         )}
-
-        {!loading && user && (
-          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,320px),minmax(0,1fr)] gap-8">
-            {/* Left: profile editing */}
-            <Card className="glass-card border-white/10">
-              <CardContent className="p-6 space-y-4">
-                <div className="flex flex-col items-center gap-4">
-                  <Avatar className="h-20 w-20">
-                    {displayAvatar && <AvatarImage src={displayAvatar} alt={user.name} />}
-                    <AvatarFallback>{initials}</AvatarFallback>
-                  </Avatar>
-
-                  <div className="w-full space-y-2">
-                    <Label htmlFor="name">Full Name</Label>
-                    <Input
-                      id="name"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="w-full space-y-2">
-                    <Label>Email</Label>
-                    <Input value={user.email} disabled />
-                  </div>
-
-                  <div className="w-full space-y-2">
-                    <Label>Role</Label>
-                    <Input value={user.role} disabled />
-                  </div>
-
-                  <div className="w-full space-y-2">
-                    <Label htmlFor="avatar">Profile Picture</Label>
-                    <Input
-                      id="avatar"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleAvatarChange}
-                    />
-                  </div>
-
-                  <Button
-                    className="w-full mt-2"
-                    onClick={handleSave}
-                    disabled={saving}
-                  >
-                    {saving ? "Saving..." : "Save Profile"}
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-            {/* Right: stats + internal nav and role-based content */}
-            <div className="space-y-6">
-              <Card className="glass-card border-white/10">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center justify-between flex-wrap gap-3">
-                    <div>
-                      <h2 className="text-xl font-heading font-bold mb-1">
-                        Dashboard Overview
-                      </h2>
-                      <p className="text-xs text-muted-foreground">
-                        Quick view of your turf and tournament activity.
-                      </p>
-                    </div>
-                    {stats && (
-                      <div className="grid grid-cols-2 gap-3 text-xs min-w-[220px]">
-                        {user.role === "player" && (
-                          <>
-                            <div className="p-3 rounded-xl bg-secondary/40">
-                              <p className="text-[10px] text-muted-foreground mb-1">
-                                Turfs Booked
-                              </p>
-                              <p className="text-xl font-heading font-bold">
-                                {stats.turfs_booked}
-                              </p>
-                            </div>
-                            <div className="p-3 rounded-xl bg-secondary/40">
-                              <p className="text-[10px] text-muted-foreground mb-1">
-                                Tournaments Participated
-                              </p>
-                              <p className="text-xl font-heading font-bold">
-                                {stats.tournaments_participated}
-                              </p>
-                            </div>
-                          </>
-                        )}
-                        {user.role === "client" && (
-                          <>
-                            <div className="p-3 rounded-xl bg-secondary/40">
-                              <p className="text-[10px] text-muted-foreground mb-1">
-                                Turfs Owned
-                              </p>
-                              <p className="text-xl font-heading font-bold">
-                                {stats.turfs_owned}
-                              </p>
-                            </div>
-                            <div className="p-3 rounded-xl bg-secondary/40">
-                              <p className="text-[10px] text-muted-foreground mb-1">
-                                Tournaments Hosted
-                              </p>
-                              <p className="text-xl font-heading font-bold">
-                                {stats.tournaments_hosted}
-                              </p>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Internal nav */}
-                  <div className="inline-flex rounded-full bg-secondary/40 p-1 text-xs">
-                    <button
-                      className={`px-4 py-1.5 rounded-full font-medium transition-all ${
-                        activeTab === "turfs"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={() => setActiveTab("turfs")}
-                    >
-                      My Turfs
-                    </button>
-                    <button
-                      className={`px-4 py-1.5 rounded-full font-medium transition-all ${
-                        activeTab === "tournaments"
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground"
-                      }`}
-                      onClick={() => setActiveTab("tournaments")}
-                    >
-                      My Tournaments
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Role-specific content using history for players; simple placeholder for clients for now */}
-              {user.role === "player" && (
-                <Card className="glass-card border-white/10">
-                  <CardContent className="p-6 space-y-4">
-                    <h2 className="text-lg font-heading font-bold">
-                      {activeTab === "turfs" ? "Booked Turfs" : "Tournament Participation"}
-                    </h2>
-                    {historyLoading ? (
-                      <p className="text-muted-foreground text-sm">Loading activity...</p>
-                    ) : (
-                      <>
-                        {history.filter((item) =>
-                          activeTab === "turfs"
-                            ? item.type === "booking"
-                            : item.type === "tournament",
-                        ).length === 0 ? (
-                          <p className="text-muted-foreground text-sm">
-                            No {activeTab === "turfs" ? "bookings" : "tournament entries"} yet.
-                          </p>
-                        ) : (
-                          <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
-                            {history
-                              .filter((item) =>
-                                activeTab === "turfs"
-                                  ? item.type === "booking"
-                                  : item.type === "tournament",
-                              )
-                              .map((item) => (
-                                <div
-                                  key={`${item.type}-${item.id}`}
-                                  className="p-4 rounded-xl bg-secondary/40 border border-white/5 hover:bg-secondary/60 transition-colors"
-                                >
-                                  <div className="flex items-start justify-between gap-3">
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2 mb-1">
-                                        <span
-                                          className={`px-2 py-1 rounded text-[10px] font-medium ${
-                                            item.type === "booking"
-                                              ? "bg-primary/20 text-primary"
-                                              : "bg-amber-500/20 text-amber-500"
-                                          }`}
-                                        >
-                                          {item.type === "booking"
-                                            ? "Turf Booking"
-                                            : "Tournament"}
-                                        </span>
-                                        {item.status && (
-                                          <span className="text-[10px] text-muted-foreground capitalize">
-                                            {item.status.replace(/_/g, " ")}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <h3 className="font-semibold text-foreground mb-1 truncate">
-                                        {item.name}
-                                      </h3>
-                                      {item.owner_name && (
-                                        <p className="text-xs text-muted-foreground truncate">
-                                          Owner: {item.owner_name}
-                                        </p>
-                                      )}
-                                      {item.date && (
-                                        <p className="text-[11px] text-muted-foreground mt-1">
-                                          {item.date}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                          </div>
-                        )}
-                      </>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
-
-              {user.role === "client" && (
-                <Card className="glass-card border-white/10">
-                  <CardContent className="p-6 space-y-2">
-                    <h2 className="text-lg font-heading font-bold mb-2">
-                      {activeTab === "turfs" ? "Your Turfs" : "Your Tournaments"}
-                    </h2>
-                    <p className="text-xs text-muted-foreground">
-                      This unified view will show your owned turfs and hosted tournaments. Current data is sourced from the same APIs used on the Client Dashboard.
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      For now, continue using the Client Dashboard cards for detailed management while this unified view is being enriched.
-                    </p>
-                  </CardContent>
-                </Card>
-              )}
-            </div>
-          </div>
+        {!loading && !user && (
+          <p className="text-center text-muted-foreground">Please log in to view your dashboard.</p>
         )}
       </main>
-
       <Footer />
     </div>
   );
