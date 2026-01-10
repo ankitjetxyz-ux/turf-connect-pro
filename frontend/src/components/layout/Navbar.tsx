@@ -76,8 +76,8 @@ const Navbar = () => {
                   key={link.path}
                   to={link.path}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive(link.path)
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }`}
                 >
                   {link.label}
@@ -87,8 +87,8 @@ const Navbar = () => {
                 <Link
                   to="/chat"
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${isActive("/chat")
-                      ? "text-primary"
-                      : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
+                    ? "text-primary"
+                    : "text-muted-foreground hover:text-foreground hover:bg-secondary/50"
                     }`}
                 >
                   Chat
@@ -118,38 +118,27 @@ const Navbar = () => {
               )}
 
               {isLoggedIn && (
-                <>
-                  <button
-                    className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-secondary/60 transition-colors"
-                    onClick={() => navigate("/profile")}
-                  >
-                    <Avatar className="h-8 w-8">
-                      {profileImage && (
-                        <AvatarImage src={profileImage} alt={displayName} />
-                      )}
-                      <AvatarFallback>
-                        {displayName
-                          .split(" ")
-                          .map((n) => n[0])
-                          .join("")
-                          .toUpperCase()
-                          .slice(0, 2)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-muted-foreground hidden lg:inline">
-                      {displayName}
-                    </span>
-                  </button>
-
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </Button>
-                </>
+                <button
+                  className="flex items-center gap-2 px-2 py-1 rounded-full hover:bg-secondary/60 transition-colors"
+                  onClick={() => navigate("/profile")}
+                >
+                  <Avatar className="h-8 w-8">
+                    {profileImage && (
+                      <AvatarImage src={profileImage} alt={displayName} />
+                    )}
+                    <AvatarFallback>
+                      {displayName
+                        .split(" ")
+                        .map((n) => n[0])
+                        .join("")
+                        .toUpperCase()
+                        .slice(0, 2)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground hidden lg:inline">
+                    {displayName}
+                  </span>
+                </button>
               )}
             </div>
 
@@ -171,8 +160,8 @@ const Navbar = () => {
                   to={link.path}
                   onClick={() => setIsOpen(false)}
                   className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive(link.path)
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                    ? "bg-primary/10 text-primary"
+                    : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                     }`}
                 >
                   {link.label}
@@ -184,8 +173,8 @@ const Navbar = () => {
                     to="/chat"
                     onClick={() => setIsOpen(false)}
                     className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/chat")
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                       }`}
                   >
                     Chat
@@ -194,8 +183,8 @@ const Navbar = () => {
                     to="/profile"
                     onClick={() => setIsOpen(false)}
                     className={`block px-4 py-3 rounded-lg text-sm font-medium transition-colors ${isActive("/profile")
-                        ? "bg-primary/10 text-primary"
-                        : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
                       }`}
                   >
                     Profile & Dashboard
@@ -222,30 +211,17 @@ const Navbar = () => {
                 )}
 
                 {isLoggedIn && (
-                  <>
-                    <Button
-                      variant="outline"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        setIsOpen(false);
-                        navigate("/profile");
-                      }}
-                    >
-                      <LayoutDashboard className="w-4 h-4 mr-2" />
-                      Profile & Dashboard
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        setIsOpen(false);
-                        handleLogout();
-                      }}
-                    >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Logout
-                    </Button>
-                  </>
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start"
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate("/profile");
+                    }}
+                  >
+                    <LayoutDashboard className="w-4 h-4 mr-2" />
+                    Profile & Dashboard
+                  </Button>
                 )}
               </div>
             </div>

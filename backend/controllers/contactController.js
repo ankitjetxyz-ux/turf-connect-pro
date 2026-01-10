@@ -32,22 +32,72 @@ exports.submitContactForm = async (req, res) => {
       return res.status(500).json({ error: "Message saved but no data returned" });
     }
 
+    // Send email notification
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-      const transporter = nodemailer.createTransport({
-        service: "gmail",
-        auth: {
-          user: process.env.SMTP_USER,
-          pass: process.env.SMTP_PASS
-        }
-      });
+      try {
+        const transporter = nodemailer.createTransport({
+          service: "gmail",
+          host: "smtp.gmail.com",
+          port: 587,
+          secure: false, // Use TLS
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS // Should be an App Password, not regular password
+          },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
 
-      await transporter.sendMail({
-        from: `"Turf Contact" <${process.env.SMTP_USER}>`,
-        to: "bookmyturfofficial@gmail.com",
-        replyTo: userEmail,
-        subject: `[Contact] ${subject || "General Inquiry"}`,
-        text: `Name: ${name}\nEmail: ${userEmail}\n\n${message}`
-      });
+        // Verify transporter configuration
+        await transporter.verify();
+        console.log("✅ SMTP connection verified successfully");
+
+        const mailOptions = {
+          from: `"Book My Turf - Contact Form" <${process.env.SMTP_USER}>`,
+          to: "bookmyturfofficial@gmail.com", // Corrected support email
+          replyTo: userEmail,
+          subject: `[Contact Form] ${subject || "General Inquiry"}`,
+          text: `New contact form submission:\n\nName: ${name}\nEmail: ${userEmail}\nSubject: ${subject || "General Inquiry"}\n\nMessage:\n${message}`,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #2563eb;">New Contact Form Submission</h2>
+              <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                <p><strong>Name:</strong> ${name}</p>
+                <p><strong>Email:</strong> <a href="mailto:${userEmail}">${userEmail}</a></p>
+                <p><strong>Subject:</strong> ${subject || "General Inquiry"}</p>
+              </div>
+              <div style="background: #ffffff; padding: 20px; border-left: 4px solid #2563eb;">
+                <h3>Message:</h3>
+                <p style="line-height: 1.6;">${message.replace(/\n/g, '<br>')}</p>
+              </div>
+              <hr style="margin: 30px 0; border: none; border-top: 1px solid #e5e7eb;">
+              <p style="color: #6b7280; font-size: 12px;">
+                This email was sent from the Book My Turf contact form. 
+                Reply directly to this email to respond to ${name}.
+              </p>
+            </div>
+          `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log("✅ Email sent successfully:", info.messageId);
+        console.log("📧 Email sent to: bookmyturfsupport@gmail.com");
+        console.log("📤 From:", userEmail);
+      } catch (emailError) {
+        console.error("❌ Email sending failed:", emailError);
+        console.error("Details:", {
+          code: emailError.code,
+          command: emailError.command,
+          response: emailError.response,
+          responseCode: emailError.responseCode
+        });
+        // Don't fail the entire request if email fails
+        // Message is still saved in database
+      }
+    } else {
+      console.warn("⚠️ SMTP credentials not configured. Email not sent.");
+      console.warn("Please set SMTP_USER and SMTP_PASS in environment variables");
     }
 
     res.status(201).json({ message: "Message sent", data });

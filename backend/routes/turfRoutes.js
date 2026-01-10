@@ -14,7 +14,8 @@ const {
   getTurfComments,
   addTurfComment,
   deleteTurfComment,
-  uploadTurfImages
+  uploadTurfImages,
+  deleteTurf
 } = require("../controllers/turfController");
 const { verifyToken, allowRoles } = require("../middleware/authMiddleware");
 
@@ -65,5 +66,8 @@ router.get("/:id/testimonials", getTurfTestimonials);
 router.get("/:id/comments", getTurfComments);
 router.post("/:id/comments", verifyToken, addTurfComment);
 router.delete("/:id/comments/:commentId", verifyToken, allowRoles("client"), deleteTurfComment);
+
+// Delete turf (owner only)
+router.delete("/:id", verifyToken, allowRoles("client"), deleteTurf);
 
 module.exports = router;

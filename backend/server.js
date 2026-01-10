@@ -14,6 +14,7 @@ const chatRoutes = require("./routes/chatRoutes");
 const paymentRoutes = require("./routes/paymentRoutes");
 const contactRoutes = require("./routes/contactRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const analyticsRoutes = require("./routes/analyticsRoutes");
 
 const app = express();
 
@@ -39,10 +40,10 @@ app.use(
 
 // Request logging (only in development)
 if (process.env.NODE_ENV === "development") {
-app.use((req, res, next) => {
+  app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} [${req.method}] ${req.path}`);
-  next();
-});
+    next();
+  });
 }
 
 /* =========================
@@ -75,6 +76,7 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/analytics", analyticsRoutes);
 app.use("/api/promotional-videos", require("./routes/promotionalVideoRoutes"));
 
 /* =========================

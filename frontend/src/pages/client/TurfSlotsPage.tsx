@@ -4,831 +4,783 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Clock,
   IndianRupee,
   Trash2,
-  Calendar,
+  Calendar as CalendarIcon,
   Plus,
   AlertCircle,
-  CheckCircle2,
   X,
   Edit2,
   ArrowRight,
+  Zap,
+  Save,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState, useCallback } from "react";
-import { getSlotsByTurf, createSlot } from "@/services/slotService";
-import api from "@/services/api";
-import { Slot } from "@/types";
+import { useEffect, useState } from "react";
+import { slotService, TimeBlock, Slot } from "@/services/slotService";
+import { useToast } from "@/components/ui/use-toast";
 
-/* TYPES */
+/* ============================================================================
+   TYPES
+   ============================================================================ */
 
-type Toast = {
-  id: string;
-  title: string;
-  description?: string;
-  variant: "default" | "destructive" | "success";
-};
+type ViewMode = "calendar" | "single" | "bulk";
 
-/* UTILITIES */
+const WEEKDAYS = [
+  { value: "monday", label: "Mon" },
+  { value: "tuesday", label: "Tue" },
+  { value: "wednesday", label: "Wed" },
+  { value: "thursday", label: "Thu" },
+  { value: "friday", label: "Fri" },
+  { value: "saturday", label: "Sat" },
+  { value: "sunday", label: "Sun" },
+];
 
-const timeToMinutes = (time: string): number => {
-  const [hours, minutes] = time.split(":").map(Number);
-  return hours * 60 + minutes;
-};
-
-const minutesToTime = (minutes: number): string => {
-  const hours = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
-};
-
-const validateTimeSlot = (startTime: string, endTime: string): { valid: boolean; error?: string } => {
-  if (!startTime || !endTime) {
-    return { valid: false, error: "Both start and end times are required" };
-  }
-
-  const startMinutes = timeToMinutes(startTime);
-  const endMinutes = timeToMinutes(endTime);
-
-  if (startMinutes >= endMinutes) {
-    return { valid: false, error: "Start time must be before end time" };
-  }
-
-  const duration = endMinutes - startMinutes;
-  if (duration < 30) {
-    return { valid: false, error: "Minimum slot duration is 30 minutes" };
-  }
-
-  if (duration > 480) {
-    return { valid: false, error: "Maximum slot duration is 8 hours" };
-  }
-
-  return { valid: true };
-};
-
-const checkOverlappingSlots = (
-  startTime: string,
-  endTime: string,
-  existingSlots: Slot[],
-  excludeId?: number
-): boolean => {
-  const newStart = timeToMinutes(startTime);
-  const newEnd = timeToMinutes(endTime);
-
-  return existingSlots.some((slot) => {
-    if (excludeId && slot.id === excludeId) return false;
-
-    const slotStart = timeToMinutes(slot.start_time);
-    const slotEnd = timeToMinutes(slot.end_time);
-
-    return !(newEnd <= slotStart || newStart >= slotEnd);
-  });
-};
-
-const formatDate = (dateStr: string): string => {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
-};
-
-const showToast = (
-  setToasts: React.Dispatch<React.SetStateAction<Toast[]>>,
-  title: string,
-  description?: string,
-  variant: "default" | "destructive" | "success" = "default"
-) => {
-  const id = Date.now().toString();
-  setToasts((prev: Toast[]) => [...prev, { id, title, description, variant }]);
-  setTimeout(() => {
-    setToasts((prev: Toast[]) => prev.filter((t) => t.id !== id));
-  }, 4000);
-};
-
-/* MAIN COMPONENT */
+/* ============================================================================
+   MAIN COMPONENT
+   ============================================================================ */
 
 const TurfSlotsPage = () => {
   const { turfId } = useParams();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
+  /* STATE */
+  const [mode, setMode] = useState<ViewMode>("calendar");
   const [slots, setSlots] = useState<Slot[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-
-  /* FORM STATE */
+  const [loading, setLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split("T")[0]);
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+
+  /* SINGLE SLOT STATE */
+  const [singleDate, setSingleDate] = useState(new Date().toISOString().split("T")[0]);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [price, setPrice] = useState("");
+  const [label, setLabel] = useState("");
 
-  /* BULK CREATION STATE */
-  const [bulkMode, setBulkMode] = useState(false);
-  const [bulkStartTime, setBulkStartTime] = useState("06:00");
-  const [bulkEndTime, setBulkEndTime] = useState("23:00");
-  const [bulkSlotDuration, setBulkSlotDuration] = useState("60");
-  const [bulkDays, setBulkDays] = useState("1");
-  const [bulkPrice, setBulkPrice] = useState("");
+  /* BULK GENERATION STATE */
+  const [bulkStartDate, setBulkStartDate] = useState("");
+  const [bulkEndDate, setBulkEndDate] = useState("");
+  const [activeDays, setActiveDays] = useState<string[]>(["monday", "tuesday", "wednesday", "thursday", "friday"]);
+  const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([
+    { start: "06:00", end: "23:00", price: 1000, label: "" }
+  ]);
+  const [slotDuration, setSlotDuration] = useState(60);
+  const [conflictStrategy, setConflictStrategy] = useState<"skip" | "overwrite" | "fill_gaps">("skip");
 
   /* EDIT STATE */
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editStartTime, setEditStartTime] = useState("");
-  const [editEndTime, setEditEndTime] = useState("");
-  const [editPrice, setEditPrice] = useState("");
+  const [editingSlot, setEditingSlot] = useState<Slot | null>(null);
 
-  const [formError, setFormError] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-
-  const loadSlots = useCallback(async () => {
+  /* LOAD SLOTS */
+  const loadSlots = async (date?: string) => {
     try {
       setLoading(true);
-      const res = await getSlotsByTurf(turfId!);
-      setSlots(res.data || []);
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to load slots";
-      showToast(setToasts, "Error", errorMessage, "destructive");
+      const params: any = {};
+
+      if (date) {
+        params.date = date;
+      } else if (mode === "calendar") {
+        // Load month range
+        const start = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1).toISOString().split("T")[0];
+        const end = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).toISOString().split("T")[0];
+        params.start_date = start;
+        params.end_date = end;
+      }
+
+      const response = await slotService.getSlotsByTurf(turfId!, params);
+      setSlots(response.data || []);
+    } catch (error: any) {
+      toast({
+        title: "Error loading slots",
+        description: error.response?.data?.error || "Failed to load slots",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
-  }, [turfId]);
+  };
 
-  /* FETCH SLOTS */
   useEffect(() => {
     loadSlots();
-  }, [loadSlots]);
+  }, [currentMonth, mode]);
 
   /* SINGLE SLOT CREATION */
-  const handleCreateSlot = async () => {
-    setFormError("");
-
+  const handleCreateSingleSlot = async () => {
     if (!startTime || !endTime || !price) {
-      setFormError("All fields are required");
+      toast({
+        title: "Missing fields",
+        description: "Please fill all required fields",
+        variant: "destructive",
+      });
       return;
     }
 
-    const validation = validateTimeSlot(startTime, endTime);
-    if (!validation.valid) {
-      setFormError(validation.error!);
-      return;
-    }
-
-    if (checkOverlappingSlots(startTime, endTime, slots)) {
-      setFormError("This time slot overlaps with an existing slot");
-      return;
-    }
-
-    if (Number(price) <= 0) {
-      setFormError("Price must be greater than 0");
-      return;
-    }
-
-    setSubmitting(true);
     try {
-      await createSlot({
+      await slotService.createSlot({
         turf_id: turfId!,
+        date: singleDate,
         start_time: startTime,
         end_time: endTime,
         price: Number(price),
+        label: label || undefined,
       });
 
-      showToast(setToasts, "Success", `Slot created: ${startTime} - ${endTime}`, "success");
+      toast({
+        title: "Success",
+        description: `Slot created: ${startTime} - ${endTime}`,
+      });
+
       setStartTime("");
       setEndTime("");
       setPrice("");
-      setFormError("");
+      setLabel("");
       loadSlots();
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to create slot";
-      showToast(
-        setToasts,
-        "Error",
-        errorMessage,
-        "destructive"
-      );
-    } finally {
-      setSubmitting(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to create slot",
+        variant: "destructive",
+      });
     }
   };
 
-  /* BULK SLOT CREATION */
-  const handleBulkCreateSlots = async () => {
-    setFormError("");
-
-    if (!bulkPrice || !bulkSlotDuration) {
-      setFormError("All fields are required");
+  /* BULK GENERATION */
+  const handleBulkGenerate = async () => {
+    if (!bulkStartDate || !bulkEndDate || timeBlocks.length === 0) {
+      toast({
+        title: "Missing fields",
+        description: "Please configure date range and time blocks",
+        variant: "destructive",
+      });
       return;
     }
-
-    const validation = validateTimeSlot(bulkStartTime, bulkEndTime);
-    if (!validation.valid) {
-      setFormError(validation.error!);
-      return;
-    }
-
-    if (Number(bulkPrice) <= 0 || Number(bulkSlotDuration) <= 0 || Number(bulkDays) <= 0) {
-      setFormError("Price, duration, and days must be greater than 0");
-      return;
-    }
-
-    if (Number(bulkDays) > 30) {
-      setFormError("Cannot create slots for more than 30 days at once");
-      return;
-    }
-
-    setSubmitting(true);
-    const durationMinutes = Number(bulkSlotDuration);
-    const dayCount = Number(bulkDays);
-    let createdCount = 0;
-    let failedCount = 0;
 
     try {
-      const startMin = timeToMinutes(bulkStartTime);
-      const endMin = timeToMinutes(bulkEndTime);
+      setLoading(true);
+      const response = await slotService.bulkGenerateSlots({
+        turf_id: turfId!,
+        start_date: bulkStartDate,
+        end_date: bulkEndDate,
+        active_days: activeDays,
+        time_blocks: timeBlocks,
+        slot_duration: slotDuration,
+        conflict_strategy: conflictStrategy,
+      });
 
-      for (let day = 0; day < dayCount; day++) {
-        let currentMin = startMin;
+      toast({
+        title: "✅ Bulk generation complete!",
+        description: `Created ${response.data.created} slots${response.data.skipped > 0 ? `, skipped ${response.data.skipped}` : ""}`,
+      });
 
-        while (currentMin + durationMinutes <= endMin) {
-          const slotStart = minutesToTime(currentMin);
-          const slotEnd = minutesToTime(currentMin + durationMinutes);
-
-          try {
-            await createSlot({
-              turf_id: turfId!,
-              start_time: slotStart,
-              end_time: slotEnd,
-              price: Number(bulkPrice),
-            });
-            createdCount++;
-          } catch (error) {
-            failedCount++;
-          }
-
-          currentMin += durationMinutes;
-        }
-      }
-
-      showToast(
-        setToasts,
-        "Success",
-        `Created ${createdCount} slots${failedCount > 0 ? `, ${failedCount} failed` : ""}`,
-        "success"
-      );
-
-      setBulkMode(false);
-      setBulkPrice("");
-      setFormError("");
       loadSlots();
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to create slots";
-      showToast(
-        setToasts,
-        "Error",
-        errorMessage,
-        "destructive"
-      );
+      setMode("calendar");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to generate slots",
+        variant: "destructive",
+      });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
+  };
+
+  /* TIME BLOCK MANAGEMENT */
+  const addTimeBlock = () => {
+    setTimeBlocks([...timeBlocks, { start: "06:00", end: "23:00", price: 1000, label: "" }]);
+  };
+
+  const removeTimeBlock = (index: number) => {
+    setTimeBlocks(timeBlocks.filter((_, i) => i !== index));
+  };
+
+  const updateTimeBlock = (index: number, field: keyof TimeBlock, value: any) => {
+    const updated = [...timeBlocks];
+    updated[index] = { ...updated[index], [field]: value };
+    setTimeBlocks(updated);
+  };
+
+  /* DAY TOGGLE */
+  const toggleDay = (day: string) => {
+    setActiveDays(prev =>
+      prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day]
+    );
   };
 
   /* EDIT SLOT */
   const handleEditSlot = (slot: Slot) => {
-    setEditingId(slot.id);
-    setEditStartTime(slot.start_time);
-    setEditEndTime(slot.end_time);
-    setEditPrice(String(slot.price));
-    setFormError("");
+    setEditingSlot(slot);
   };
 
   const handleSaveEdit = async () => {
-    setFormError("");
+    if (!editingSlot) return;
 
-    if (!editStartTime || !editEndTime || !editPrice) {
-      setFormError("All fields are required");
-      return;
-    }
-
-    const validation = validateTimeSlot(editStartTime, editEndTime);
-    if (!validation.valid) {
-      setFormError(validation.error!);
-      return;
-    }
-
-    if (checkOverlappingSlots(editStartTime, editEndTime, slots, editingId!)) {
-      setFormError("This time slot overlaps with another slot");
-      return;
-    }
-
-    setSubmitting(true);
     try {
-      await api.put(`/slots/${editingId}`, {
-        start_time: editStartTime,
-        end_time: editEndTime,
-        price: Number(editPrice),
+      await slotService.updateSlot(editingSlot.id, {
+        start_time: editingSlot.start_time,
+        end_time: editingSlot.end_time,
+        price: editingSlot.price,
+        label: editingSlot.label,
       });
 
-      showToast(setToasts, "Success", "Slot updated successfully", "success");
-      setEditingId(null);
-      loadSlots();
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to update slot";
-      showToast(
-        setToasts,
-        "Error",
-        errorMessage,
-        "destructive"
-      );
-    } finally {
-      setSubmitting(false);
-    }
-  };
+      toast({
+        title: "Success",
+        description: "Slot updated successfully",
+      });
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditStartTime("");
-    setEditEndTime("");
-    setEditPrice("");
-    setFormError("");
+      setEditingSlot(null);
+      loadSlots();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to update slot",
+        variant: "destructive",
+      });
+    }
   };
 
   /* DELETE SLOT */
   const handleDeleteSlot = async (slotId: number) => {
-    if (!confirm("Are you sure you want to delete this slot?")) return;
+    if (!confirm("Delete this slot?")) return;
 
     try {
-      await api.delete(`/slots/${slotId}`);
-      showToast(setToasts, "Success", "Slot deleted successfully", "success");
+      await slotService.deleteSlot(slotId);
+      toast({
+        title: "Success",
+        description: "Slot deleted successfully",
+      });
       loadSlots();
-    } catch (error: unknown) {
-      const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete slot";
-      showToast(
-        setToasts,
-        "Error",
-        errorMessage,
-        "destructive"
-      );
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.error || "Failed to delete slot",
+        variant: "destructive",
+      });
     }
   };
 
-  /* GROUP SLOTS BY DATE */
-  const groupedSlots = slots.reduce((acc, slot) => {
-    const key = "All Days"; // Since we don't have date in current schema, group all
-    if (!acc[key]) acc[key] = [];
-    acc[key].push(slot);
-    return acc;
-  }, {} as { [key: string]: Slot[] });
+  /* CALENDAR HELPERS */
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    return { firstDay, daysInMonth };
+  };
+
+  const { firstDay, daysInMonth } = getDaysInMonth(currentMonth);
+  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+
+  /* GET SLOTS FOR DATE */
+  const getSlotsForDate = (date: string) => {
+    return slots.filter(s => s.date === date);
+  };
+
+  const getDaySlots = getSlotsForDate(selectedDate);
+
+  /* PREVIEW COUNT */
+  const calculatePreviewCount = () => {
+    if (!bulkStartDate || !bulkEndDate || timeBlocks.length === 0) return 0;
+
+    const start = new Date(bulkStartDate);
+    const end = new Date(bulkEndDate);
+    const daysDiff = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+
+    let totalSlots = 0;
+    timeBlocks.forEach(block => {
+      const startMin = parseInt(block.start.split(":")[0]) * 60 + parseInt(block.start.split(":")[1]);
+      const endMin = parseInt(block.end.split(":")[0]) * 60 + parseInt(block.end.split(":")[1]);
+      const slotsPerDay = Math.floor((endMin - startMin) / slotDuration);
+      totalSlots += slotsPerDay;
+    });
+
+    return totalSlots * activeDays.length * Math.ceil(daysDiff / 7);
+  };
 
   return (
     <div className="min-h-screen bg-background">
       <Navbar />
 
-      {/* TOASTS */}
-      <div className="fixed top-20 right-4 z-50 space-y-2 max-w-sm">
-        {toasts.map((toast) => {
-          const bgColor =
-            toast.variant === "success"
-              ? "bg-green-600"
-              : toast.variant === "destructive"
-              ? "bg-red-600"
-              : "bg-slate-800";
-
-          return (
-            <div key={toast.id} className={`${bgColor} text-white p-4 rounded-lg shadow-lg animate-slide-down`}>
-              <b className="block mb-1">{toast.title}</b>
-              {toast.description && <p className="text-sm">{toast.description}</p>}
-            </div>
-          );
-        })}
-      </div>
-
-      <main className="pt-24 pb-12 container space-y-8">
-        {/* PAGE HEADER */}
+      <main className="pt-24 pb-12 container space-y-6">
+        {/* HEADER */}
         <div className="space-y-2">
           <button
             onClick={() => navigate(-1)}
-            className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm font-medium mb-4"
+            className="text-primary hover:text-primary/80 flex items-center gap-1 text-sm font-medium"
           >
             ← Back
           </button>
-          <h1 className="text-3xl font-heading font-bold text-foreground">Modify Slots</h1>
-          <p className="text-muted-foreground">Add, edit, and manage time slots for your turf</p>
+          <h1 className="text-3xl font-heading font-bold">Slot Management</h1>
+          <p className="text-muted-foreground">Manage your turf time slots with powerful scheduling tools</p>
         </div>
 
-        {/* ADD SLOT FORM */}
-        {!bulkMode && editingId === null && (
-          <Card variant="glass">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-primary" />
-                  <CardTitle>Modify Slots</CardTitle>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setBulkMode(true)}
-                  className="ml-auto"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Bulk Create
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {formError && (
-                <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-red-600">{formError}</span>
-                </div>
-              )}
+        {/* MODE TABS */}
+        <div className="flex gap-2 border-b border-border pb-2">
+          <Button
+            variant={mode === "calendar" ? "default" : "ghost"}
+            onClick={() => setMode("calendar")}
+            className="flex items-center gap-2"
+          >
+            <CalendarIcon className="w-4 h-4" />
+            Calendar View
+          </Button>
+          <Button
+            variant={mode === "single" ? "default" : "ghost"}
+            onClick={() => setMode("single")}
+            className="flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Add Single Slot
+          </Button>
+          <Button
+            variant={mode === "bulk" ? "default" : "ghost"}
+            onClick={() => setMode("bulk")}
+            className="flex items-center gap-2"
+          >
+            <Zap className="w-4 h-4" />
+            Bulk Generate
+          </Button>
+        </div>
 
-              <div className="grid md:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Time</label>
-                  <Input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => {
-                      setStartTime(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">End Time</label>
-                  <Input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => {
-                      setEndTime(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Price (₹)</label>
-                  <Input
-                    type="number"
-                    placeholder="Price"
-                    value={price}
-                    onChange={(e) => {
-                      setPrice(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div className="flex items-end">
-                  <Button
-                    onClick={handleCreateSlot}
-                    disabled={submitting}
-                    className="w-full gradient-primary"
-                  >
-                    {submitting ? "Saving..." : "Add Slot"}
-                  </Button>
-                </div>
-              </div>
-
-              {startTime && endTime && (
-                <div className="text-xs text-muted-foreground bg-secondary/50 rounded-lg p-3">
-                  Duration: {Math.round((timeToMinutes(endTime) - timeToMinutes(startTime)) / 60 * 10) / 10} hours
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* BULK CREATE FORM */}
-        {bulkMode && editingId === null && (
-          <Card variant="glass" className="border-primary/50">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Plus className="w-5 h-5 text-primary" />
-                  <CardTitle>Bulk Create Slots</CardTitle>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setBulkMode(false);
-                    setFormError("");
-                  }}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {formError && (
-                <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-red-600">{formError}</span>
-                </div>
-              )}
-
-              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
-                <p className="text-xs text-blue-600">
-                  💡 Create multiple slots automatically. For example: Create 1-hour slots from 6 AM to 11 PM for 7 days.
-                </p>
-              </div>
-
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Time</label>
-                  <Input
-                    type="time"
-                    value={bulkStartTime}
-                    onChange={(e) => {
-                      setBulkStartTime(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">End Time</label>
-                  <Input
-                    type="time"
-                    value={bulkEndTime}
-                    onChange={(e) => {
-                      setBulkEndTime(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Slot Duration (min)</label>
-                  <Input
-                    type="number"
-                    placeholder="60"
-                    value={bulkSlotDuration}
-                    onChange={(e) => {
-                      setBulkSlotDuration(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Number of Days</label>
-                  <Input
-                    type="number"
-                    placeholder="1"
-                    value={bulkDays}
-                    onChange={(e) => {
-                      setBulkDays(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Price per Slot (₹)</label>
-                  <Input
-                    type="number"
-                    placeholder="Price"
-                    value={bulkPrice}
-                    onChange={(e) => {
-                      setBulkPrice(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div className="flex items-end gap-2">
-                  <Button
-                    onClick={handleBulkCreateSlots}
-                    disabled={submitting}
-                    className="flex-1 gradient-primary"
-                  >
-                    {submitting ? "Creating..." : "Create Slots"}
-                  </Button>
-                </div>
-              </div>
-
-              {bulkSlotDuration && bulkDays && (
-                <div className="text-xs text-muted-foreground bg-secondary/50 rounded-lg p-3">
-                  Will create approximately{" "}
-                  <span className="font-semibold text-foreground">
-                    {Math.ceil(
-                      ((timeToMinutes(bulkEndTime) - timeToMinutes(bulkStartTime)) / Number(bulkSlotDuration)) *
-                      Number(bulkDays)
-                    )}
-                  </span>{" "}
-                  slots
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
-        {/* EDIT FORM */}
-        {editingId !== null && (
-          <Card variant="glass" className="border-primary/50">
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <Edit2 className="w-5 h-5 text-primary" />
-                <CardTitle>Edit Slot</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {formError && (
-                <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
-                  <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-sm text-red-600">{formError}</span>
-                </div>
-              )}
-
-              <div className="grid md:grid-cols-4 gap-4">
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Start Time</label>
-                  <Input
-                    type="time"
-                    value={editStartTime}
-                    onChange={(e) => {
-                      setEditStartTime(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">End Time</label>
-                  <Input
-                    type="time"
-                    value={editEndTime}
-                    onChange={(e) => {
-                      setEditEndTime(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-xs font-medium text-muted-foreground mb-2 block">Price (₹)</label>
-                  <Input
-                    type="number"
-                    placeholder="Price"
-                    value={editPrice}
-                    onChange={(e) => {
-                      setEditPrice(e.target.value);
-                      setFormError("");
-                    }}
-                    className="h-10"
-                  />
-                </div>
-
-                <div className="flex items-end gap-2">
-                  <Button
-                    onClick={handleSaveEdit}
-                    disabled={submitting}
-                    className="flex-1 gradient-primary"
-                  >
-                    {submitting ? "Saving..." : "Save"}
-                  </Button>
-                  <Button
-                    onClick={handleCancelEdit}
-                    variant="outline"
-                    disabled={submitting}
-                  >
-                    Cancel
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* SLOTS LIST */}
-        <div className="space-y-6">
-          {loading ? (
+        {/* CALENDAR VIEW */}
+        {mode === "calendar" && (
+          <div className="grid lg:grid-cols-[1fr,400px] gap-6">
             <Card variant="glass">
-              <CardContent className="py-12 text-center">
-                <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                <p className="text-muted-foreground">Loading slots...</p>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <CalendarIcon className="w-5 h-5 text-primary" />
+                    {currentMonth.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                  </CardTitle>
+                  <div className="flex gap-2">
+                    <Button variant="outline" size="sm" onClick={prevMonth}>
+                      <ChevronLeft className="w-4 h-4" />
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={nextMonth}>
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-7 gap-2">
+                  {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(day => (
+                    <div key={day} className="text-center text-sm font-semibold text-muted-foreground p-2">
+                      {day}
+                    </div>
+                  ))}
+
+                  {Array.from({ length: firstDay }).map((_, i) => (
+                    <div key={`empty-${i}`} className="p-2" />
+                  ))}
+
+                  {Array.from({ length: daysInMonth }).map((_, i) => {
+                    const day = i + 1;
+                    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                    const daySlots = getSlotsForDate(dateStr);
+                    const hasSlots = daySlots.length > 0;
+                    const isSelected = dateStr === selectedDate;
+
+                    return (
+                      <button
+                        key={day}
+                        onClick={() => {
+                          setSelectedDate(dateStr);
+                          loadSlots(dateStr);
+                        }}
+                        className={`p-2 rounded-lg text-sm font-medium transition-all ${isSelected
+                          ? "bg-primary text-primary-foreground"
+                          : hasSlots
+                            ? "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+                            : "hover:bg-secondary"
+                          }`}
+                      >
+                        <div>{day}</div>
+                        {hasSlots && (
+                          <div className="text-xs mt-1">
+                            {daySlots.length} slot{daySlots.length !== 1 ? "s" : ""}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
               </CardContent>
             </Card>
-          ) : slots.length === 0 ? (
-            <Card variant="glass">
-              <CardContent className="py-12 text-center">
-                <Clock className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
-                <p className="text-muted-foreground">No slots created yet. Add your first slot above!</p>
-              </CardContent>
-            </Card>
-          ) : (
-            Object.entries(groupedSlots).map(([date, dateSlots]) => (
-              <div key={date} className="space-y-3">
-                <h2 className="text-lg font-heading font-semibold text-foreground flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-primary" />
-                  {date}
-                </h2>
 
-                <div className="space-y-2">
-                  {dateSlots.map((slot) => (
+            {/* SELECTED DAY SLOTS */}
+            <Card variant="glass">
+              <CardHeader>
+                <CardTitle className="text-lg">
+                  {new Date(selectedDate).toLocaleDateString("en-US", {
+                    weekday: "long",
+                    month: "short",
+                    day: "numeric",
+                  })}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {loading ? (
+                  <div className="text-center py-8">
+                    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
+                  </div>
+                ) : getDaySlots.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No slots for this day</p>
+                  </div>
+                ) : (
+                  getDaySlots.map(slot => (
                     <div
                       key={slot.id}
-                      className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 rounded-xl border transition-all ${
-                        slot.is_booked
-                          ? "bg-red-500/5 border-red-500/20"
-                          : "bg-green-500/5 border-green-500/20 hover:border-green-500/40"
-                      }`}
+                      className={`p-3 rounded-lg border transition-all ${slot.status === "booked"
+                        ? "bg-red-500/5 border-red-500/20"
+                        : "bg-green-500/5 border-green-500/20 hover:border-green-500/40"
+                        }`}
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div className="flex items-center gap-2 font-semibold text-foreground">
-                            <Clock className="w-4 h-4 text-primary" />
-                            {slot.start_time} <ArrowRight className="w-3 h-3 text-muted-foreground" /> {slot.end_time}
-                          </div>
-                          <Badge
-                            variant={slot.is_booked ? "default" : "outline"}
-                            className={
-                              slot.is_booked
-                                ? "bg-red-500/20 text-red-600 hover:bg-red-500/30"
-                                : "bg-green-500/20 text-green-600 border-green-500/30 hover:bg-green-500/30"
-                            }
-                          >
-                            {slot.is_booked ? "Booked" : "Available"}
-                          </Badge>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2 font-semibold text-sm">
+                          <Clock className="w-4 h-4 text-primary" />
+                          {slot.start_time} <ArrowRight className="w-3 h-3" /> {slot.end_time}
                         </div>
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <IndianRupee className="w-3 h-3" />
-                          {slot.price} per hour
-                        </div>
+                        <Badge
+                          variant={slot.status === "booked" ? "default" : "outline"}
+                          className={
+                            slot.status === "booked"
+                              ? "bg-red-500/20 text-red-600"
+                              : "bg-green-500/20 text-green-600 border-green-500/30"
+                          }
+                        >
+                          {slot.status}
+                        </Badge>
                       </div>
 
-                      <div className="flex items-center gap-2">
-                        {!slot.is_booked && (
-                          <>
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <IndianRupee className="w-3 h-3" />
+                          ₹{slot.price}
+                          {slot.label && <span className="text-xs">• {slot.label}</span>}
+                        </div>
+
+                        {slot.status !== "booked" && (
+                          <div className="flex gap-1">
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => handleEditSlot(slot)}
-                              className="text-primary hover:text-primary hover:bg-primary/10"
+                              className="h-7 w-7 p-0"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-3 h-3" />
                             </Button>
                             <Button
                               size="sm"
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => handleDeleteSlot(slot.id)}
-                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-3 h-3" />
                             </Button>
-                          </>
-                        )}
-                        {slot.is_booked && (
-                          <span className="text-xs text-muted-foreground italic">Cannot edit booked slot</span>
+                          </div>
                         )}
                       </div>
                     </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* SINGLE SLOT MODE */}
+        {mode === "single" && (
+          <Card variant="glass">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Plus className="w-5 h-5 text-primary" />
+                Add Single Slot
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <Label>Date</Label>
+                  <Input
+                    type="date"
+                    value={singleDate}
+                    onChange={e => setSingleDate(e.target.value)}
+                    min={new Date().toISOString().split("T")[0]}
+                  />
+                </div>
+                <div>
+                  <Label>Start Time</Label>
+                  <Input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} />
+                </div>
+                <div>
+                  <Label>End Time</Label>
+                  <Input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} />
+                </div>
+                <div>
+                  <Label>Price (₹)</Label>
+                  <Input type="number" value={price} onChange={e => setPrice(e.target.value)} placeholder="1000" />
+                </div>
+                <div>
+                  <Label>Label (Optional)</Label>
+                  <Input value={label} onChange={e => setLabel(e.target.value)} placeholder="Morning" />
+                </div>
+              </div>
+
+              <Button onClick={handleCreateSingleSlot} className="gradient-primary">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Slot
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* BULK GENERATION MODE */}
+        {mode === "bulk" && (
+          <Card variant="glass" className="border-primary/50">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-primary" />
+                Bulk Slot Generator
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Create multiple slots automatically with recurring schedules
+              </p>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* DATE RANGE */}
+              <div>
+                <Label className="text-base font-semibold mb-3 block">1. Date Range</Label>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div>
+                    <Label className="text-sm">Start Date</Label>
+                    <Input
+                      type="date"
+                      value={bulkStartDate}
+                      onChange={e => setBulkStartDate(e.target.value)}
+                      min={new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                  <div>
+                    <Label className="text-sm">End Date</Label>
+                    <Input
+                      type="date"
+                      value={bulkEndDate}
+                      onChange={e => setBulkEndDate(e.target.value)}
+                      min={bulkStartDate || new Date().toISOString().split("T")[0]}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* ACTIVE DAYS */}
+              <div>
+                <Label className="text-base font-semibold mb-3 block">2. Active Days</Label>
+                <div className="flex gap-2 flex-wrap">
+                  {WEEKDAYS.map(({ value, label }) => (
+                    <Button
+                      key={value}
+                      variant={activeDays.includes(value) ? "default" : "outline"}
+                      size="sm"
+                      onClick={() => toggleDay(value)}
+                      className={activeDays.includes(value) ? "gradient-primary" : ""}
+                    >
+                      {label}
+                    </Button>
                   ))}
                 </div>
               </div>
-            ))
-          )}
-        </div>
 
-        {/* SUMMARY */}
-        {slots.length > 0 && (
-          <Card variant="glass">
-            <CardContent className="py-6">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">{slots.length}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Total Slots</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">{slots.filter((s) => !s.is_booked).length}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Available</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-red-600">{slots.filter((s) => s.is_booked).length}</div>
-                  <div className="text-xs text-muted-foreground mt-1">Booked</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">
-                    ₹{slots.reduce((sum, s) => sum + s.price, 0) / slots.length}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-1">Avg Price</div>
+              {/* TIME BLOCKS */}
+              <div>
+                <Label className="text-base font-semibold mb-3 block">3. Time Blocks & Pricing</Label>
+                <div className="space-y-3">
+                  {timeBlocks.map((block, index) => (
+                    <div key={index} className="flex gap-3 items-end p-3 bg-secondary/30 rounded-lg">
+                      <div className="flex-1 grid grid-cols-4 gap-3">
+                        <div>
+                          <Label className="text-xs">Start</Label>
+                          <Input
+                            type="time"
+                            value={block.start}
+                            onChange={e => updateTimeBlock(index, "start", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">End</Label>
+                          <Input
+                            type="time"
+                            value={block.end}
+                            onChange={e => updateTimeBlock(index, "end", e.target.value)}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Price (₹)</Label>
+                          <Input
+                            type="number"
+                            value={block.price}
+                            onChange={e => updateTimeBlock(index, "price", Number(e.target.value))}
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">Label</Label>
+                          <Input
+                            value={block.label || ""}
+                            onChange={e => updateTimeBlock(index, "label", e.target.value)}
+                            placeholder="Morning"
+                          />
+                        </div>
+                      </div>
+                      {timeBlocks.length > 1 && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => removeTimeBlock(index)}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={addTimeBlock}>
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Time Block
+                  </Button>
                 </div>
               </div>
+
+              {/* SLOT DURATION */}
+              <div>
+                <Label className="text-base font-semibold mb-3 block">4. Slot Duration</Label>
+                <select
+                  className="w-full border border-border rounded-md p-2 bg-background"
+                  value={slotDuration}
+                  onChange={e => setSlotDuration(Number(e.target.value))}
+                >
+                  <option value={30}>30 minutes</option>
+                  <option value={60}>60 minutes (1 hour)</option>
+                  <option value={90}>90 minutes (1.5 hours)</option>
+                  <option value={120}>120 minutes (2 hours)</option>
+                </select>
+              </div>
+
+              {/* CONFLICT STRATEGY */}
+              <div>
+                <Label className="text-base font-semibold mb-3 block">5. Conflict Strategy</Label>
+                <select
+                  className="w-full border border-border rounded-md p-2 bg-background"
+                  value={conflictStrategy}
+                  onChange={e => setConflictStrategy(e.target.value as any)}
+                >
+                  <option value="skip">Skip - Don't create overlapping slots (Safe)</option>
+                  <option value="overwrite">Overwrite - Replace existing slots</option>
+                  <option value="fill_gaps">Fill Gaps - Only add where missing</option>
+                </select>
+              </div>
+
+              {/* PREVIEW */}
+              <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4">
+                <div className="flex items-start gap-3">
+                  <AlertCircle className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold text-blue-600">Preview</p>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Will create approximately <span className="font-bold text-foreground">{calculatePreviewCount()}</span> slots
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* GENERATE BUTTON */}
+              <Button
+                onClick={handleBulkGenerate}
+                disabled={loading}
+                className="w-full gradient-primary"
+                size="lg"
+              >
+                {loading ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="w-4 h-4 mr-2" />
+                    Generate Slots
+                  </>
+                )}
+              </Button>
             </CardContent>
           </Card>
+        )}
+
+        {/* EDIT MODAL */}
+        {editingSlot && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="w-full max-w-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Edit2 className="w-5 h-5" />
+                  Edit Slot
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Start Time</Label>
+                    <Input
+                      type="time"
+                      value={editingSlot.start_time}
+                      onChange={e => setEditingSlot({ ...editingSlot, start_time: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>End Time</Label>
+                    <Input
+                      type="time"
+                      value={editingSlot.end_time}
+                      onChange={e => setEditingSlot({ ...editingSlot, end_time: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Price (₹)</Label>
+                  <Input
+                    type="number"
+                    value={editingSlot.price}
+                    onChange={e => setEditingSlot({ ...editingSlot, price: Number(e.target.value) })}
+                  />
+                </div>
+                <div>
+                  <Label>Label (Optional)</Label>
+                  <Input
+                    value={editingSlot.label || ""}
+                    onChange={e => setEditingSlot({ ...editingSlot, label: e.target.value })}
+                    placeholder="Morning"
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setEditingSlot(null)} className="flex-1">
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveEdit} className="flex-1 gradient-primary">
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
         )}
       </main>
 

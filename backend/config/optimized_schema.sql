@@ -86,6 +86,10 @@ CREATE TABLE IF NOT EXISTS turfs (
   rating numeric(3,2) DEFAULT 0, -- Average rating (computed)
   reviews_count integer DEFAULT 0, -- Total reviews (computed)
   owner_phone text, -- Contact number for turf
+  google_maps_link text, -- Full Google Maps share link
+  latitude numeric(10,8), -- Latitude coordinate (-90 to 90)
+  longitude numeric(11,8), -- Longitude coordinate (-180 to 180)
+  formatted_address text, -- Full formatted address from Google Maps
   is_active boolean DEFAULT true,
   created_at timestamptz DEFAULT now()
 );
@@ -95,6 +99,7 @@ CREATE INDEX IF NOT EXISTS idx_turfs_name ON turfs(name);
 CREATE INDEX IF NOT EXISTS idx_turfs_location ON turfs(location);
 CREATE INDEX IF NOT EXISTS idx_turfs_is_active ON turfs(is_active);
 CREATE INDEX IF NOT EXISTS idx_turfs_owner_id ON turfs(owner_id);
+CREATE INDEX IF NOT EXISTS idx_turfs_coordinates ON turfs(latitude, longitude); -- Geospatial queries
 
 -- ============================================
 -- 5. SLOTS TABLE
@@ -198,7 +203,58 @@ CREATE INDEX IF NOT EXISTS idx_reviews_turf ON reviews(turf_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_user ON reviews(user_id);
 
 -- ============================================
--- 10. TOURNAMENTS TABLE
+-- 10. TURF_COMMENTS TABLE
+-- Text comments on turf detail pages
+-- ============================================
+CREATE TABLE IF NOT EXISTS turf_comments (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  turf_id uuid NOT NULL REFERENCES turfs(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  comment text NOT NULL CHECK (length(comment) <= 3000),
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_turf_comments_turf ON turf_comments(turf_id);
+CREATE INDEX IF NOT EXISTS idx_turf_comments_user ON turf_comments(user_id);
+CREATE INDEX IF NOT EXISTS idx_turf_comments_created_at ON turf_comments(created_at DESC);
+
+-- ============================================
+-- 11. TURF_GALLERY TABLE
+-- Additional turf images beyond main images array
+-- ============================================
+CREATE TABLE IF NOT EXISTS turf_gallery (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  turf_id uuid NOT NULL REFERENCES turfs(id) ON DELETE CASCADE,
+  image_url text NOT NULL,
+  display_order integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_turf_gallery_turf ON turf_gallery(turf_id);
+CREATE INDEX IF NOT EXISTS idx_turf_gallery_display_order ON turf_gallery(display_order);
+
+-- ============================================
+-- 12. TURF_TESTIMONIALS TABLE
+-- Video/text testimonials from users
+-- ============================================
+CREATE TABLE IF NOT EXISTS turf_testimonials (
+  id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+  turf_id uuid NOT NULL REFERENCES turfs(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES users(id),
+  type text NOT NULL CHECK (type IN ('text', 'video')),
+  content text, -- For text testimonials
+  video_url text, -- For video testimonials
+  is_featured boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_turf_testimonials_turf ON turf_testimonials(turf_id);
+CREATE INDEX IF NOT EXISTS idx_turf_testimonials_user ON turf_testimonials(user_id);
+CREATE INDEX IF NOT EXISTS idx_turf_testimonials_featured ON turf_testimonials(is_featured);
+
+-- ============================================
+-- 13. TOURNAMENTS TABLE
 -- Sports tournaments hosted at turfs
 -- ============================================
 CREATE TABLE IF NOT EXISTS tournaments (
@@ -228,7 +284,7 @@ CREATE INDEX IF NOT EXISTS idx_tournaments_date ON tournaments(date);
 CREATE INDEX IF NOT EXISTS idx_tournaments_city ON tournaments(city);
 
 -- ============================================
--- 11. TOURNAMENT PARTICIPANTS TABLE
+-- 14. TOURNAMENT PARTICIPANTS TABLE
 -- Team registrations for tournaments
 -- ============================================
 CREATE TABLE IF NOT EXISTS tournament_participants (
@@ -250,7 +306,7 @@ CREATE INDEX IF NOT EXISTS idx_tournament_participants_user ON tournament_partic
 CREATE INDEX IF NOT EXISTS idx_tournament_participants_status ON tournament_participants(status);
 
 -- ============================================
--- 12. CHATS TABLE
+-- 15. CHATS TABLE
 -- Player ↔ Turf Owner chat threads
 -- ============================================
 CREATE TABLE IF NOT EXISTS chats (
@@ -272,7 +328,7 @@ CREATE INDEX IF NOT EXISTS idx_chats_owner ON chats(owner_id);
 CREATE INDEX IF NOT EXISTS idx_chats_player ON chats(player_id);
 
 -- ============================================
--- 13. MESSAGES TABLE
+-- 16. MESSAGES TABLE
 -- Individual chat messages
 -- ============================================
 CREATE TABLE IF NOT EXISTS messages (
@@ -288,7 +344,7 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat ON messages(chat_id);
 CREATE INDEX IF NOT EXISTS idx_messages_sender ON messages(sender_id);
 
 -- ============================================
--- 14. EARNINGS TABLE
+-- 17. EARNINGS TABLE
 -- Revenue tracking for owners and admin
 -- ============================================
 CREATE TABLE IF NOT EXISTS earnings (
@@ -303,7 +359,7 @@ CREATE TABLE IF NOT EXISTS earnings (
 CREATE INDEX IF NOT EXISTS idx_earnings_entity ON earnings(entity_id, entity_type);
 
 -- ============================================
--- 15. CONTACT MESSAGES TABLE
+-- 18. CONTACT MESSAGES TABLE
 -- Contact form submissions
 -- ============================================
 CREATE TABLE IF NOT EXISTS contact_messages (
@@ -392,6 +448,9 @@ COMMENT ON TABLE bookings IS 'Turf booking records with payment tracking';
 COMMENT ON TABLE booking_verification_codes IS '6-digit verification codes for entry confirmation';
 COMMENT ON TABLE payments IS 'Razorpay payment transaction records';
 COMMENT ON TABLE reviews IS 'User reviews and ratings for turfs';
+COMMENT ON TABLE turf_comments IS 'Text comments on turf detail pages (max 3000 chars)';
+COMMENT ON TABLE turf_gallery IS 'Additional turf images beyond main images array';
+COMMENT ON TABLE turf_testimonials IS 'Video and text testimonials from users';
 COMMENT ON TABLE tournaments IS 'Sports tournaments hosted at turfs';
 COMMENT ON TABLE tournament_participants IS 'Team registrations for tournaments';
 COMMENT ON TABLE chats IS 'Chat threads between players and turf owners';

@@ -731,7 +731,7 @@ const TurfDetailPage = () => {
                               {c.users?.name || "User"}
                               {c.created_at && (
                                 <span className="ml-2 opacity-70">
-                                   b7 {new Date(c.created_at).toLocaleString()}
+                                  b7 {new Date(c.created_at).toLocaleString()}
                                 </span>
                               )}
                             </p>
@@ -779,37 +779,100 @@ const TurfDetailPage = () => {
                   </CardHeader>
                   <CardContent>
                     <div className="w-full h-[400px] rounded-lg overflow-hidden">
-                      {(turf as any).google_maps_link ? (
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                          src={(turf as any).google_maps_link.replace('/view', '/embed')}
-                        />
-                      ) : turf.latitude && turf.longitude ? (
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://maps.google.com/maps?q=${turf.latitude},${turf.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                        />
-                      ) : (
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://maps.google.com/maps?q=${encodeURIComponent(turf.location)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
-                        />
-                      )}
+                      {(() => {
+                        // Priority 1: Use latitude/longitude if available (most reliable)
+                        if (turf.latitude && turf.longitude) {
+                          return (
+                            <iframe
+                              width="100%"
+                              height="100%"
+                              style={{ border: 0 }}
+                              loading="lazy"
+                              allowFullScreen
+                              referrerPolicy="no-referrer-when-downgrade"
+                              src={`https://maps.google.com/maps?q=${turf.latitude},${turf.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                            />
+                          );
+                        }
+
+                        // Priority 2: Try to extract coords from google_maps_link
+                        if ((turf as any).google_maps_link) {
+                          const link = (turf as any).google_maps_link;
+                          console.log('🔍 Attempting to extract coordinates from:', link);
+
+                          // Try to extract coordinates from the link
+                          const coordMatch = link.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                          const qMatch = link.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                          const dMatch3 = link.match(/!3d(-?\d+\.?\d*)/);
+                          const dMatch4 = link.match(/!4d(-?\d+\.?\d*)/);
+
+                          if (coordMatch) {
+                            const lat = coordMatch[1];
+                            const lng = coordMatch[2];
+                            console.log('✅ Extracted from @ pattern:', lat, lng);
+                            return (
+                              <iframe
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                loading="lazy"
+                                allowFullScreen
+                                referrerPolicy="no-referrer-when-downgrade"
+                                src={`https://maps.google.com/maps?q=${lat},${lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                              />
+                            );
+                          } else if (qMatch) {
+                            const lat = qMatch[1];
+                            const lng = qMatch[2];
+                            console.log('✅ Extracted from ?q pattern:', lat, lng);
+                            return (
+                              <iframe
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                loading="lazy"
+                                allowFullScreen
+                                referrerPolicy="no-referrer-when-downgrade"
+                                src={`https://maps.google.com/maps?q=${lat},${lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                              />
+                            );
+                          } else if (dMatch3 && dMatch4) {
+                            const lat = dMatch3[1];
+                            const lng = dMatch4[1];
+                            console.log('✅ Extracted from !3d/!4d pattern:', lat, lng);
+                            return (
+                              <iframe
+                                width="100%"
+                                height="100%"
+                                style={{ border: 0 }}
+                                loading="lazy"
+                                allowFullScreen
+                                referrerPolicy="no-referrer-when-downgrade"
+                                src={`https://maps.google.com/maps?q=${lat},${lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                              />
+                            );
+                          } else {
+                            console.warn('⚠️ Could not extract coordinates from link, falling back to location search');
+                          }
+                        }
+
+                        // Priority 3: Fallback to location text search
+                        if (turf.location) {
+                          return (
+                            <iframe
+                              width="100%"
+                              height="100%"
+                              style={{ border: 0 }}
+                              loading="lazy"
+                              allowFullScreen
+                              referrerPolicy="no-referrer-when-downgrade"
+                              src={`https://maps.google.com/maps?q=${encodeURIComponent(turf.location)}&t=&z=13&ie=UTF8&iwloc=&output=embed`}
+                            />
+                          );
+                        }
+
+                        return null;
+                      })()}
                     </div>
                     <p className="text-sm text-muted-foreground mt-2 flex items-center gap-2">
                       <MapPin className="w-4 h-4" />

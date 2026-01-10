@@ -18,8 +18,10 @@ import {
   Save,
   X,
   TrendingUp,
+  BarChart3,
 } from "lucide-react";
 import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
+import TurfAnalytics from "@/components/analytics/TurfAnalytics";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
@@ -54,7 +56,8 @@ const ClientDashboard = () => {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
-  const [activeSection, setActiveSection] = useState<"turfs" | "tournaments" | "bookings">("turfs");
+  const [activeSection, setActiveSection] = useState<"turfs" | "tournaments" | "bookings" | "analytics">("turfs");
+  const [selectedTurf, setSelectedTurf] = useState<Turf | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState<Booking[]>([]);
 
@@ -406,6 +409,16 @@ const ClientDashboard = () => {
                 >
                   Recent Bookings
                 </button>
+                <button
+                  className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${activeSection === "analytics"
+                      ? "text-primary border-b-2 border-primary"
+                      : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  onClick={() => setActiveSection("analytics")}
+                >
+                  <BarChart3 className="w-4 h-4" />
+                  Analytics
+                </button>
               </div>
 
               {/* CONTENT SECTIONS */}
@@ -426,7 +439,15 @@ const ClientDashboard = () => {
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {turfs.map((turf) => (
-                      <Card key={turf.id} variant="glass" className="relative">
+                      <Card
+                        key={turf.id}
+                        variant="glass"
+                        className={`relative cursor-pointer transition-all ${selectedTurf?.id === turf.id ? 'ring-2 ring-primary' : ''}`}
+                        onClick={() => {
+                          setSelectedTurf(turf);
+                          setActiveSection("analytics");
+                        }}
+                      >
                         <CardContent className="p-5 space-y-4">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
@@ -457,13 +478,14 @@ const ClientDashboard = () => {
                             ₹{turf.price_per_slot} / slot
                           </div>
 
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <Button
                               variant="outline"
                               className="flex-1"
-                              onClick={() =>
-                                navigate(`/client/turfs/${turf.id}/slots`)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/client/turfs/${turf.id}/slots`);
+                              }}
                             >
                               <Clock className="w-4 h-4 mr-2" />
                               Slots
@@ -471,11 +493,40 @@ const ClientDashboard = () => {
 
                             <Button
                               className="flex-1 gradient-primary text-xs"
-                              onClick={() =>
-                                navigate(`/client/add-tournament?turf_id=${turf.id}`)
-                              }
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/client/add-tournament?turf_id=${turf.id}`);
+                              }}
                             >
                               + Tournament
+                            </Button>
+
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="w-10 px-0"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!confirm(`Are you sure you want to delete "${turf.name}"? This action cannot be undone.`)) return;
+                                try {
+                                  await api.delete(`/turfs/${turf.id}`);
+                                  setTurfs(prev => prev.filter(t => t.id !== turf.id));
+                                  if (selectedTurf?.id === turf.id) setSelectedTurf(null);
+                                  toast({
+                                    title: "Turf deleted",
+                                    description: `${turf.name} has been removed successfully.`,
+                                  });
+                                } catch (e: unknown) {
+                                  const errorMessage = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete turf";
+                                  toast({
+                                    title: "Unable to delete turf",
+                                    description: errorMessage,
+                                    variant: "destructive",
+                                  });
+                                }
+                              }}
+                            >
+                              X
                             </Button>
                           </div>
                         </CardContent>
@@ -618,6 +669,45 @@ const ClientDashboard = () => {
                       </Card>
                     ))}
                   </div>
+                </>
+              )}
+
+              {activeSection === "analytics" && (
+                <>
+                  {!selectedTurf ? (
+                    <Card variant="glass" className="p-10 text-center">
+                      <BarChart3 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
+                      <h3 className="text-lg font-bold mb-2">No Turf Selected</h3>
+                      <p className="text-muted-foreground mb-4">
+                        Click on a turf card to view its analytics
+                      </p>
+                      <Button onClick={() => setActiveSection("turfs")}>
+                        View My Turfs
+                      </Button>
+                    </Card>
+                  ) : (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-bold">{selectedTurf.name}</h2>
+                          <p className="text-muted-foreground flex items-center gap-2 mt-1">
+                            <MapPin className="w-4 h-4" />
+                            {selectedTurf.location}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          onClick={() => setSelectedTurf(null)}
+                        >
+                          Clear Selection
+                        </Button>
+                      </div>
+                      <TurfAnalytics
+                        turfId={String(selectedTurf.id)}
+                        turfName={selectedTurf.name}
+                      />
+                    </div>
+                  )}
                 </>
               )}
             </div>

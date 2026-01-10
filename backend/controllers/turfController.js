@@ -12,6 +12,7 @@ exports.createTurf = async (req, res) => {
       price_per_slot,
       facilities,
       images,
+      google_maps_link,
     } = req.body;
 
     const owner_id = req.user.id;
@@ -29,20 +30,67 @@ exports.createTurf = async (req, res) => {
         ? images.split(",").map((s) => s.trim())
         : [];
 
+    // ✅ Extract coordinates from Google Maps link if provided
+    let latitude = null;
+    let longitude = null;
+    let formatted_address = null;
+
+    if (google_maps_link) {
+      try {
+        // Extract coordinates from various Google Maps URL formats
+        const coordMatch = google_maps_link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        const placeMatch = google_maps_link.match(/place\/([^/]+)\/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+        const qMatch = google_maps_link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+
+        if (coordMatch) {
+          latitude = parseFloat(coordMatch[1]);
+          longitude = parseFloat(coordMatch[2]);
+        } else if (placeMatch) {
+          formatted_address = decodeURIComponent(placeMatch[1].replace(/\+/g, ' '));
+          latitude = parseFloat(placeMatch[2]);
+          longitude = parseFloat(placeMatch[3]);
+        } else if (qMatch) {
+          latitude = parseFloat(qMatch[1]);
+          longitude = parseFloat(qMatch[2]);
+        }
+
+        console.log(`📍 Extracted coordinates: lat=${latitude}, lng=${longitude}`);
+        if (formatted_address) {
+          console.log(`📍 Extracted address: ${formatted_address}`);
+        }
+      } catch (err) {
+        console.warn("⚠️ Failed to extract coordinates from Google Maps link:", err);
+        // Continue without coordinates - not a fatal error
+      }
+    }
+
+    // Build the turf data object
+    const turfData = {
+      owner_id,
+      name,
+      location,
+      description,
+      price_per_slot: Number(price_per_slot),
+      facilities,
+      images: imageArray,
+      is_active: true,
+    };
+
+    // Add Google Maps fields only if they exist
+    if (google_maps_link) {
+      turfData.google_maps_link = google_maps_link;
+    }
+    if (latitude !== null && longitude !== null) {
+      turfData.latitude = latitude;
+      turfData.longitude = longitude;
+    }
+    if (formatted_address) {
+      turfData.formatted_address = formatted_address;
+    }
+
     const { data, error } = await supabase
       .from("turfs")
-      .insert([
-        {
-          owner_id,
-          name,
-          location,
-          description,
-          price_per_slot: Number(price_per_slot),
-          facilities,
-          images: imageArray, // ✅ CLEAN ARRAY
-          is_active: true,
-        },
-      ])
+      .insert([turfData])
       .select()
       .single();
 
@@ -51,6 +99,7 @@ exports.createTurf = async (req, res) => {
       return res.status(400).json({ error: error.message });
     }
 
+    console.log("✅ Turf created successfully with ID:", data.id);
     res.status(201).json(data);
   } catch (err) {
     console.error("Create turf crash:", err);
@@ -426,6 +475,58 @@ exports.deleteTurfComment = async (req, res) => {
 };
 
 /* =======================
+   DELETE TURF
+   - Only owner can delete their own turf
+======================= */
+exports.deleteTurf = async (req, res) => {
+  try {
+    const turfId = req.params.id;
+    const ownerId = req.user.id;
+
+    if (!turfId) {
+      return res.status(400).json({ error: "Turf ID is required" });
+    }
+
+    // First, verify that this turf belongs to the requesting user
+    const { data: turf, error: fetchError } = await supabase
+      .from("turfs")
+      .select("id, owner_id, name")
+      .eq("id", turfId)
+      .single();
+
+    if (fetchError || !turf) {
+      return res.status(404).json({ error: "Turf not found" });
+    }
+
+    // Check ownership
+    if (turf.owner_id !== ownerId) {
+      return res.status(403).json({ error: "You don't have permission to delete this turf" });
+    }
+
+    // Delete the turf (CASCADE will handle related records)
+    const { error: deleteError } = await supabase
+      .from("turfs")
+      .delete()
+      .eq("id", turfId);
+
+    if (deleteError) {
+      console.error("[deleteTurf] Delete error:", deleteError);
+      return res.status(400).json({ error: deleteError.message });
+    }
+
+    console.log(`✅ Turf deleted: ${turf.name} (ID: ${turfId})`);
+    res.json({
+      message: "Turf deleted successfully",
+      turf_id: turfId,
+      turf_name: turf.name
+    });
+  } catch (err) {
+    console.error("[deleteTurf] Unexpected error:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
+/* =======================
    UPLOAD TURF IMAGES
 ======================= */
 exports.uploadTurfImages = async (req, res) => {
@@ -447,3 +548,4 @@ exports.uploadTurfImages = async (req, res) => {
     res.status(500).json({ error: "Failed to upload images" });
   }
 };
+

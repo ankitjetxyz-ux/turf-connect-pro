@@ -233,20 +233,40 @@ const AddTurfPage = () => {
                         <span className="text-sm font-medium text-foreground">Location Preview</span>
                       </div>
                       <div className="w-full h-[400px] bg-secondary/20">
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                          src={
-                            form.google_maps_link.includes('/maps/place/') || form.google_maps_link.includes('google.com/maps')
-                              ? form.google_maps_link.replace('/view', '/embed')
-                              : `https://maps.google.com/maps?q=${encodeURIComponent(form.google_maps_link)}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+                        {(() => {
+                          const link = form.google_maps_link;
+                          let embedUrl = '';
+
+                          // Try to extract coordinates from the link
+                          const coordMatch = link.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                          const qMatch = link.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
+                          const dMatch3 = link.match(/!3d(-?\d+\.?\d*)/);
+                          const dMatch4 = link.match(/!4d(-?\d+\.?\d*)/);
+
+                          if (coordMatch) {
+                            embedUrl = `https://maps.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                          } else if (qMatch) {
+                            embedUrl = `https://maps.google.com/maps?q=${qMatch[1]},${qMatch[2]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                          } else if (dMatch3 && dMatch4) {
+                            embedUrl = `https://maps.google.com/maps?q=${dMatch3[1]},${dMatch4[1]}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+                          } else {
+                            // Fallback: treat the entire link as a location search
+                            embedUrl = `https://maps.google.com/maps?q=${encodeURIComponent(link)}&t=&z=13&ie=UTF8&iwloc=&output=embed`;
                           }
-                          title="Turf Location Map"
-                        />
+
+                          return (
+                            <iframe
+                              width="100%"
+                              height="100%"
+                              style={{ border: 0 }}
+                              loading="lazy"
+                              allowFullScreen
+                              referrerPolicy="no-referrer-when-downgrade"
+                              src={embedUrl}
+                              title="Turf Location Map"
+                            />
+                          );
+                        })()}
                       </div>
                       <div className="bg-secondary/50 px-3 py-2 text-xs text-muted-foreground border-t border-white/10">
                         This map will help users locate your turf easily

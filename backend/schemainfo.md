@@ -86,7 +86,7 @@ This document describes the **optimized production schema** for Turf Connect Pro
 - `id` (UUID, PK) – Turf ID
 - `owner_id` (UUID, FK → users) – Turf owner
 - `name` (text) – Turf name
-- `location` (text) – Address/location
+- `location` (text) – Address/location (city/district for filtering)
 - `description` (text) – Turf description
 - `price_per_slot` (numeric) – Base pricing per slot
 - `facilities` (text) – Amenities/facilities
@@ -94,12 +94,19 @@ This document describes the **optimized production schema** for Turf Connect Pro
 - `rating` (numeric) – **Computed:** Average rating (auto-updated via trigger)
 - `reviews_count` (integer) – **Computed:** Total reviews (auto-updated via trigger)
 - `owner_phone` (text) – Contact number
+- `google_maps_link` (text) – Full Google Maps share link provided by turf owner
+- `latitude` (numeric) – Latitude coordinate for exact location (-90 to 90)
+- `longitude` (numeric) – Longitude coordinate for exact location (-180 to 180)
+- `formatted_address` (text) – Full formatted address extracted from Google Maps
 - `is_active` (boolean) – Availability status
 - `created_at` (timestamptz) – Turf listing date
 
-**Indexes:** `name`, `location`, `is_active`, `owner_id`
+**Indexes:** `name`, `location`, `is_active`, `owner_id`, `(latitude, longitude)`
 
-**Note:** `rating` and `reviews_count` are automatically updated when reviews are added.
+**Note:** 
+- `rating` and `reviews_count` are automatically updated when reviews are added.
+- `google_maps_link`, `latitude`, `longitude`, and `formatted_address` enable precise location mapping.
+- Backend automatically extracts coordinates from Google Maps links when provided.
 
 ---
 

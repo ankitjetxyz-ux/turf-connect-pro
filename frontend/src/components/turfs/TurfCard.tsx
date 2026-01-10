@@ -40,20 +40,20 @@ const TurfCard = ({
 }: TurfCardProps) => {
   const [isLiked, setIsLiked] = useState(false);
   const [showFullAddress, setShowFullAddress] = useState(false);
-  
+
   // Truncate address if too long (max 50 chars by default)
   const maxAddressLength = 50;
   const shouldTruncate = location.length > maxAddressLength;
-  const displayAddress = shouldTruncate && !showFullAddress 
-    ? `${location.substring(0, maxAddressLength)}...` 
+  const displayAddress = shouldTruncate && !showFullAddress
+    ? `${location.substring(0, maxAddressLength)}...`
     : location;
 
   return (
     <Card
       variant={featured ? "featured" : "interactive"}
-      className="group overflow-hidden hover-lift glass-card"
+      className="group overflow-hidden hover-lift glass-card h-full flex flex-col"
     >
-      <div className="relative aspect-[4/3] overflow-hidden">
+      <div className="relative aspect-[4/3] overflow-hidden shrink-0">
         <img
           src={image}
           alt={name}
@@ -97,36 +97,16 @@ const TurfCard = ({
         </div>
       </div>
 
-      <CardContent className="p-5 space-y-4">
-        <div>
-          <h3 className="font-bold text-lg line-clamp-1 mb-2">{name}</h3>
-          
-          {/* Address with expand/collapse + map link */}
-          <div className="space-y-1">
+      <CardContent className="p-5 flex flex-col flex-1">
+        <div className="flex-1 space-y-3">
+          <h3 className="font-bold text-lg line-clamp-1">{name}</h3>
+
+          {/* Address - Fixed height container */}
+          <div className="min-h-[60px]">
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
               <MapPin className="w-4 h-4 text-primary/70 mt-0.5 shrink-0" />
               <div className="flex-1">
-                <span>{displayAddress}</span>
-                {shouldTruncate && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setShowFullAddress(!showFullAddress);
-                    }}
-                    className="ml-2 text-primary hover:underline inline-flex items-center gap-1 text-xs font-medium"
-                  >
-                    {showFullAddress ? (
-                      <>
-                        See less <ChevronUp className="w-3 h-3" />
-                      </>
-                    ) : (
-                      <>
-                        See more <ChevronDown className="w-3 h-3" />
-                      </>
-                    )}
-                  </button>
-                )}
+                <span className="line-clamp-2">{location}</span>
                 <button
                   onClick={(e) => {
                     e.preventDefault();
@@ -142,7 +122,7 @@ const TurfCard = ({
 
             {/* Contact Number */}
             {ownerPhone && (
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+              <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
                 <Phone className="w-4 h-4 text-primary/70 shrink-0" />
                 <a
                   href={`tel:${ownerPhone}`}
@@ -154,29 +134,30 @@ const TurfCard = ({
               </div>
             )}
           </div>
+
+          {/* Sports badges - Fixed height */}
+          <div className="flex flex-wrap gap-2 min-h-[28px]">
+            {sports.slice(0, 3).map((sport) => (
+              <Badge key={sport} variant="secondary" className="text-xs">
+                {sport}
+              </Badge>
+            ))}
+            {sports.length > 3 && (
+              <Badge variant="outline" className="text-xs">
+                +{sports.length - 3} more
+              </Badge>
+            )}
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>Tournaments: {tournamentsHosted}</span>
+            <span>Matches: {matchesPlayed}</span>
+          </div>
         </div>
 
-        {/* Rating is shown once in the top-left badge; no secondary rating block here */}
-
-        <div className="flex flex-wrap gap-2">
-          {sports.slice(0, 3).map((sport) => (
-            <Badge key={sport} variant="secondary" className="text-xs">
-              {sport}
-            </Badge>
-          ))}
-          {sports.length > 3 && (
-            <Badge variant="outline" className="text-xs">
-              +{sports.length - 3} more
-            </Badge>
-          )}
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-          <span>Tournaments: {tournamentsHosted}</span>
-          <span>Matches: {matchesPlayed}</span>
-        </div>
-
-        <div className="flex items-center justify-between pt-3 border-t">
+        {/* Bottom section - always at bottom */}
+        <div className="flex items-center justify-between pt-3 border-t mt-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />
             {availableSlots} slots available
