@@ -75,10 +75,10 @@ const AddTurfPage = () => {
   const removeImage = (index: number) => {
     const newFiles = imageFiles.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
-    
+
     // Revoke old preview URL
     URL.revokeObjectURL(imagePreviews[index]);
-    
+
     setImageFiles(newFiles);
     setImagePreviews(newPreviews);
   };
@@ -224,6 +224,35 @@ const AddTurfPage = () => {
                   <p className="text-xs text-muted-foreground mt-1">
                     Paste the full Google Maps URL for your turf location
                   </p>
+
+                  {/* Map Preview */}
+                  {form.google_maps_link && (
+                    <div className="mt-4 rounded-lg overflow-hidden border border-white/10">
+                      <div className="bg-secondary/50 px-3 py-2 flex items-center gap-2 border-b border-white/10">
+                        <MapPin className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium text-foreground">Location Preview</span>
+                      </div>
+                      <div className="w-full h-[400px] bg-secondary/20">
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={
+                            form.google_maps_link.includes('/maps/place/') || form.google_maps_link.includes('google.com/maps')
+                              ? form.google_maps_link.replace('/view', '/embed')
+                              : `https://maps.google.com/maps?q=${encodeURIComponent(form.google_maps_link)}&t=&z=15&ie=UTF8&iwloc=&output=embed`
+                          }
+                          title="Turf Location Map"
+                        />
+                      </div>
+                      <div className="bg-secondary/50 px-3 py-2 text-xs text-muted-foreground border-t border-white/10">
+                        This map will help users locate your turf easily
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -272,7 +301,7 @@ const AddTurfPage = () => {
                   <label className="text-sm text-muted-foreground mb-2 block">
                     Turf Images
                   </label>
-                  
+
                   {/* File Upload */}
                   <div className="mb-4">
                     <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-white/20 rounded-lg cursor-pointer bg-secondary/20 hover:bg-secondary/30 transition-colors">
@@ -337,11 +366,11 @@ const AddTurfPage = () => {
                   className="w-full gradient-primary shadow-glow"
                   disabled={loading || uploadingImages}
                 >
-                  {uploadingImages 
-                    ? "Uploading Images..." 
-                    : loading 
-                    ? "Creating Turf..." 
-                    : "Create Turf"}
+                  {uploadingImages
+                    ? "Uploading Images..."
+                    : loading
+                      ? "Creating Turf..."
+                      : "Create Turf"}
                 </Button>
               </form>
             </CardContent>

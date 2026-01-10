@@ -4,8 +4,10 @@ const chatController = require("../controllers/chatController");
 const { verifyToken } = require("../middleware/authMiddleware");
 
 // Protected chat routes
-router.post("/create", verifyToken, chatController.createConversation);
-router.get("/conversations", verifyToken, chatController.listConversations);
+router.route("/conversations")
+    .post(verifyToken, chatController.createConversation)   // Create/retrieve conversation
+    .get(verifyToken, chatController.listConversations);     // List all conversations
+
 router.get("/:chatId/messages", verifyToken, chatController.getMessages);
 router.post("/:chatId/message", verifyToken, chatController.postMessage);
 router.delete("/:chatId", verifyToken, chatController.deleteChat);

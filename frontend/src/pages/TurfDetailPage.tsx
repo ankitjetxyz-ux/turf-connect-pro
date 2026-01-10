@@ -273,7 +273,7 @@ const TurfDetailPage = () => {
     window.open(`tel:${turf.owner_phone}`, "_self");
   };
 
-  const handleMessageOwner = () => {
+  const handleMessageOwner = async () => {
     if (!playerId) {
       showToast({
         title: "Login Required",
@@ -282,7 +282,63 @@ const TurfDetailPage = () => {
       });
       return;
     }
-    navigate("/chat");
+
+    if (!turf?.owner_id) {
+      showToast({
+        title: "Error",
+        description: "Turf owner information not available",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Create or retrieve conversation with the turf owner
+      const { data } = await api.post("/chat/conversations", {
+        owner_id: turf.owner_id,
+        player_id: playerId
+      });
+
+      // Navigate to chat page with the conversation active
+      navigate(`/chat?chat=${data.id}`);
+    } catch (error: any) {
+      let errorMessage = "Failed to start conversation. Please try again.";
+
+      if (error.response) {
+        // Server responded with an error status
+        console.error("Server responded with error:", error.response.data);
+        console.error("Status:", error.response.status);
+
+        if (error.response.status === 400) {
+          errorMessage = error.response.data?.error || "Invalid request. Please check your inputs.";
+        } else if (error.response.status === 401) {
+          errorMessage = "Please login again to continue.";
+        } else if (error.response.status === 403) {
+          errorMessage = "You don't have permission to create this conversation.";
+        } else if (error.response.status === 404) {
+          errorMessage = "Chat service not found. Please contact support.";
+        } else if (error.response.status >= 500) {
+          errorMessage = `Server error (${error.response.status}). Please try again later.`;
+        } else {
+          errorMessage = error.response.data?.error || `Request failed with status ${error.response.status}`;
+        }
+      } else if (error.request) {
+        // Request made but no response received
+        console.error("No response received:", error.request);
+        errorMessage = "Cannot reach server. Please check your internet connection.";
+      } else {
+        // Error setting up the request
+        console.error("Error setting up request:", error.message);
+        errorMessage = `Error: ${error.message}`;
+      }
+
+      console.error("Failed to create conversation:", error);
+      showToast({
+        title: "Chat Error",
+        description: errorMessage,
+        variant: "destructive"
+      });
+    }
   };
 
   /* IMAGE NAVIGATION */
@@ -741,7 +797,7 @@ const TurfDetailPage = () => {
                           loading="lazy"
                           allowFullScreen
                           referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBFw0Qbyq9zTFTd-tUY6d-s6R7Z8xT8'}&q=${turf.latitude},${turf.longitude}&zoom=15`}
+                          src={`https://maps.google.com/maps?q=${turf.latitude},${turf.longitude}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                         />
                       ) : (
                         <iframe
@@ -751,7 +807,7 @@ const TurfDetailPage = () => {
                           loading="lazy"
                           allowFullScreen
                           referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://www.google.com/maps/embed/v1/place?key=${import.meta.env.VITE_GOOGLE_MAPS_API_KEY || 'AIzaSyBFw0Qbyq9zTFTd-tUY6d-s6R7Z8xT8'}&q=${encodeURIComponent(turf.location)}&zoom=15`}
+                          src={`https://maps.google.com/maps?q=${encodeURIComponent(turf.location)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                         />
                       )}
                     </div>
@@ -785,8 +841,8 @@ const TurfDetailPage = () => {
                         key={i}
                         onClick={() => setSelectedDate(date)}
                         className={`flex flex-col items-center min-w-[70px] p-3 rounded-xl transition-all ${selectedDate.toDateString() === date.toDateString()
-                            ? "gradient-primary text-primary-foreground"
-                            : "bg-secondary text-muted-foreground hover:text-foreground"
+                          ? "gradient-primary text-primary-foreground"
+                          : "bg-secondary text-muted-foreground hover:text-foreground"
                           }`}
                       >
                         <span className="text-xs font-medium">
@@ -812,10 +868,10 @@ const TurfDetailPage = () => {
                             disabled={!available}
                             onClick={() => available && toggleSlotSelection(slot.id)}
                             className={`p-3 rounded-lg text-center transition-all ${!available
-                                ? "bg-secondary/30 text-muted-foreground cursor-not-allowed line-through"
-                                : isSelected
-                                  ? "gradient-primary text-primary-foreground shadow-glow"
-                                  : "bg-secondary text-foreground hover:border-primary border border-transparent"
+                              ? "bg-secondary/30 text-muted-foreground cursor-not-allowed line-through"
+                              : isSelected
+                                ? "gradient-primary text-primary-foreground shadow-glow"
+                                : "bg-secondary text-foreground hover:border-primary border border-transparent"
                               }`}
                           >
                             <div className="text-sm font-semibold">
@@ -887,7 +943,13 @@ const TurfDetailPage = () => {
                       <Phone className="w-4 h-4 mr-2" />
                       Call
                     </Button>
-                    <Button variant="outline" className="flex-1" onClick={handleMessageOwner}>
+                    {/* Chat is ALWAYS enabled - works before payment/booking */}
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={handleMessageOwner}
+                      disabled={false}  // Explicitly never disabled
+                    >
                       <MessageCircle className="w-4 h-4 mr-2" />
                       Chat
                     </Button>

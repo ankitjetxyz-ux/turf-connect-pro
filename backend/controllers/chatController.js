@@ -20,25 +20,9 @@ exports.createConversation = async (req, res) => {
       return res.status(403).json({ error: "You can only create chats for yourself" });
     }
 
-    // Ensure confirmed booking exists
-    const { data: bookings, error: bookingError } = await supabase
-      .from("bookings")
-      .select(`slots!inner(turfs!inner(owner_id))`)
-      .eq("user_id", player_id)
-      .eq("status", "confirmed")
-      .eq("slots.turfs.owner_id", targetOwnerId)
-      .limit(1);
+    // NOTE: Chat is now allowed BEFORE booking/payment to enable pre-purchase queries
+    // Players can ask questions about the turf before making a booking decision
 
-    if (bookingError) {
-      console.error("Booking verification error:", bookingError);
-      return res.status(500).json({ error: "Failed to verify booking" });
-    }
-
-    if (!bookings || bookings.length === 0) {
-      return res.status(403).json({
-        error: "Chat allowed only after confirmed booking"
-      });
-    }
 
     // Return existing chat if present
     const { data: existing, error: existingError } = await supabase
