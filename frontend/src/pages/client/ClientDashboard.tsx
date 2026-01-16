@@ -19,6 +19,9 @@ import {
   X,
   TrendingUp,
   BarChart3,
+  AlertCircle,
+  CheckCircle2,
+  Clock as ClockIcon
 } from "lucide-react";
 import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
 import TurfAnalytics from "@/components/analytics/TurfAnalytics";
@@ -43,6 +46,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ClientDashboard = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
@@ -60,6 +64,9 @@ const ClientDashboard = () => {
   const [selectedTurf, setSelectedTurf] = useState<Turf | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState<Booking[]>([]);
+
+  // New: Status Filter
+  const [turfStatusFilter, setTurfStatusFilter] = useState<'all' | 'approved' | 'pending' | 'rejected'>('all');
 
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -181,7 +188,6 @@ const ClientDashboard = () => {
       transports: ["polling", "websocket"],
     });
 
-    // Join per-user room so backend can push booking notifications
     socket.emit("join_user", userId);
 
     socket.on("booking_confirmed", () => {
@@ -205,7 +211,6 @@ const ClientDashboard = () => {
         booking_id: bookingId,
       });
 
-      // Instantly remove from UI
       setBookings(prev => prev.filter(b => b.id !== bookingId));
 
       toast({
@@ -230,6 +235,22 @@ const ClientDashboard = () => {
     .join("")
     .toUpperCase()
     .slice(0, 2) || "U";
+
+  const getStatusBadge = (status: string = 'pending') => {
+    switch (status) {
+      case 'approved':
+        return <Badge className="bg-green-500/20 text-green-500 border-green-500/50 hover:bg-green-500/30 gap-1"><CheckCircle2 className="w-3 h-3" /> Active</Badge>;
+      case 'rejected':
+        return <Badge variant="destructive" className="gap-1"><AlertCircle className="w-3 h-3" /> Rejected</Badge>;
+      default:
+        return <Badge variant="secondary" className="gap-1"><ClockIcon className="w-3 h-3" /> Pending</Badge>;
+    }
+  };
+
+  const filteredTurfs = turfs.filter(t => {
+    if (turfStatusFilter === 'all') return true;
+    return t.verification_status === turfStatusFilter;
+  });
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
@@ -346,7 +367,7 @@ const ClientDashboard = () => {
                     onClick={() => navigate("/client/add-turf")}
                   >
                     <Plus className="w-4 h-4 mr-2" />
-                    Add Turf
+                    List New Turf
                   </Button>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -376,14 +397,14 @@ const ClientDashboard = () => {
                 stats={[
                   { value: turfs.length, label: "Total Turfs" },
                   { value: bookings.length, label: "Total Bookings" },
-                  { value: 1, label: "Business Status", prefix: "Active" },
+                  { value: turfs.filter(t => t.verification_status === 'approved').length, label: "Active Turfs" },
                 ]}
               />
 
               {/* INTERNAL NAVBAR */}
-              <div className="flex gap-2 border-b border-border/40 pb-2">
+              <div className="flex gap-2 border-b border-border/40 pb-2 overflow-x-auto">
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "turfs"
+                  className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${activeSection === "turfs"
                     ? "text-primary border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -392,7 +413,7 @@ const ClientDashboard = () => {
                   My Turfs
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "tournaments"
+                  className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${activeSection === "tournaments"
                     ? "text-primary border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -401,7 +422,7 @@ const ClientDashboard = () => {
                   My Tournaments
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors ${activeSection === "bookings"
+                  className={`px-4 py-2 text-sm font-medium transition-colors whitespace-nowrap ${activeSection === "bookings"
                     ? "text-primary border-b-2 border-primary"
                     : "text-muted-foreground hover:text-foreground"
                     }`}
@@ -410,9 +431,9 @@ const ClientDashboard = () => {
                   Recent Bookings
                 </button>
                 <button
-                  className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${activeSection === "analytics"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                  className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 whitespace-nowrap ${activeSection === "analytics"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                   onClick={() => setActiveSection("analytics")}
                 >
@@ -423,22 +444,35 @@ const ClientDashboard = () => {
 
               {/* CONTENT SECTIONS */}
               {activeSection === "turfs" && (
-                <>
-                  {!loading && turfs.length === 0 && (
+                <div className="space-y-4 animate-fade-in">
+
+                  {/* Status Filters */}
+                  <Tabs defaultValue="all" value={turfStatusFilter} onValueChange={(v: any) => setTurfStatusFilter(v)}>
+                    <TabsList className="bg-secondary/20">
+                      <TabsTrigger value="all">All ({turfs.length})</TabsTrigger>
+                      <TabsTrigger value="approved">Active ({turfs.filter(t => t.verification_status === 'approved').length})</TabsTrigger>
+                      <TabsTrigger value="pending">Pending ({turfs.filter(t => !t.verification_status || t.verification_status === 'pending').length})</TabsTrigger>
+                      <TabsTrigger value="rejected">Rejected ({turfs.filter(t => t.verification_status === 'rejected').length})</TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+
+                  {!loading && filteredTurfs.length === 0 && (
                     <Card variant="glass" className="p-10 text-center">
                       <Building2 className="w-10 h-10 mx-auto text-muted-foreground mb-3" />
-                      <h3 className="text-lg font-bold mb-2">No Turfs Added</h3>
+                      <h3 className="text-lg font-bold mb-2">No Turfs Found</h3>
                       <p className="text-muted-foreground mb-4">
-                        Start by adding your first turf
+                        {turfStatusFilter === 'all' ? "Start by adding your first turf" : `No turfs with ${turfStatusFilter} status`}
                       </p>
-                      <Button onClick={() => navigate("/client/add-turf")}>
-                        Add Turf
-                      </Button>
+                      {turfStatusFilter === 'all' && (
+                        <Button onClick={() => navigate("/client/add-turf")}>
+                          List New Turf
+                        </Button>
+                      )}
                     </Card>
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {turfs.map((turf) => (
+                    {filteredTurfs.map((turf) => (
                       <Card
                         key={turf.id}
                         variant="glass"
@@ -451,27 +485,23 @@ const ClientDashboard = () => {
                         <CardContent className="p-5 space-y-4">
                           <div className="flex justify-between items-start">
                             <div className="flex-1">
-                              <h3 className="font-bold text-lg">{turf.name}</h3>
-                              <Badge variant="outline" className="mt-1">Active</Badge>
+                              <h3 className="font-bold text-lg truncate pr-2">{turf.name}</h3>
+                              <div className="mt-1">
+                                {getStatusBadge(turf.verification_status)}
+                              </div>
                             </div>
                           </div>
+
+                          {/* Rejection Reason - Only if rejected */}
+                          {turf.verification_status === 'rejected' && turf.rejection_reason && (
+                            <div className="bg-destructive/10 border border-destructive/20 p-2 rounded text-xs text-destructive">
+                              <strong>Reason:</strong> {turf.rejection_reason}
+                            </div>
+                          )}
 
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <MapPin className="w-4 h-4" />
                             {turf.location}
-                          </div>
-
-                          <div className="flex gap-2 flex-wrap">
-                            {(Array.isArray(turf.facilities)
-                              ? turf.facilities
-                              : turf.facilities?.split(",") || []
-                            )
-                              .slice(0, 3)
-                              .map((f) => (
-                                <Badge key={f} variant="secondary" className="text-xs">
-                                  {typeof f === "string" ? f.trim() : f}
-                                </Badge>
-                              ))}
                           </div>
 
                           <div className="font-semibold text-primary">
@@ -479,61 +509,91 @@ const ClientDashboard = () => {
                           </div>
 
                           <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="outline"
-                              className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/client/turfs/${turf.id}/slots`);
-                              }}
-                            >
-                              <Clock className="w-4 h-4 mr-2" />
-                              Slots
-                            </Button>
+                            {/* ACTIONS FOR APPROVED/PENDING */}
+                            {turf.verification_status === 'approved' && (
+                              <>
+                                <Button
+                                  variant="outline"
+                                  className="flex-1"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/client/turfs/${turf.id}/slots`);
+                                  }}
+                                >
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Slots
+                                </Button>
 
-                            <Button
-                              className="flex-1 gradient-primary text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/client/add-tournament?turf_id=${turf.id}`);
-                              }}
-                            >
-                              + Tournament
-                            </Button>
+                                <Button
+                                  className="flex-1 gradient-primary text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/client/add-tournament?turf_id=${turf.id}`);
+                                  }}
+                                >
+                                  + Tnmt
+                                </Button>
+                              </>
+                            )}
 
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="w-10 px-0"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (!confirm(`Are you sure you want to delete "${turf.name}"? This action cannot be undone.`)) return;
-                                try {
-                                  await api.delete(`/turfs/${turf.id}`);
-                                  setTurfs(prev => prev.filter(t => t.id !== turf.id));
-                                  if (selectedTurf?.id === turf.id) setSelectedTurf(null);
-                                  toast({
-                                    title: "Turf deleted",
-                                    description: `${turf.name} has been removed successfully.`,
-                                  });
-                                } catch (e: unknown) {
-                                  const errorMessage = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete turf";
-                                  toast({
-                                    title: "Unable to delete turf",
-                                    description: errorMessage,
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                            >
-                              X
-                            </Button>
+                            {/* EDIT / RESUBMIT FOR REJECTED */}
+                            {turf.verification_status === 'rejected' && (
+                              <Button
+                                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  navigate(`/client/add-turf?edit_turf_id=${turf.id}`);
+                                }}
+                              >
+                                <Edit className="w-4 h-4 mr-2" />
+                                Edit & Resubmit
+                              </Button>
+                            )}
+
+                            {/* SAFE MENU (DELETE) */}
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="w-10 px-0 hover:bg-destructive/10 hover:text-destructive">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem
+                                  className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (confirm(`Are you sure you want to delete "${turf.name}"?\n\nThis action cannot be undone.`)) {
+                                      const handleDelete = async () => {
+                                        try {
+                                          await api.delete(`/turfs/${turf.id}`);
+                                          setTurfs(prev => prev.filter(t => t.id !== turf.id));
+                                          if (selectedTurf?.id === turf.id) setSelectedTurf(null);
+                                          toast({
+                                            title: "Turf deleted",
+                                            description: `${turf.name} has been removed successfully.`,
+                                          });
+                                        } catch (e: unknown) {
+                                          toast({
+                                            title: "Unable to delete turf",
+                                            variant: "destructive",
+                                          });
+                                        }
+                                      };
+                                      handleDelete();
+                                    }
+                                  }}
+                                >
+                                  <LogOut className="w-4 h-4 mr-2 rotate-180" /> {/* Using LogOut as generic delete icon variant if X not preferred, or just X */}
+                                  Delete Turf
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                         </CardContent>
                       </Card>
                     ))}
                   </div>
-                </>
+                </div>
               )}
 
               {activeSection === "tournaments" && (
@@ -546,7 +606,7 @@ const ClientDashboard = () => {
                     </Card>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
                     {myTournaments.map(t => (
                       <Card key={t.id} variant="glass" className="relative">
                         <CardContent className="p-5 space-y-4">
@@ -587,17 +647,9 @@ const ClientDashboard = () => {
                                 try {
                                   await api.delete(`/tournaments/${t.id}`);
                                   setMyTournaments(prev => prev.filter(x => x.id !== t.id));
-                                  toast({
-                                    title: "Tournament deleted",
-                                    description: "The tournament has been removed.",
-                                  });
-                                } catch (e: unknown) {
-                                  const errorMessage = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete";
-                                  toast({
-                                    title: "Unable to delete tournament",
-                                    description: errorMessage,
-                                    variant: "destructive",
-                                  });
+                                  toast({ title: "Tournament deleted" });
+                                } catch (e) {
+                                  toast({ title: "Unable to delete tournament", variant: "destructive" });
                                 }
                               }}
                             >
@@ -619,7 +671,7 @@ const ClientDashboard = () => {
                     </Card>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-fade-in">
                     {bookings.map((b) => (
                       <Card key={b.id} variant="glass" className="relative">
                         <CardContent className="p-5 space-y-3">
@@ -743,12 +795,6 @@ const ClientDashboard = () => {
                         {booking.slot_time || "N/A"}
                       </div>
                     </div>
-                    {booking.verification_code && (
-                      <div className="p-2 bg-primary/10 border border-primary/30 rounded text-sm">
-                        <span className="text-muted-foreground">Code: </span>
-                        <span className="font-mono font-bold text-primary">{booking.verification_code}</span>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
               ))

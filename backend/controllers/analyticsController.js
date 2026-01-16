@@ -62,7 +62,7 @@ exports.getDashboardSummary = async (req, res) => {
         // Get current period bookings
         const { data: currentBookings } = await supabase
             .from('bookings')
-            .select('total_price, created_at')
+            .select('total_amount, created_at')
             .eq('turf_id', turf_id)
             .in('status', ['confirmed', 'completed', 'paid'])
             .gte('created_at', startDate)
@@ -76,7 +76,7 @@ exports.getDashboardSummary = async (req, res) => {
 
         const { data: previousBookings } = await supabase
             .from('bookings')
-            .select('total_price')
+            .select('total_amount')
             .eq('turf_id', turf_id)
             .in('status', ['confirmed', 'completed', 'paid'])
             .gte('created_at', prevStartDate.toISOString().split('T')[0])
@@ -84,10 +84,10 @@ exports.getDashboardSummary = async (req, res) => {
 
         // Calculate current metrics
         const totalBookings = currentBookings?.length || 0;
-        const totalRevenue = currentBookings?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
+        const totalRevenue = currentBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
         const prevTotalBookings = previousBookings?.length || 0;
-        const prevTotalRevenue = previousBookings?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0;
+        const prevTotalRevenue = previousBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0;
 
         // Get slots for occupancy rate
         const { count: totalSlots } = await supabase
@@ -103,7 +103,7 @@ exports.getDashboardSummary = async (req, res) => {
 
         // Get reviews for rating
         const { data: reviews } = await supabase
-            .from('reviews')
+            .from('turf_reviews')
             .select('rating')
             .eq('turf_id', turf_id)
             .gte('created_at', startDate);
@@ -113,7 +113,7 @@ exports.getDashboardSummary = async (req, res) => {
             : 0;
 
         const { data: prevReviews } = await supabase
-            .from('reviews')
+            .from('turf_reviews')
             .select('rating')
             .eq('turf_id', turf_id)
             .gte('created_at', prevStartDate.toISOString().split('T')[0])
@@ -182,7 +182,7 @@ exports.getDailyBookings = async (req, res) => {
 
         const { data: bookings } = await supabase
             .from('bookings')
-            .select('created_at, total_price')
+            .select('created_at, total_amount')
             .eq('turf_id', turf_id)
             .in('status', ['confirmed', 'completed', 'paid'])
             .gte('created_at', startDate.toISOString().split('T')[0])
@@ -197,7 +197,7 @@ exports.getDailyBookings = async (req, res) => {
                 dailyMap[date] = { date, bookings: 0, revenue: 0 };
             }
             dailyMap[date].bookings++;
-            dailyMap[date].revenue += booking.total_price || 0;
+            dailyMap[date].revenue += booking.total_amount || 0;
         });
 
         const dailyData = Object.values(dailyMap);
@@ -318,7 +318,7 @@ exports.getRevenueByDay = async (req, res) => {
 
         const { data: bookings } = await supabase
             .from('bookings')
-            .select('created_at, total_price')
+            .select('created_at, total_amount')
             .eq('turf_id', turf_id)
             .in('status', ['confirmed', 'completed', 'paid'])
             .gte('created_at', startDate);
@@ -337,7 +337,7 @@ exports.getRevenueByDay = async (req, res) => {
         bookings?.forEach(booking => {
             const date = new Date(booking.created_at);
             const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()];
-            dayMap[dayName].revenue += booking.total_price || 0;
+            dayMap[dayName].revenue += booking.total_amount || 0;
             dayMap[dayName].bookings++;
         });
 
@@ -396,7 +396,7 @@ exports.getWeeklyComparison = async (req, res) => {
 
         const { data: currentBookings } = await supabase
             .from('bookings')
-            .select('total_price')
+            .select('total_amount')
             .eq('turf_id', turf_id)
             .in('status', ['confirmed', 'completed', 'paid'])
             .gte('created_at', currentWeekStart.toISOString().split('T')[0])
@@ -404,7 +404,7 @@ exports.getWeeklyComparison = async (req, res) => {
 
         const { data: prevBookings } = await supabase
             .from('bookings')
-            .select('total_price')
+            .select('total_amount')
             .eq('turf_id', turf_id)
             .in('status', ['confirmed', 'completed', 'paid'])
             .gte('created_at', prevWeekStart.toISOString().split('T')[0])
@@ -412,13 +412,13 @@ exports.getWeeklyComparison = async (req, res) => {
 
         const currentWeek = {
             bookings: currentBookings?.length || 0,
-            revenue: currentBookings?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0,
+            revenue: currentBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0,
             avgPerDay: (currentBookings?.length || 0) / 7
         };
 
         const previousWeek = {
             bookings: prevBookings?.length || 0,
-            revenue: prevBookings?.reduce((sum, b) => sum + (b.total_price || 0), 0) || 0,
+            revenue: prevBookings?.reduce((sum, b) => sum + (b.total_amount || 0), 0) || 0,
             avgPerDay: (prevBookings?.length || 0) / 7
         };
 

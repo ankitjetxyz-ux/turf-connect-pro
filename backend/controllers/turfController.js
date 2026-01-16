@@ -1,7 +1,7 @@
 const supabase = require("../config/db");
 
 /* =======================
-   CREATE TURF (CLIENT)
+   CREATE TURF (CLIENT) - V2 with Verification
 ======================= */
 exports.createTurf = async (req, res) => {
   try {
@@ -10,10 +10,20 @@ exports.createTurf = async (req, res) => {
       location,
       description,
       price_per_slot,
-      facilities,
-      images,
+      facilities, // Text string (legacy)
+      images, // Array of URLs
       google_maps_link,
+      verification_documents, // New: Array of { type, url }
     } = req.body;
+
+    console.log("📝 [createTurf] Incoming Request Body:", {
+      name,
+      location,
+      price_per_slot,
+      facilities_length: facilities?.length,
+      images_count: images?.length,
+      docs_count: verification_documents?.length
+    });
 
     const owner_id = req.user.id;
 
@@ -37,7 +47,6 @@ exports.createTurf = async (req, res) => {
 
     if (google_maps_link) {
       try {
-        // Extract coordinates from various Google Maps URL formats
         const coordMatch = google_maps_link.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
         const placeMatch = google_maps_link.match(/place\/([^/]+)\/@(-?\d+\.\d+),(-?\d+\.\d+)/);
         const qMatch = google_maps_link.match(/[?&]q=(-?\d+\.\d+),(-?\d+\.\d+)/);
@@ -53,54 +62,77 @@ exports.createTurf = async (req, res) => {
           latitude = parseFloat(qMatch[1]);
           longitude = parseFloat(qMatch[2]);
         }
-
-        console.log(`📍 Extracted coordinates: lat=${latitude}, lng=${longitude}`);
-        if (formatted_address) {
-          console.log(`📍 Extracted address: ${formatted_address}`);
-        }
       } catch (err) {
-        console.warn("⚠️ Failed to extract coordinates from Google Maps link:", err);
-        // Continue without coordinates - not a fatal error
+        console.warn("⚠️ Failed to extract coordinates:", err);
       }
     }
 
-    // Build the turf data object
+    // 1. Insert into 'turfs'
     const turfData = {
       owner_id,
       name,
       location,
       description,
       price_per_slot: Number(price_per_slot),
-      facilities,
+      facilities, // Keep legacy field for now
       images: imageArray,
+      images_urls: imageArray, // New column
       is_active: true,
+      verification_status: 'pending', // Default
+      submitted_at: new Date(),
+      google_maps_url: google_maps_link,
     };
 
-    // Add Google Maps fields only if they exist
-    if (google_maps_link) {
-      turfData.google_maps_link = google_maps_link;
-    }
-    if (latitude !== null && longitude !== null) {
+    if (latitude && longitude) {
       turfData.latitude = latitude;
       turfData.longitude = longitude;
     }
-    if (formatted_address) {
-      turfData.formatted_address = formatted_address;
-    }
+    if (formatted_address) turfData.formatted_address = formatted_address;
 
-    const { data, error } = await supabase
+    const { data: turf, error: turfError } = await supabase
       .from("turfs")
       .insert([turfData])
       .select()
       .single();
 
-    if (error) {
-      console.error("Create turf error:", error);
-      return res.status(400).json({ error: error.message });
+    if (turfError) {
+      console.error("Create turf error:", turfError);
+      return res.status(400).json({ error: turfError.message });
     }
 
-    console.log("✅ Turf created successfully with ID:", data.id);
-    res.status(201).json(data);
+    const turfId = turf.id;
+
+    // 2. Insert Verification Documents
+    if (verification_documents && Array.isArray(verification_documents) && verification_documents.length > 0) {
+      const docsToInsert = verification_documents.map(doc => ({
+        turf_id: turfId,
+        document_type: doc.type,
+        document_url: doc.url,
+        status: 'pending'
+      }));
+
+      const { error: docError } = await supabase
+        .from('turf_verification_documents')
+        .insert(docsToInsert);
+
+      if (docError) {
+        console.error("Document insert error:", docError);
+        // Note: Turf is already created. We might want to warn or cleanup, but for now just log.
+      }
+    }
+
+    // 3. Create Initial History Record
+    await supabase.from('turf_verification_history').insert({
+      turf_id: turfId,
+      old_status: null,
+      new_status: 'pending',
+      changed_by: null, // System/Owner
+      change_reason: 'Initial submission'
+    });
+
+    console.log("✅ Turf submitted for verification:", turfId);
+    res.status(201).json(turf);
+
   } catch (err) {
     console.error("Create turf crash:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -117,17 +149,18 @@ exports.getAllTurfs = async (req, res) => {
   let query = supabase
     .from("turfs")
     .select("*")
-    .eq("is_active", true);
+    .eq("is_active", true)
+
+  // TEMPORARY: Commenting out is_listed check until we verify it works
+  // .eq("is_listed", true); 
 
   if (search) {
-    // Broaden search to name, location, facilities
     query = query.or(
       `name.ilike.%${search}%,location.ilike.%${search}%,facilities.ilike.%${search}%`,
     );
   }
 
   if (location) {
-    // If specific location filter is applied (separate from search box)
     query = query.ilike("location", `%${location}%`);
   }
 
@@ -161,15 +194,13 @@ exports.getAllTurfs = async (req, res) => {
     tournamentsByTurf[t.turf_id] = (tournamentsByTurf[t.turf_id] || 0) + 1;
   });
 
-  // 2) Matches played: count bookings per turf via slots
+  // 2) Matches played
   const { data: slots, error: sErr } = await supabase
     .from("slots")
     .select("id, turf_id")
     .in("turf_id", turfIds);
 
-  if (sErr) {
-    console.warn("Failed to load slots for turf stats", sErr);
-  }
+  if (sErr) console.warn("Failed to load slots for turf stats", sErr);
 
   const slotToTurf = {};
   const slotIds = [];
@@ -197,14 +228,7 @@ exports.getAllTurfs = async (req, res) => {
   }
 
   // Enrich with sports derived from text + stats
-  const keywords = [
-    "Football",
-    "Cricket",
-    "Badminton",
-    "Tennis",
-    "Basketball",
-    "Hockey",
-  ];
+  const keywords = ["Football", "Cricket", "Badminton", "Tennis", "Basketball", "Hockey"];
   const enriched = data.map((t) => {
     const text = `${t.name} ${t.description} ${t.facilities}`.toLowerCase();
     const sports = keywords.filter((k) => text.includes(k.toLowerCase()));
@@ -215,7 +239,7 @@ exports.getAllTurfs = async (req, res) => {
 
     return {
       ...t,
-      sports: sports.length > 0 ? sports : ["Football", "Cricket"], // Default fallback
+      sports: sports.length > 0 ? sports : ["Football", "Cricket"],
       tournaments_hosted: tournamentsHosted,
       matches_played: matchesPlayed,
       is_popular: isPopular,
@@ -231,13 +255,20 @@ exports.getAllTurfs = async (req, res) => {
 exports.getMyTurfs = async (req, res) => {
   try {
     const owner_id = req.user.id;
+    const { status } = req.query; // pending, approved, rejected
 
-    const { data, error } = await supabase
+    let query = supabase
       .from("turfs")
       .select("*")
       .eq("owner_id", owner_id)
-      .eq("is_active", true)
       .order("id", { ascending: false });
+
+    // Filter by verification status if requested
+    if (status) {
+      query = query.eq('verification_status', status);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error("Error fetching my turfs:", error);
@@ -264,14 +295,15 @@ exports.getTurfById = async (req, res) => {
 
     const { data, error } = await supabase
       .from("turfs")
-      .select("*")
+      .select(`
+        *,
+        turf_verification_documents (*)
+      `)
       .eq("id", id)
       .single();
 
     if (error || !data) {
-      if (error) {
-        console.error("Error fetching turf:", error);
-      }
+      if (error) console.error("Error fetching turf:", error);
       return res.status(404).json({ error: "Turf not found" });
     }
 
@@ -294,10 +326,7 @@ exports.getTurfGallery = async (req, res) => {
       .eq("turf_id", id)
       .order("display_order", { ascending: true });
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
+    if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: "Failed to load gallery" });
@@ -312,17 +341,11 @@ exports.getTurfReviews = async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase
       .from("turf_reviews")
-      .select(`
-        *,
-        users(id, name, profile_image_url)
-      `)
+      .select(`*, users(id, name, profile_image_url)`)
       .eq("turf_id", id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
+    if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: "Failed to load reviews" });
@@ -337,17 +360,11 @@ exports.getTurfTestimonials = async (req, res) => {
     const { id } = req.params;
     const { data, error } = await supabase
       .from("turf_testimonials")
-      .select(`
-        *,
-        users(id, name, profile_image_url)
-      `)
+      .select(`*, users(id, name, profile_image_url)`)
       .eq("turf_id", id)
       .order("created_at", { ascending: false });
 
-    if (error) {
-      return res.status(400).json({ error: error.message });
-    }
-
+    if (error) return res.status(400).json({ error: error.message });
     res.json(data || []);
   } catch (err) {
     res.status(500).json({ error: "Failed to load testimonials" });
@@ -389,7 +406,7 @@ exports.getTurfComments = async (req, res) => {
 
 exports.addTurfComment = async (req, res) => {
   try {
-    const { id } = req.params; // turf_id
+    const { id } = req.params;
     const userId = req.user.id;
     const { comment } = req.body;
 
@@ -401,7 +418,6 @@ exports.addTurfComment = async (req, res) => {
       return res.status(400).json({ error: "Comment is too long (max ~60 lines)" });
     }
 
-    // Ensure turf exists (and is active) before inserting
     const { data: turf, error: turfErr } = await supabase
       .from("turfs")
       .select("id")
@@ -438,10 +454,9 @@ exports.addTurfComment = async (req, res) => {
 
 exports.deleteTurfComment = async (req, res) => {
   try {
-    const { id, commentId } = req.params; // turf_id, comment id
+    const { id, commentId } = req.params;
     const requesterId = req.user.id;
 
-    // Ensure requester is the turf owner
     const { data: turf, error: turfErr } = await supabase
       .from("turfs")
       .select("id, owner_id")
@@ -476,34 +491,26 @@ exports.deleteTurfComment = async (req, res) => {
 
 /* =======================
    DELETE TURF
-   - Only owner can delete their own turf
 ======================= */
 exports.deleteTurf = async (req, res) => {
   try {
     const turfId = req.params.id;
     const ownerId = req.user.id;
 
-    if (!turfId) {
-      return res.status(400).json({ error: "Turf ID is required" });
-    }
+    if (!turfId) return res.status(400).json({ error: "Turf ID is required" });
 
-    // First, verify that this turf belongs to the requesting user
     const { data: turf, error: fetchError } = await supabase
       .from("turfs")
       .select("id, owner_id, name")
       .eq("id", turfId)
       .single();
 
-    if (fetchError || !turf) {
-      return res.status(404).json({ error: "Turf not found" });
-    }
+    if (fetchError || !turf) return res.status(404).json({ error: "Turf not found" });
 
-    // Check ownership
     if (turf.owner_id !== ownerId) {
       return res.status(403).json({ error: "You don't have permission to delete this turf" });
     }
 
-    // Delete the turf (CASCADE will handle related records)
     const { error: deleteError } = await supabase
       .from("turfs")
       .delete()
@@ -535,9 +542,7 @@ exports.uploadTurfImages = async (req, res) => {
   }
 
   try {
-    // Build public URLs for uploaded images
     const imageUrls = req.files.map((file) => `/uploads/turfs/${file.filename}`);
-
     res.json({
       success: true,
       image_urls: imageUrls,
@@ -549,3 +554,23 @@ exports.uploadTurfImages = async (req, res) => {
   }
 };
 
+/* =======================
+   UPLOAD VERIFICATION DOCS
+======================= */
+exports.uploadTurfDocuments = async (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ error: "No documents uploaded" });
+  }
+
+  try {
+    const docUrls = req.files.map((file) => `/uploads/turfs/${file.filename}`);
+    res.json({
+      success: true,
+      document_urls: docUrls,
+      count: docUrls.length
+    });
+  } catch (err) {
+    console.error("[uploadTurfDocuments] Unexpected error", err);
+    res.status(500).json({ error: "Failed to upload documents" });
+  }
+};

@@ -77,6 +77,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/contact", contactRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/admin", require("./routes/adminRoutes"));
 app.use("/api/promotional-videos", require("./routes/promotionalVideoRoutes"));
 
 /* =========================

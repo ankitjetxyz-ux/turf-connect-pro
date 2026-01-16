@@ -15,6 +15,7 @@ const {
   addTurfComment,
   deleteTurfComment,
   uploadTurfImages,
+  uploadTurfDocuments, // New import
   deleteTurf
 } = require("../controllers/turfController");
 const { verifyToken, allowRoles } = require("../middleware/authMiddleware");
@@ -37,9 +38,9 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (req, file, cb) => {
-  const allowed = ["image/jpeg", "image/png", "image/webp", "image/jpg"];
+  const allowed = ["image/jpeg", "image/png", "image/webp", "image/jpg", "application/pdf"]; // Added PDF support for docs
   if (!allowed.includes(file.mimetype)) {
-    return cb(new Error("Invalid file type. Only JPEG, PNG, and WebP are allowed."));
+    return cb(new Error("Invalid file type. Only Images and PDFs are allowed."));
   }
   cb(null, true);
 };
@@ -55,6 +56,7 @@ router.get("/", getAllTurfs);
 
 // Protected Routes (Client) - MUST BE BEFORE /:id ROUTE
 router.post("/upload-images", verifyToken, allowRoles("client"), upload.array("images", 10), uploadTurfImages);
+router.post("/upload-documents", verifyToken, allowRoles("client"), upload.array("documents", 5), uploadTurfDocuments); // New Route
 router.post("/", verifyToken, allowRoles("client"), createTurf);
 router.get("/my", verifyToken, allowRoles("client"), getMyTurfs);
 
