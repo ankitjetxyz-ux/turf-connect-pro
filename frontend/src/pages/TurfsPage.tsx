@@ -18,7 +18,7 @@ const TurfPage = () => {
       try {
         const res = await getAllTurfs();
         const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
-        setTurfs(data);
+        setTurfs(data.filter((t: Turf) => t.verification_status === "approved"));
       } catch (err: unknown) {
         console.error("Failed to load turfs", err);
         const errorMessage = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to load turfs";

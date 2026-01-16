@@ -148,11 +148,12 @@ const ClientDashboard = () => {
         title: "Profile updated",
         description: "Your profile has been saved successfully.",
       });
-    } catch (e) {
+    } catch (e: any) {
       console.error("Failed to save profile", e);
+      const errorMessage = e?.response?.data?.error || "Please try again.";
       toast({
         title: "Failed to save profile",
-        description: "Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -371,12 +372,12 @@ const ClientDashboard = () => {
                 </div>
               </div>
 
-              {/* STATS - Animated */}
+
               <AnimatedStatsBar
                 stats={[
                   { value: turfs.length, label: "Total Turfs" },
                   { value: bookings.length, label: "Total Bookings" },
-                  { value: 1, label: "Business Status", prefix: "Active" },
+                  { value: myTournaments.length, label: "Total Tournaments" },
                 ]}
               />
 
@@ -438,74 +439,116 @@ const ClientDashboard = () => {
                   )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {turfs.map((turf) => (
-                      <Card
-                        key={turf.id}
-                        variant="glass"
-                        className={`relative cursor-pointer transition-all ${selectedTurf?.id === turf.id ? 'ring-2 ring-primary' : ''}`}
-                        onClick={() => {
-                          setSelectedTurf(turf);
-                          setActiveSection("analytics");
-                        }}
-                      >
-                        <CardContent className="p-5 space-y-4">
-                          <div className="flex justify-between items-start">
-                            <div className="flex-1">
-                              <h3 className="font-bold text-lg">{turf.name}</h3>
-                              <Badge variant="outline" className="mt-1">Active</Badge>
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <MapPin className="w-4 h-4" />
-                            {turf.location}
-                          </div>
-
-                          <div className="flex gap-2 flex-wrap">
-                            {(Array.isArray(turf.facilities)
-                              ? turf.facilities
-                              : turf.facilities?.split(",") || []
-                            )
-                              .slice(0, 3)
-                              .map((f) => (
-                                <Badge key={f} variant="secondary" className="text-xs">
-                                  {typeof f === "string" ? f.trim() : f}
+                    {turfs.map((turf) => {
+                      const status = turf.verification_status ?? "approved";
+                      const isApproved = status === "approved";
+                      const isRejected = status === "rejected";
+                      return (
+                        <Card
+                          key={turf.id}
+                          variant="glass"
+                          className={`relative cursor-pointer transition-all ${selectedTurf?.id === turf.id ? 'ring-2 ring-primary' : ''}`}
+                          onClick={() => {
+                            setSelectedTurf(turf);
+                            setActiveSection("analytics");
+                          }}
+                        >
+                          <CardContent className="p-5 space-y-4">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <h3 className="font-bold text-lg">{turf.name}</h3>
+                                <Badge
+                                  variant="outline"
+                                  className={`mt-1 ${status === "pending"
+                                    ? "border-yellow-500/40 bg-yellow-500/10 text-yellow-500"
+                                    : isRejected
+                                      ? "border-red-500/40 bg-red-500/10 text-red-500"
+                                      : "border-green-500/40 bg-green-500/10 text-green-400"
+                                    }`}
+                                >
+                                  {status === "pending"
+                                    ? "Pending Approval"
+                                    : isRejected
+                                      ? "Rejected"
+                                      : "Live"}
                                 </Badge>
-                              ))}
-                          </div>
+                                {isRejected && turf.rejection_reason && (
+                                  <p className="mt-2 text-xs text-red-500/80">
+                                    Reason: {turf.rejection_reason}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                              <MapPin className="w-4 h-4" />
+                              {turf.location}
+                            </div>
 
-                          <div className="font-semibold text-primary">
-                            ₹{turf.price_per_slot} / slot
-                          </div>
+                            <div className="flex gap-2 flex-wrap">
+                              {(Array.isArray(turf.facilities)
+                                ? turf.facilities
+                                : turf.facilities?.split(",") || []
+                              )
+                                .slice(0, 3)
+                                .map((f) => (
+                                  <Badge key={f} variant="secondary" className="text-xs">
+                                    {typeof f === "string" ? f.trim() : f}
+                                  </Badge>
+                                ))}
+                            </div>
 
-                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
-                            <Button
-                              variant="outline"
-                              className="flex-1"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/client/turfs/${turf.id}/slots`);
-                              }}
-                            >
-                              <Clock className="w-4 h-4 mr-2" />
-                              Slots
-                            </Button>
+                            <div className="font-semibold text-primary">
+                              ₹{turf.price_per_slot} / slot
+                            </div>
 
-                            <Button
-                              className="flex-1 gradient-primary text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/client/add-tournament?turf_id=${turf.id}`);
-                              }}
-                            >
-                              + Tournament
-                            </Button>
+                            <div className="flex flex-col gap-2" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex gap-2">
+                                <Button
+                                  variant="outline"
+                                  className="flex-1"
+                                  disabled={!isApproved}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!isApproved) return;
+                                    navigate(`/client/turfs/${turf.id}/slots`);
+                                  }}
+                                >
+                                  <Clock className="w-4 h-4 mr-2" />
+                                  Slots
+                                </Button>
 
-                            {/* Delete button removed - turfs cannot be deleted from dashboard */}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                                <Button
+                                  className="flex-1 gradient-primary text-xs"
+                                  disabled={!isApproved}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (!isApproved) return;
+                                    navigate(`/client/add-tournament?turf_id=${turf.id}`);
+                                  }}
+                                >
+                                  + Tournament
+                                </Button>
+                              </div>
+
+                              {isRejected && (
+                                <Button
+                                  variant="outline"
+                                  className="w-full text-xs"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/client/add-turf?edit_turf_id=${turf.id}`);
+                                  }}
+                                >
+                                  Fix & Resubmit
+                                </Button>
+                              )}
+
+                              {/* Delete button removed - turfs cannot be deleted from dashboard */}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                 </>
               )}

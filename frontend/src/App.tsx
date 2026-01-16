@@ -17,11 +17,20 @@ import NotFound from "./pages/NotFound";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 import TurfSlotsPage from "./pages/client/TurfSlotsPage";
-import AddTurfPage from "./pages/client/AddTurfPage";
+import AddTurfForm from "./pages/owner/add-turf/AddTurfForm";
 import AddTournamentPage from "./pages/client/AddTournamentPage";
 import ClientBookings from "./pages/client/ClientBookings";
 import ChatPage from "./pages/ChatPage";
 import ProfilePage from "./pages/ProfilePage";
+
+// Admin Imports
+import AdminLogin from "./pages/admin/AdminLogin";
+import AdminLayout from "./layouts/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import VerificationPanel from "./pages/admin/VerificationPanel";
+import TurfVerificationDetail from "./pages/admin/TurfVerificationDetail";
+
+
 
 
 const queryClient = new QueryClient();
@@ -58,7 +67,7 @@ const App = () => (
             path="/client/add-turf"
             element={
               <ProtectedRoute role="client">
-                <AddTurfPage />
+                <AddTurfForm />
               </ProtectedRoute>
             }
           />
@@ -108,6 +117,17 @@ const App = () => (
               </ProtectedRoute>
             }
           />
+
+          {/* ADMIN ROUTES */}
+          <Route path="/admin/login" element={<AdminLogin />} />
+          <Route path="/admin" element={<AdminLayout />}>
+            <Route index element={<AdminDashboard />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="verification" element={<VerificationPanel />} />
+            <Route path="verification/:id" element={<TurfVerificationDetail />} />
+          </Route>
+
+
 
           {/* CATCH ALL */}
           <Route

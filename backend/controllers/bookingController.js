@@ -20,9 +20,10 @@ exports.bookSlot = async (req, res) => {
     // Fetch slot with price so we can persist total_amount on the booking
     const { data: slot, error: slotError } = await supabase
       .from("slots")
-      .select("id, price, turfs(owner_id)")
+      .select("id, price, turfs(owner_id, verification_status)")
       .eq("id", slot_id)
       .eq("is_booked", false)
+      .eq("turfs.verification_status", "approved")
       .single();
 
     if (slotError || !slot) {
@@ -87,9 +88,10 @@ exports.createBookingAndOrder = async (req, res) => {
     // Fetch selected slots that are still available
     const { data: slots, error: slotsError } = await supabase
       .from("slots")
-      .select("id, price, is_booked, turf_id, turfs(owner_id)")
+      .select("id, price, is_booked, turf_id, turfs(owner_id, verification_status)")
       .in("id", slot_ids)
-      .eq("is_booked", false);
+      .eq("is_booked", false)
+      .eq("turfs.verification_status", "approved");
 
     if (slotsError) {
       console.error("[createBookingAndOrder] Slots fetch error", slotsError);

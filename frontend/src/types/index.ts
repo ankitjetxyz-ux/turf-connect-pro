@@ -21,6 +21,8 @@ export interface Turf {
   latitude?: number;
   longitude?: number;
   google_maps_link?: string;
+  verification_status?: 'pending' | 'approved' | 'rejected' | 'draft';
+  rejection_reason?: string;
 }
 
 export interface Slot {

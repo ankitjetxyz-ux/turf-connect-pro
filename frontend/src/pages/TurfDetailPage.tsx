@@ -459,6 +459,33 @@ const TurfDetailPage = () => {
     );
   }
 
+  if (turf.verification_status && turf.verification_status !== "approved") {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <main className="pt-20 pb-12">
+          <div className="container px-4">
+            <div className="max-w-xl mx-auto">
+              <Card>
+                <CardContent className="p-8 text-center space-y-4">
+                  <h2 className="text-2xl font-heading font-bold text-foreground">
+                    Turf not available for booking
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {turf.verification_status === "pending"
+                      ? "This turf is currently pending approval by our team."
+                      : "This turf has been rejected and is not available for public booking."}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   /* DATA NORMALIZATION */
 
   const images = Array.isArray(turf.images)

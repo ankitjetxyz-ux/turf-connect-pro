@@ -131,8 +131,9 @@ const AddTurfPage = () => {
       });
 
       toast({
-        title: "Turf Added 🎉",
-        description: "Your turf has been successfully listed",
+        title: "Turf Submitted 🎉",
+        description:
+          "Your turf has been submitted for approval. It will go live once verified by our team.",
         variant: "success",
       });
 
