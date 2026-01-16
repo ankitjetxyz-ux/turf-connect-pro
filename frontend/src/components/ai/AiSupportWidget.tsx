@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { MessageCircle, X } from "lucide-react";
+import api from "@/services/api";
 
 const faqs = [
   {
@@ -31,22 +32,48 @@ const AiSupportWidget = () => {
 
   const handleToggle = () => setOpen((o) => !o);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim();
     if (!text) return;
 
-    // Very small rule-based "AI" over faqs
-    const lower = text.toLowerCase();
-    const match = faqs.find((f) => lower.includes(f.q.split(" ")[0].toLowerCase()));
-    const answer = match?.a ||
-      "I'm a simple assistant. Please check Browse Turfs, Tournaments, or your dashboard for more options.";
-
+    // Add user message immediately
     setMessages((prev) => [
       ...prev,
       { role: "user", content: text },
-      { role: "assistant", content: answer },
     ]);
     setInput("");
+
+    try {
+      // ✅ FIXED: Use API service instead of hardcoded URL
+      // AI endpoint returns plain text, so we use fetch with proper base URL
+      const baseURL = import.meta.env.VITE_API_URL || "/api";
+      const token = localStorage.getItem("token");
+      
+      const response = await fetch(`${baseURL}/ai/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        body: JSON.stringify({ message: text }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.text();
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: data },
+      ]);
+    } catch (error) {
+      console.error("AI Chat Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: "Sorry, I'm having trouble connecting right now. Please try again later." },
+      ]);
+    }
   };
 
   if (typeof window === "undefined") return null;
@@ -65,7 +92,7 @@ const AiSupportWidget = () => {
 
       {/* Panel */}
       {open && (
-        <div className="fixed bottom-20 right-4 md:right-6 z-40 w-[90vw] max-w-sm rounded-2xl glass-card border border-white/15 shadow-elevated overflow-hidden animate-slide-up">
+        <div className="fixed bottom-20 right-4 md:right-6 z-40 w-[90vw] max-w-md rounded-2xl glass-card border border-white/15 shadow-elevated overflow-hidden animate-slide-up">
           <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-background/80">
             <div className="flex items-center gap-2">
               <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center text-xs font-bold">
@@ -85,18 +112,17 @@ const AiSupportWidget = () => {
             </button>
           </div>
 
-          <div className="max-h-64 overflow-y-auto p-3 space-y-2 text-xs custom-scrollbar bg-background/60">
+          <div className="max-h-80 overflow-y-auto p-3 space-y-2 text-xs custom-scrollbar bg-background/60">
             {messages.map((m, idx) => (
               <div
                 key={idx}
                 className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`px-3 py-1.5 rounded-2xl max-w-[80%] leading-snug border text-[11px] ${
-                    m.role === "user"
-                      ? "bg-primary text-primary-foreground border-primary/40 rounded-br-sm"
-                      : "bg-secondary/70 text-foreground border-white/10 rounded-bl-sm"
-                  }`}
+                  className={`px-3 py-1.5 rounded-2xl max-w-[80%] leading-snug border text-[11px] ${m.role === "user"
+                    ? "bg-primary text-primary-foreground border-primary/40 rounded-br-sm"
+                    : "bg-secondary/70 text-foreground border-white/10 rounded-bl-sm"
+                    }`}
                 >
                   {m.content}
                 </div>

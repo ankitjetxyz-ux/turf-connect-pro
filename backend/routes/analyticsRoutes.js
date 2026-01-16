@@ -1,15 +1,7 @@
 const express = require('express');
 const router = express.Router();
 
-const {
-    getDashboardSummary,
-    getDailyBookings,
-    getPeakHours,
-    getRevenueByDay,
-    getWeeklyComparison,
-    getAllAnalytics
-} = require('../controllers/analyticsController');
-
+const { getAllAnalytics } = require('../controllers/analyticsController');
 const { verifyToken, allowRoles } = require('../middleware/authMiddleware');
 
 /* ============================================================================
@@ -20,22 +12,12 @@ const { verifyToken, allowRoles } = require('../middleware/authMiddleware');
 router.use(verifyToken);
 router.use(allowRoles('client'));
 
-// Get all analytics in a single optimized request (RECOMMENDED)
+/**
+ * GET /api/analytics/all
+ * Query params:
+ *  - turf_id (required)
+ *  - period (optional: 7days | 30days | 90days | 1year)
+ */
 router.get('/all', getAllAnalytics);
-
-// Get dashboard summary (revenue, bookings, occupancy, rating)
-router.get('/summary', getDashboardSummary);
-
-// Get daily bookings chart data
-router.get('/daily-bookings', getDailyBookings);
-
-// Get peak hours analysis
-router.get('/peak-hours', getPeakHours);
-
-// Get revenue breakdown by day of week
-router.get('/revenue-by-day', getRevenueByDay);
-
-// Get weekly comparison (current vs previous week)
-router.get('/weekly-comparison', getWeeklyComparison);
 
 module.exports = router;
