@@ -25,6 +25,7 @@ export interface Turf {
 
 export interface Slot {
   id: number;
+  date?: string;
   is_available?: boolean;
   is_booked?: boolean;
   start_time: string;
@@ -112,4 +113,69 @@ export interface RazorpayErrorResponse {
       payment_id: string;
     };
   };
+}
+
+// ============================================================================
+// ANALYTICS TYPES
+// ============================================================================
+
+export interface DateRange {
+  startDate: Date | string;
+  endDate: Date | string;
+}
+
+export interface DailyBooking {
+  date: string; // ISO date string
+  count: number;
+  revenue: number;
+}
+
+export interface PeakHour {
+  hour: number; // 0-23
+  bookings: number;
+}
+
+export interface RevenueByDay {
+  dayOfWeek: string; // 'Monday', 'Tuesday', etc.
+  revenue: number;
+}
+
+export interface WeeklyComparison {
+  currentWeek: {
+    bookings: number;
+    revenue: number;
+  };
+  previousWeek: {
+    bookings: number;
+    revenue: number;
+  };
+}
+
+export interface AnalyticsData {
+  // Core metrics
+  totalRevenue: number;
+  revenueChange: number; // Percentage: +25, -10, etc.
+  totalBookings: number;
+  bookingsChange: number; // Percentage
+  occupancyRate: number; // Percentage: 0-100
+  avgRating: number; // 0-5
+  ratingChange: number; // Absolute change: +0.5, -0.2
+
+  // Trend data
+  dailyBookings: DailyBooking[];
+  peakHours: PeakHour[];
+  revenueByDayOfWeek: RevenueByDay[];
+  weeklyComparison: WeeklyComparison;
+
+  // Metadata
+  period: {
+    start: string;
+    end: string;
+  };
+}
+
+export interface AnalyticsResponse {
+  success: boolean;
+  data: AnalyticsData;
+  error?: string;
 }

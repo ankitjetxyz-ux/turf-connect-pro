@@ -6,7 +6,8 @@ const {
     getDailyBookings,
     getPeakHours,
     getRevenueByDay,
-    getWeeklyComparison
+    getWeeklyComparison,
+    getAllAnalytics
 } = require('../controllers/analyticsController');
 
 const { verifyToken, allowRoles } = require('../middleware/authMiddleware');
@@ -18,6 +19,9 @@ const { verifyToken, allowRoles } = require('../middleware/authMiddleware');
 // All routes require authentication and client role
 router.use(verifyToken);
 router.use(allowRoles('client'));
+
+// Get all analytics in a single optimized request (RECOMMENDED)
+router.get('/all', getAllAnalytics);
 
 // Get dashboard summary (revenue, bookings, occupancy, rating)
 router.get('/summary', getDashboardSummary);

@@ -64,10 +64,20 @@ const ProfilePage = () => {
     if (!user) return;
     setHistoryLoading(true);
     try {
-      const [bookingsRes, tournamentsRes] = await Promise.all([
-        api.get("/bookings/my").catch(() => ({ data: [] })),
-        api.get("/tournaments/player-stats").catch(() => ({ data: [] }))
-      ]);
+      const apiCalls: Promise<any>[] = [
+        api.get("/bookings/my").catch(() => ({ data: [] }))
+      ];
+
+      // Only fetch player stats if user is a player
+      if (user.role === "player") {
+        apiCalls.push(
+          api.get("/tournaments/player-stats").catch(() => ({ data: [] }))
+        );
+      }
+
+      const responses = await Promise.all(apiCalls);
+      const bookingsRes = responses[0];
+      const tournamentsRes = user.role === "player" ? responses[1] : { data: [] };
 
       const historyItems: HistoryItem[] = [];
 

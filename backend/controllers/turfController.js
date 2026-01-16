@@ -112,117 +112,120 @@ exports.createTurf = async (req, res) => {
    - Includes lightweight stats for tournaments and matches
 ======================= */
 exports.getAllTurfs = async (req, res) => {
-  const { search, location } = req.query;
+  try {
+    const { search, location } = req.query;
 
-  let query = supabase
-    .from("turfs")
-    .select("*")
-    .eq("is_active", true);
+    let query = supabase
+      .from("turfs")
+      .select("*")
+      .eq("is_active", true);
 
-  if (search) {
-    // Broaden search to name, location, facilities
-    query = query.or(
-      `name.ilike.%${search}%,location.ilike.%${search}%,facilities.ilike.%${search}%`,
-    );
-  }
-
-  if (location) {
-    // If specific location filter is applied (separate from search box)
-    query = query.ilike("location", `%${location}%`);
-  }
-
-  const { data, error } = await query;
-
-  if (error) {
-    console.error("Supabase error fetching turfs:", error);
-    return res
-      .status(400)
-      .json({ error: "Failed to fetch turfs: " + error.message });
-  }
-
-  if (!data || data.length === 0) {
-    return res.json([]);
-  }
-
-  const turfIds = data.map((t) => t.id);
-
-  // 1) Tournaments per turf
-  const { data: tournaments, error: tErr } = await supabase
-    .from("tournaments")
-    .select("id, turf_id")
-    .in("turf_id", turfIds);
-
-  if (tErr) {
-    console.warn("Failed to load tournaments for turf stats", tErr);
-  }
-
-  const tournamentsByTurf = {};
-  (tournaments || []).forEach((t) => {
-    tournamentsByTurf[t.turf_id] = (tournamentsByTurf[t.turf_id] || 0) + 1;
-  });
-
-  // 2) Matches played: count bookings per turf via slots
-  const { data: slots, error: sErr } = await supabase
-    .from("slots")
-    .select("id, turf_id")
-    .in("turf_id", turfIds);
-
-  if (sErr) {
-    console.warn("Failed to load slots for turf stats", sErr);
-  }
-
-  const slotToTurf = {};
-  const slotIds = [];
-  (slots || []).forEach((s) => {
-    slotToTurf[s.id] = s.turf_id;
-    slotIds.push(s.id);
-  });
-
-  let bookingsByTurf = {};
-  if (slotIds.length > 0) {
-    const { data: bookings, error: bErr } = await supabase
-      .from("bookings")
-      .select("slot_id")
-      .in("slot_id", slotIds);
-
-    if (bErr) {
-      console.warn("Failed to load bookings for turf stats", bErr);
-    } else {
-      (bookings || []).forEach((b) => {
-        const turfId = slotToTurf[b.slot_id];
-        if (!turfId) return;
-        bookingsByTurf[turfId] = (bookingsByTurf[turfId] || 0) + 1;
-      });
+    if (search) {
+      // Broaden search to name, location, facilities
+      query = query.or(
+        `name.ilike.%${search}%,location.ilike.%${search}%,facilities.ilike.%${search}%`,
+      );
     }
+
+    if (location) {
+      // If specific location filter is applied (separate from search box)
+      query = query.ilike("location", `%${location}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("❌ Supabase error fetching turfs:", error);
+      console.error("Error details:", JSON.stringify(error, null, 2));
+      return res
+        .status(400)
+        .json({ error: "Failed to fetch turfs: " + error.message });
+    }
+
+    if (!data || data.length === 0) {
+      console.log("✅ No turfs found, returning empty array");
+      return res.json([]);
+    }
+
+    const turfIds = data.map((t) => t.id);
+
+    // 1) Tournaments per turf
+    const { data: tournaments, error: tErr } = await supabase
+      .from("tournaments")
+      .select("id, turf_id")
+      .in("turf_id", turfIds);
+
+    if (tErr) {
+      console.warn("Failed to load tournaments for turf stats", tErr);
+    }
+
+    const tournamentsByTurf = {};
+    (tournaments || []).forEach((t) => {
+      tournamentsByTurf[t.turf_id] = (tournamentsByTurf[t.turf_id] || 0) + 1;
+    });
+
+    // 2) Matches played: count bookings per turf
+    let bookingsByTurf = {};
+
+    if (turfIds.length > 0) {
+      try {
+        const { data: bookings, error: bErr } = await supabase
+          .from("bookings")
+          .select("turf_id")
+          .in("turf_id", turfIds);
+
+        if (bErr) {
+          console.warn("Failed to load bookings for turf stats", bErr);
+        } else {
+          (bookings || []).forEach((b) => {
+            bookingsByTurf[b.turf_id] = (bookingsByTurf[b.turf_id] || 0) + 1;
+          });
+        }
+      } catch (fetchErr) {
+        console.warn("Failed to load bookings for turf stats", {
+          message: fetchErr.message,
+          details: fetchErr.toString(),
+          hint: '',
+          code: ''
+        });
+      }
+    }
+
+    // Enrich with sports derived from text + stats
+    const keywords = [
+      "Football",
+      "Cricket",
+      "Badminton",
+      "Tennis",
+      "Basketball",
+      "Hockey",
+    ];
+    const enriched = data.map((t) => {
+      const text = `${t.name} ${t.description} ${t.facilities}`.toLowerCase();
+      const sports = keywords.filter((k) => text.includes(k.toLowerCase()));
+
+      const tournamentsHosted = tournamentsByTurf[t.id] || 0;
+      const matchesPlayed = bookingsByTurf[t.id] || 0;
+      const isPopular = tournamentsHosted >= 5 || matchesPlayed >= 20;
+
+      return {
+        ...t,
+        sports: sports.length > 0 ? sports : ["Football", "Cricket"], // Default fallback
+        tournaments_hosted: tournamentsHosted,
+        matches_played: matchesPlayed,
+        is_popular: isPopular,
+      };
+    });
+
+    console.log(`✅ Successfully fetched ${enriched.length} turfs`);
+    res.json(enriched);
+  } catch (err) {
+    console.error("❌ Unexpected error in getAllTurfs:", err);
+    res.status(500).json({
+      error: "Internal server error",
+      details: err.message
+    });
   }
-
-  // Enrich with sports derived from text + stats
-  const keywords = [
-    "Football",
-    "Cricket",
-    "Badminton",
-    "Tennis",
-    "Basketball",
-    "Hockey",
-  ];
-  const enriched = data.map((t) => {
-    const text = `${t.name} ${t.description} ${t.facilities}`.toLowerCase();
-    const sports = keywords.filter((k) => text.includes(k.toLowerCase()));
-
-    const tournamentsHosted = tournamentsByTurf[t.id] || 0;
-    const matchesPlayed = bookingsByTurf[t.id] || 0;
-    const isPopular = tournamentsHosted >= 5 || matchesPlayed >= 20;
-
-    return {
-      ...t,
-      sports: sports.length > 0 ? sports : ["Football", "Cricket"], // Default fallback
-      tournaments_hosted: tournamentsHosted,
-      matches_played: matchesPlayed,
-      is_popular: isPopular,
-    };
-  });
-
-  res.json(enriched);
 };
 
 /* =======================
@@ -311,7 +314,7 @@ exports.getTurfReviews = async (req, res) => {
   try {
     const { id } = req.params;
     const { data, error } = await supabase
-      .from("turf_reviews")
+      .from("reviews")
       .select(`
         *,
         users(id, name, profile_image_url)
@@ -477,6 +480,7 @@ exports.deleteTurfComment = async (req, res) => {
 /* =======================
    DELETE TURF
    - Only owner can delete their own turf
+   - Cascade deletes related bookings and slots
 ======================= */
 exports.deleteTurf = async (req, res) => {
   try {
@@ -503,7 +507,131 @@ exports.deleteTurf = async (req, res) => {
       return res.status(403).json({ error: "You don't have permission to delete this turf" });
     }
 
-    // Delete the turf (CASCADE will handle related records)
+    console.log(`🗑️ Starting deletion of turf: ${turf.name} (ID: ${turfId})`);
+
+    // Step 0: Get all slots first (needed for verification codes)
+    const { data: slots } = await supabase
+      .from("slots")
+      .select("id")
+      .eq("turf_id", turfId);
+
+    const slotIds = (slots || []).map(s => s.id);
+    console.log(`📊 Found ${slotIds.length} slots`);
+
+    // Step 0.5: Delete verification codes (references bookings and slots)
+    if (slotIds.length > 0) {
+      const { error: vCodesError } = await supabase
+        .from("booking_verification_codes")
+        .delete()
+        .in("slot_id", slotIds);
+
+      if (vCodesError) {
+        console.error("[deleteTurf] Failed to delete verification codes:", vCodesError);
+        // Don't fail - continue
+      } else {
+        console.log("✅ Deleted verification codes");
+      }
+    }
+
+    // Step 1: Delete all bookings for this turf (bookings have direct turf_id reference)
+    const { error: bookingsDeleteError } = await supabase
+      .from("bookings")
+      .delete()
+      .eq("turf_id", turfId);
+
+    if (bookingsDeleteError) {
+      console.error("[deleteTurf] Failed to delete bookings:", bookingsDeleteError);
+      return res.status(400).json({
+        error: "Failed to delete bookings",
+        details: bookingsDeleteError.message
+      });
+    }
+    console.log("✅ Deleted all bookings");
+
+    // Step 2: Delete all reviews for this turf
+    const { error: reviewsDeleteError } = await supabase
+      .from("reviews")
+      .delete()
+      .eq("turf_id", turfId);
+
+    if (reviewsDeleteError) {
+      console.error("[deleteTurf] Failed to delete reviews:", reviewsDeleteError);
+      // Don't fail if reviews table doesn't exist or is empty
+    } else {
+      console.log("✅ Deleted all reviews");
+    }
+
+    // Step 3: Delete all slots for this turf
+    const { error: slotsDeleteError } = await supabase
+      .from("slots")
+      .delete()
+      .eq("turf_id", turfId);
+
+    if (slotsDeleteError) {
+      console.error("[deleteTurf] Failed to delete slots:", slotsDeleteError);
+      return res.status(400).json({
+        error: "Failed to delete slots",
+        details: slotsDeleteError.message
+      });
+    }
+    console.log("✅ Deleted all slots");
+
+    // Step 4: Cascade Delete Tournaments (Participants -> Tournaments)
+    const { data: tournamentList } = await supabase
+      .from('tournaments')
+      .select('id')
+      .eq('turf_id', turfId);
+
+    const tournamentIds = (tournamentList || []).map(t => t.id);
+
+    if (tournamentIds.length > 0) {
+      console.log(`🏆 Found ${tournamentIds.length} tournaments to clean up`);
+
+      // 4a. Get participants to delete their verification codes
+      const { data: participants } = await supabase
+        .from('tournament_participants')
+        .select('id')
+        .in('tournament_id', tournamentIds);
+
+      const participantIds = (participants || []).map(p => p.id);
+
+      if (participantIds.length > 0) {
+        // 4b. Delete verification codes for these participants
+        const { error: vcError } = await supabase
+          .from('booking_verification_codes')
+          .delete()
+          .in('participant_id', participantIds);
+
+        if (vcError) console.warn("Failed to delete tournament verification codes:", vcError);
+
+        // 4c. Delete participants
+        const { error: pError } = await supabase
+          .from('tournament_participants')
+          .delete()
+          .in('tournament_id', tournamentIds);
+
+        if (pError) {
+          console.error("Failed to delete tournament participants:", pError);
+          // Only stop if this fails, as it will block tournament deletion
+          return res.status(400).json({ error: "Failed to delete tournament participants" });
+        }
+      }
+
+      // 4d. Delete the tournaments
+      const { error: tournamentsDeleteError } = await supabase
+        .from("tournaments")
+        .delete()
+        .eq("turf_id", turfId);
+
+      if (tournamentsDeleteError) {
+        console.error("[deleteTurf] Failed to delete tournaments:", tournamentsDeleteError);
+        // Continue but warn
+      } else {
+        console.log("✅ Deleted all tournaments");
+      }
+    }
+
+    // Step 5: Finally delete the turf
     const { error: deleteError } = await supabase
       .from("turfs")
       .delete()
@@ -511,10 +639,13 @@ exports.deleteTurf = async (req, res) => {
 
     if (deleteError) {
       console.error("[deleteTurf] Delete error:", deleteError);
-      return res.status(400).json({ error: deleteError.message });
+      return res.status(400).json({
+        error: "Failed to delete turf",
+        details: deleteError.message
+      });
     }
 
-    console.log(`✅ Turf deleted: ${turf.name} (ID: ${turfId})`);
+    console.log(`✅ Turf deleted successfully: ${turf.name} (ID: ${turfId})`);
     res.json({
       message: "Turf deleted successfully",
       turf_id: turfId,
@@ -522,7 +653,10 @@ exports.deleteTurf = async (req, res) => {
     });
   } catch (err) {
     console.error("[deleteTurf] Unexpected error:", err);
-    res.status(500).json({ error: "Internal server error" });
+    res.status(500).json({
+      error: "Internal server error",
+      details: err.message
+    });
   }
 };
 
@@ -548,4 +682,5 @@ exports.uploadTurfImages = async (req, res) => {
     res.status(500).json({ error: "Failed to upload images" });
   }
 };
+
 

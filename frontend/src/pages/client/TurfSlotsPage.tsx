@@ -515,7 +515,6 @@ const TurfSlotsPage = () => {
                     type="date"
                     value={singleDate}
                     onChange={e => setSingleDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
                   />
                 </div>
                 <div>
@@ -567,7 +566,6 @@ const TurfSlotsPage = () => {
                       type="date"
                       value={bulkStartDate}
                       onChange={e => setBulkStartDate(e.target.value)}
-                      min={new Date().toISOString().split("T")[0]}
                     />
                   </div>
                   <div>
@@ -576,7 +574,7 @@ const TurfSlotsPage = () => {
                       type="date"
                       value={bulkEndDate}
                       onChange={e => setBulkEndDate(e.target.value)}
-                      min={bulkStartDate || new Date().toISOString().split("T")[0]}
+                      min={bulkStartDate}
                     />
                   </div>
                 </div>

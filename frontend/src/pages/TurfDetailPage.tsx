@@ -92,7 +92,11 @@ const TurfDetailPage = () => {
   const [turf, setTurf] = useState<Turf | null>(null);
   const [slots, setSlots] = useState<Slot[]>([]);
   const [currentImage, setCurrentImage] = useState(0);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
   const [selectedSlots, setSelectedSlots] = useState<number[]>([]);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [toast, setToast] = useState<ToastConfig | null>(null);
@@ -367,15 +371,13 @@ const TurfDetailPage = () => {
     const fetchData = async () => {
       if (!id) return;
       try {
-        const [turfRes, slotsRes, galleryRes, testimonialsRes, commentsRes] = await Promise.all([
+        const [turfRes, galleryRes, testimonialsRes, commentsRes] = await Promise.all([
           getTurfDetails(id),
-          getSlotsByTurf(id),
           api.get(`/turfs/${id}/gallery`).catch(() => ({ data: [] })),
           api.get(`/turfs/${id}/testimonials`).catch(() => ({ data: [] })),
           api.get(`/turfs/${id}/comments`).catch(() => ({ data: [] })),
         ]);
         setTurf(turfRes.data);
-        setSlots(slotsRes.data);
         setGallery(galleryRes.data || []);
         setTestimonials(testimonialsRes.data || []);
         setComments(Array.isArray(commentsRes.data) ? commentsRes.data : []);
@@ -392,6 +394,45 @@ const TurfDetailPage = () => {
     };
     fetchData();
   }, [id]);
+
+  /* FETCH SLOTS WHEN DATE CHANGES */
+  useEffect(() => {
+    const fetchSlots = async () => {
+      if (!id) return;
+      try {
+        const slotsRes = await getSlotsByTurf(id);
+        const allSlots = slotsRes.data;
+
+        // Filter slots by selected date
+        // Filter slots by selected date using LOCAL date string to avoid timezone shifts
+        const year = selectedDate.getFullYear();
+        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+        const day = String(selectedDate.getDate()).padStart(2, '0');
+        const selectedDateStr = `${year}-${month}-${day}`;
+
+        const filteredSlots = allSlots.filter((slot: Slot) => {
+          if (slot.date) {
+            // Check if slot date string matches directly (assuming DB returns YYYY-MM-DD)
+            // If slot.date is ISO, convert to local YYYY-MM-DD
+            const d = new Date(slot.date);
+            const sYear = d.getFullYear();
+            const sMonth = String(d.getMonth() + 1).padStart(2, '0');
+            const sDay = String(d.getDate()).padStart(2, '0');
+            const slotDateStr = `${sYear}-${sMonth}-${sDay}`;
+
+            return slotDateStr === selectedDateStr;
+          }
+          return false;
+        });
+
+        setSlots(filteredSlots);
+      } catch (error) {
+        console.error(error);
+        setSlots([]);
+      }
+    };
+    fetchSlots();
+  }, [id, selectedDate]);
 
   /* LOADING STATE */
 
@@ -902,7 +943,10 @@ const TurfDetailPage = () => {
                     {dates.map((date, i) => (
                       <button
                         key={i}
-                        onClick={() => setSelectedDate(date)}
+                        onClick={() => {
+                          setSelectedDate(date);
+                          setSelectedSlots([]); // Clear selections when changing date
+                        }}
                         className={`flex flex-col items-center min-w-[70px] p-3 rounded-xl transition-all ${selectedDate.toDateString() === date.toDateString()
                           ? "gradient-primary text-primary-foreground"
                           : "bg-secondary text-muted-foreground hover:text-foreground"

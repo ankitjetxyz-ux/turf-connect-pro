@@ -1,3 +1,26 @@
+/**
+ * PRODUCTION-GRADE ANALYTICS IMPLEMENTATION
+ * ==========================================
+ * 
+ * This file demonstrates how to integrate the production-ready analytics system
+ * with your existing TurfAnalytics component.
+ * 
+ * Key Features:
+ * - Real data from Supabase
+ * - Single optimized API call (instead of 5)
+ * - Auto-refresh capability with polling
+ * - Loading and error states
+ * - Date range selection with presets
+ * - Period comparison (current vs previous)
+ * 
+ * Integration Steps:
+ * 1. Import the useTurfAnalytics hook and AnalyticsService
+ * 2. Replace existing state management with the hook
+ * 3. Use the hook's data, loading, and error states
+ * 4. Add date range picker using preset ranges
+ * 5. Wire up real data to existing UI components
+ */
+
 import React, { useState } from 'react';
 import {
     TrendingUp, TrendingDown, Calendar,
@@ -68,23 +91,22 @@ const MetricCard: React.FC<MetricCardProps> = ({ icon, title, value, change, col
     );
 };
 
-interface AnalyticsProps {
+interface TurfAnalyticsEnhancedProps {
     turfId: string;
     turfName?: string;
-    refreshInterval?: number; // Optional: auto-refresh interval in milliseconds
 }
 
-const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInterval = 0 }) => {
+const TurfAnalyticsEnhanced: React.FC<TurfAnalyticsEnhancedProps> = ({ turfId, turfName }) => {
     // Date range state - defaults to last 30 days
     const [dateRange, setDateRange] = useState(() =>
         AnalyticsService.getPresetDateRanges().last30Days
     );
 
-    // Fetch analytics with the production-ready hook (real data from Supabase)
+    // Fetch analytics with the production-ready hook
     const { data, loading, error, refetch, isRefetching } = useTurfAnalytics({
         turfId,
         dateRange,
-        refreshInterval, // ✅ Use prop value (30000ms for auto-refresh)
+        refreshInterval: 0, // Set to 30000 for 30-second auto-refresh
         autoRefresh: true,
     });
 
@@ -195,9 +217,9 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
                 <div>
                     <h2 className="text-2xl font-bold flex items-center gap-2">
                         <Activity className="w-6 h-6 text-primary" />
-                        Analytics
+                        Analytics Dashboard
                     </h2>
-                    {turfName && <p className="text-muted-foreground text-sm">{turfName}</p>}
+                    {turfName && <p className="text-muted-foreground text-sm mt-1">{turfName}</p>}
                     <p className="text-xs text-muted-foreground mt-1">
                         {AnalyticsService.formatDateRange(dateRange)}
                     </p>
@@ -206,37 +228,27 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
                 <div className="flex items-center gap-2 flex-wrap">
                     {/* Preset date range buttons */}
                     <select
-                        defaultValue="last30Days"
                         onChange={(e) => handlePresetChange(e.target.value as any)}
-                        className="px-4 py-2 border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
+                        className="px-3 py-2 border border-border rounded-lg bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                     >
                         <option value="last7Days">Last 7 Days</option>
-                        <option value="last30Days">Last 30 Days</option>
+                        <option value="last30Days" selected>Last 30 Days</option>
                         <option value="last90Days">Last 90 Days</option>
-                        <option value="1year">All Time (Past & Future)</option>
+                        <option value="thisMonth">This Month</option>
+                        <option value="lastMonth">Last Month</option>
                     </select>
 
-                    {/* Refresh button with auto-refresh indicator */}
-                    <div className="flex items-center gap-2">
-                        <Button
-                            onClick={refetch}
-                            disabled={isRefetching}
-                            variant="outline"
-                            size="sm"
-                            className="gap-2"
-                        >
-                            <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
-                            {isRefetching ? 'Refreshing...' : 'Refresh'}
-                        </Button>
-
-                        {/* Auto-refresh indicator */}
-                        {refreshInterval > 0 && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                <span>Auto-refresh: {refreshInterval / 1000}s</span>
-                            </div>
-                        )}
-                    </div>
+                    {/* Refresh button */}
+                    <Button
+                        onClick={refetch}
+                        disabled={isRefetching}
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                    >
+                        <RefreshCw size={16} className={isRefetching ? 'animate-spin' : ''} />
+                        {isRefetching ? 'Refreshing...' : 'Refresh'}
+                    </Button>
                 </div>
             </div>
 
@@ -244,28 +256,28 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <MetricCard
                     icon={<IndianRupee size={20} />}
-                    title="Revenue"
+                    title="Total Revenue"
                     value={`₹${data.totalRevenue.toLocaleString()}`}
                     change={data.revenueChange}
                     color="green"
                 />
                 <MetricCard
                     icon={<Calendar size={20} />}
-                    title="Bookings"
+                    title="Total Bookings"
                     value={data.totalBookings}
                     change={data.bookingsChange}
                     color="blue"
                 />
                 <MetricCard
                     icon={<BarChart3 size={20} />}
-                    title="Occupancy"
+                    title="Occupancy Rate"
                     value={`${data.occupancyRate}%`}
                     change={0} // No change tracking for occupancy in current implementation
                     color="purple"
                 />
                 <MetricCard
                     icon={<Star size={20} />}
-                    title="Rating"
+                    title="Average Rating"
                     value={data.avgRating.toFixed(1)}
                     change={parseFloat((data.ratingChange * 20).toFixed(1))} // Convert to percentage (0-5 scale to 0-100)
                     color="yellow"
@@ -320,7 +332,7 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
                 {/* Revenue by Day */}
                 <Card variant="glass">
                     <CardHeader>
-                        <CardTitle className="text-lg">Revenue by Day</CardTitle>
+                        <CardTitle className="text-lg">Revenue by Day of Week</CardTitle>
                     </CardHeader>
                     <CardContent>
                         {data.revenueByDayOfWeek.length > 0 ? (
@@ -367,7 +379,7 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Clock size={18} className="text-primary" />
-                            Peak Hours
+                            Peak Booking Hours
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-3">
@@ -376,7 +388,9 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
                                 <div key={index}>
                                     <div className="flex justify-between text-sm mb-1">
                                         <span className="font-medium">{hour.hour}</span>
-                                        <span className="text-muted-foreground">{hour.percentage}%</span>
+                                        <span className="text-muted-foreground">
+                                            {hour.count} bookings ({hour.percentage}%)
+                                        </span>
                                     </div>
                                     <div className="w-full bg-secondary rounded-full h-2">
                                         <div
@@ -404,19 +418,31 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
                             <div>
                                 <p className="text-xs text-muted-foreground mb-1">Bookings</p>
                                 <p className="text-xl font-bold">{data.weeklyComparison.currentWeek.bookings}</p>
-                                <p className="text-xs text-muted-foreground">vs {data.weeklyComparison.previousWeek.bookings}</p>
+                                <p className="text-xs text-muted-foreground">
+                                    vs {data.weeklyComparison.previousWeek.bookings}
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground mb-1">Revenue</p>
-                                <p className="text-xl font-bold">₹{(data.weeklyComparison.currentWeek.revenue / 1000).toFixed(1)}k</p>
-                                <p className="text-xs text-muted-foreground">vs ₹{(data.weeklyComparison.previousWeek.revenue / 1000).toFixed(1)}k</p>
+                                <p className="text-xl font-bold">
+                                    ₹{(data.weeklyComparison.currentWeek.revenue / 1000).toFixed(1)}k
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    vs ₹{(data.weeklyComparison.previousWeek.revenue / 1000).toFixed(1)}k
+                                </p>
                             </div>
                             <div>
                                 <p className="text-xs text-muted-foreground mb-1">Avg/Day</p>
-                                <p className="text-xl font-bold">{(data.weeklyComparison.currentWeek.bookings / 7).toFixed(1)}</p>
-                                <p className="text-xs text-muted-foreground">vs {(data.weeklyComparison.previousWeek.bookings / 7).toFixed(1)}</p>
+                                <p className="text-xl font-bold">
+                                    {(data.weeklyComparison.currentWeek.bookings / 7).toFixed(1)}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                    vs {(data.weeklyComparison.previousWeek.bookings / 7).toFixed(1)}
+                                </p>
                             </div>
                         </div>
+
+                        {/* Change indicator */}
                         {(() => {
                             const change = data.weeklyComparison.previousWeek.bookings > 0
                                 ? ((data.weeklyComparison.currentWeek.bookings - data.weeklyComparison.previousWeek.bookings) / data.weeklyComparison.previousWeek.bookings) * 100
@@ -443,4 +469,4 @@ const TurfAnalytics: React.FC<AnalyticsProps> = ({ turfId, turfName, refreshInte
     );
 };
 
-export default TurfAnalytics;
+export default TurfAnalyticsEnhanced;

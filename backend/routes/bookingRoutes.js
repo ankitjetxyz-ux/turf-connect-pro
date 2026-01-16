@@ -32,11 +32,11 @@ router.post(
   createBookingAndOrder
 );
 
-// Get player's bookings
+// Get player's bookings (also used by clients for their own bookings)
 router.get(
   "/my",
   verifyToken,
-  allowRoles("player"),
+  allowRoles("player", "client"),
   getMyBookings
 );
 

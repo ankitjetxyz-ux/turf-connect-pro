@@ -308,30 +308,44 @@ exports.ownerCancelBooking = async (req, res) => {
 };
 
 /* =====================
-   CLIENT BOOKINGS
+CLIENT BOOKINGS
 ===================== */
 exports.getClientBookings = async (req, res) => {
   try {
-    // Only show upcoming bookings or those from the last 24 hours
-    const now = new Date();
-    const threshold = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const thresholdDate = threshold.toISOString().split("T")[0];
+    // Step 1: Get all turf IDs owned by this client
+    const { data: turfs, error: turfsError } = await supabase
+      .from("turfs")
+      .select("id")
+      .eq("owner_id", req.user.id);
 
+    if (turfsError) {
+      console.error("[getClientBookings] Turfs fetch error", turfsError);
+      return res.status(500).json({ error: "Failed to load turfs" });
+    }
+
+    if (!turfs || turfs.length === 0) {
+      // Owner has no turfs, return empty bookings
+      return res.json([]);
+    }
+
+    const turfIds = turfs.map(t => t.id);
+
+    // Step 2: Get bookings for these turfs
     const { data, error } = await supabase
       .from("bookings")
       .select(`
         id,
         status,
+        turf_id,
+        created_at,
         users!bookings_user_id_fkey(id, name, email),
         slots(date, start_time, end_time,
-          turfs(name, owner_id)
+          turfs(name)
         )
       `)
-      .eq("slots.turfs.owner_id", req.user.id)
+      .in("turf_id", turfIds)
       .neq("status", "cancelled_by_user")
       .neq("status", "cancelled_by_owner")
-      .neq("status", "pending") // Exclude pending bookings
-      .gte("slots.date", thresholdDate)
       .order("created_at", { ascending: false });
 
     if (error) {

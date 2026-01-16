@@ -411,8 +411,8 @@ const ClientDashboard = () => {
                 </button>
                 <button
                   className={`px-4 py-2 text-sm font-medium transition-colors flex items-center gap-2 ${activeSection === "analytics"
-                      ? "text-primary border-b-2 border-primary"
-                      : "text-muted-foreground hover:text-foreground"
+                    ? "text-primary border-b-2 border-primary"
+                    : "text-muted-foreground hover:text-foreground"
                     }`}
                   onClick={() => setActiveSection("analytics")}
                 >
@@ -501,33 +501,7 @@ const ClientDashboard = () => {
                               + Tournament
                             </Button>
 
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="w-10 px-0"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (!confirm(`Are you sure you want to delete "${turf.name}"? This action cannot be undone.`)) return;
-                                try {
-                                  await api.delete(`/turfs/${turf.id}`);
-                                  setTurfs(prev => prev.filter(t => t.id !== turf.id));
-                                  if (selectedTurf?.id === turf.id) setSelectedTurf(null);
-                                  toast({
-                                    title: "Turf deleted",
-                                    description: `${turf.name} has been removed successfully.`,
-                                  });
-                                } catch (e: unknown) {
-                                  const errorMessage = (e as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete turf";
-                                  toast({
-                                    title: "Unable to delete turf",
-                                    description: errorMessage,
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                            >
-                              X
-                            </Button>
+                            {/* Delete button removed - turfs cannot be deleted from dashboard */}
                           </div>
                         </CardContent>
                       </Card>
@@ -705,6 +679,7 @@ const ClientDashboard = () => {
                       <TurfAnalytics
                         turfId={String(selectedTurf.id)}
                         turfName={selectedTurf.name}
+                        refreshInterval={30000}
                       />
                     </div>
                   )}
