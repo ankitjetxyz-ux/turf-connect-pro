@@ -29,6 +29,7 @@ const AddTurfForm = () => {
         price_per_slot: "",
         facilities: "",
         google_maps_link: "",
+        owner_phone: "",
         images: "",
     });
 
@@ -56,6 +57,7 @@ const AddTurfForm = () => {
                         price_per_slot: String(turf.price_per_slot),
                         facilities: turf.facilities || "",
                         google_maps_link: turf.google_maps_url || "",
+                        owner_phone: turf.owner_phone || "",
                         images: "",
                     });
 
@@ -92,8 +94,8 @@ const AddTurfForm = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!formData.name || !formData.location || !formData.price_per_slot) {
-            toast({ title: "Missing Fields", description: "Please fill in all required fields.", variant: "destructive" });
+        if (!formData.name || !formData.location || !formData.price_per_slot || !formData.owner_phone) {
+            toast({ title: "Missing Fields", description: "Please fill in all required fields including contact number.", variant: "destructive" });
             return;
         }
 

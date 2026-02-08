@@ -305,10 +305,10 @@ const TurfSlotsPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
 
-      <main className="pt-24 pb-12 container space-y-6">
+      <main className="pt-24 pb-12 container space-y-6 flex-1">
         {/* HEADER */}
         <div className="space-y-2">
           <button

@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Star, MapPin, Clock, Heart, Phone, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Clock, Heart, Phone, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
 
@@ -20,6 +20,7 @@ interface TurfCardProps {
   tournamentsHosted?: number;
   matchesPlayed?: number;
   ownerPhone?: string;
+  onToggleFavorite?: () => void;
 }
 
 const TurfCard = ({
@@ -37,8 +38,21 @@ const TurfCard = ({
   tournamentsHosted = 0,
   matchesPlayed = 0,
   ownerPhone,
+  onToggleFavorite,
 }: TurfCardProps) => {
-  const [isLiked, setIsLiked] = useState(false);
+  const [isLiked, setIsLiked] = useState(() => {
+    try {
+      const stored = localStorage.getItem('favourite_turfs');
+      if (stored) {
+        const favs = JSON.parse(stored);
+        // Loose comparison to handle string/number mismatch
+        return favs.some((fid: any) => fid == id);
+      }
+    } catch (e) {
+      console.error("Error reading favourites", e);
+    }
+    return false;
+  });
   const [showFullAddress, setShowFullAddress] = useState(false);
 
   // Truncate address if too long (max 50 chars by default)
@@ -48,10 +62,37 @@ const TurfCard = ({
     ? `${location.substring(0, maxAddressLength)}...`
     : location;
 
+  const toggleFavorite = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    try {
+      const stored = localStorage.getItem('favourite_turfs');
+      let favs = stored ? JSON.parse(stored) : [];
+
+      if (isLiked) {
+        favs = favs.filter((fid: any) => fid != id);
+      } else {
+        // Avoid duplicates
+        if (!favs.some((fid: any) => fid == id)) {
+          favs.push(id);
+        }
+      }
+
+      localStorage.setItem('favourite_turfs', JSON.stringify(favs));
+      setIsLiked(!isLiked);
+      if (onToggleFavorite) onToggleFavorite();
+    } catch (err) {
+      console.error("Failed to toggle favorite", err);
+    }
+  };
+
   return (
     <Card
-      variant={featured ? "featured" : "interactive"}
-      className="group overflow-hidden hover-lift glass-card h-full flex flex-col"
+      id={`turf-card-${id}`}
+      variant="glass"
+      className={`group overflow-hidden hover-lift glass-card h-full flex flex-col cursor-pointer transition-colors ${featured ? "border-primary/30 shadow-glow" : "hover:border-primary/50 hover:shadow-glow"
+        }`}
     >
       <div className="relative aspect-[4/3] overflow-hidden shrink-0">
         <img
@@ -65,30 +106,12 @@ const TurfCard = ({
 
         <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
 
-        {/* Star Rating Badge - Top Left */}
-        {rating > 0 && (
-          <div className="absolute top-3 left-3 flex items-center gap-1 bg-black/60 backdrop-blur-sm rounded-lg px-2 py-1.5 z-10">
-            <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-            <span className="font-bold text-white text-sm">{rating.toFixed(1)}</span>
-            {reviewsCount > 0 && (
-              <span className="text-white/80 text-xs">({reviewsCount})</span>
-            )}
-          </div>
-        )}
-
-        <div className="absolute top-3 right-12 flex gap-2">
-          {featured && <Badge variant="featured">⭐ Popular Turf</Badge>}
-          {availableSlots <= 3 && (
-            <Badge variant="destructive">Only {availableSlots} slots!</Badge>
-          )}
-        </div>
-
         <button
-          onClick={() => setIsLiked(!isLiked)}
-          className={`absolute top-3 right-3 w-10 h-10 rounded-full glass-effect flex items-center justify-center ${isLiked ? "text-destructive bg-destructive/20" : ""
+          onClick={toggleFavorite}
+          className={`absolute top-3 right-3 w-10 h-10 rounded-full glass-effect flex items-center justify-center transition-all ${isLiked ? "bg-white/20 text-red-500" : "text-foreground hover:text-red-500"
             }`}
         >
-          <Heart className={`w-5 h-5 ${isLiked ? "fill-destructive" : ""}`} />
+          <Heart className={`w-5 h-5 ${isLiked ? "fill-current" : ""}`} />
         </button>
 
         <div className="absolute bottom-3 right-3 glass-effect rounded-xl px-3 py-2">
@@ -99,9 +122,8 @@ const TurfCard = ({
 
       <CardContent className="p-5 flex flex-col flex-1">
         <div className="flex-1 space-y-3">
-          <h3 className="font-bold text-lg line-clamp-1">{name}</h3>
+          <h3 className="font-bold text-xl line-clamp-1">{name}</h3>
 
-          {/* Address - Fixed height container */}
           <div className="min-h-[60px]">
             <div className="flex items-start gap-1.5 text-sm text-muted-foreground">
               <MapPin className="w-4 h-4 text-primary/70 mt-0.5 shrink-0" />
@@ -120,7 +142,6 @@ const TurfCard = ({
               </div>
             </div>
 
-            {/* Contact Number */}
             {ownerPhone && (
               <div className="flex items-center gap-1.5 text-sm text-muted-foreground mt-2">
                 <Phone className="w-4 h-4 text-primary/70 shrink-0" />
@@ -135,7 +156,6 @@ const TurfCard = ({
             )}
           </div>
 
-          {/* Sports badges - Fixed height */}
           <div className="flex flex-wrap gap-2 min-h-[28px]">
             {sports.slice(0, 3).map((sport) => (
               <Badge key={sport} variant="secondary" className="text-xs">
@@ -148,15 +168,8 @@ const TurfCard = ({
               </Badge>
             )}
           </div>
-
-          {/* Stats */}
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span>Tournaments: {tournamentsHosted}</span>
-            <span>Matches: {matchesPlayed}</span>
-          </div>
         </div>
 
-        {/* Bottom section - always at bottom */}
         <div className="flex items-center justify-between pt-3 border-t mt-3">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4" />

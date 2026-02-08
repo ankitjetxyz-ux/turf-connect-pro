@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Star, ChevronLeft, ChevronRight, Quote, Play, ThumbsUp, User } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const testimonials = [
   {
@@ -70,23 +71,28 @@ const TestimonialsSection = () => {
     setActiveVideo(null);
   };
 
+  const sectionRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.9", "center center"]
+  });
+  const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
+
   return (
-    <section className="py-24 relative overflow-hidden">
+    <motion.section
+      ref={sectionRef}
+      style={{ opacity, y }}
+      className="py-24 relative overflow-hidden"
+    >
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
       <div className="absolute inset-0 dot-pattern opacity-50" />
 
-      {/* Ambient glow */}
-      <div className="absolute bottom-0 left-1/4 w-[400px] h-[400px] bg-primary/5 rounded-full blur-[100px]" />
-
       <div className="container px-4 relative z-10">
         {/* Header */}
         <div className="text-center max-w-2xl mx-auto mb-16">
-          <Badge variant="premium" className="mb-4">
-            <ThumbsUp className="w-4 h-4 mr-1" />
-            Video Testimonials
-          </Badge>
-          <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+          <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight mb-4" style={{ fontFamily: '"Inter Display", sans-serif', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.04em' }}>
             Watch <span className="text-gradient">Real Experiences</span>
           </h2>
           <p className="text-muted-foreground text-lg">
@@ -94,82 +100,91 @@ const TestimonialsSection = () => {
           </p>
         </div>
 
-        {/* Testimonials Grid (Desktop) */}
-        <div className="hidden md:grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {testimonials.map((testimonial, index) => (
-            <Card
-              key={testimonial.id}
-              variant="interactive"
-              className="animate-slide-up opacity-0 hover-lift glass-card group overflow-hidden"
-              style={{ animationDelay: `${index * 0.1}s` }}
-            >
-              <CardContent className="p-0">
-                {/* Video Thumbnail */}
-                <div className="relative h-40 bg-secondary/30 overflow-hidden">
-                  <div className="relative h-full">
-                    <img
-                      src={testimonial.thumbnail}
-                      alt={testimonial.name}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                    <button
-                      onClick={() => handleVideoPlay(testimonial.id)}
-                      className="absolute inset-0 flex items-center justify-center group/play"
-                    >
-                      <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center group-hover/play:scale-110 transition-transform shadow-lg">
-                        <Play className="w-5 h-5 text-white fill-white" />
-                      </div>
-                      <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        {testimonial.duration}
-                      </div>
-                    </button>
-                  </div>
-                </div>
+        {/* Testimonials Marquee (Desktop) */}
+        <div className="hidden md:block relative w-full overflow-hidden mask-horizontal-fade py-8">
+          {/* Gradient Masks */}
+          <div className="absolute top-0 bottom-0 left-0 w-20 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+          <div className="absolute top-0 bottom-0 right-0 w-20 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
 
-                {/* Content */}
-                <div className="p-5">
-                  {/* Rating */}
-                  <div className="flex gap-1 mb-3">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-3 h-3 transition-colors ${i < testimonial.rating
-                            ? "text-primary fill-primary"
-                            : "text-muted/50"
-                          }`}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Quote */}
-                  <p className="text-muted-foreground text-sm mb-4 line-clamp-3 leading-relaxed">
-                    "{testimonial.text}"
-                  </p>
-
-                  {/* Author */}
-                  <div className="flex items-center gap-3 pt-3 border-t border-border/50">
-                    <div className="relative">
+          <div className="flex animate-horizontal-scroll hover:pause-scroll gap-6 w-max">
+            {/* Triplicate the list for seamless looping */}
+            {[...testimonials, ...testimonials, ...testimonials].map((testimonial, index) => (
+              <Card
+                key={`${testimonial.id}-${index}`}
+                variant="glass"
+                className="w-[300px] shrink-0 glass-card group overflow-hidden hover-lift hover:border-primary/50 hover:shadow-glow cursor-pointer"
+              >
+                <CardContent className="p-0">
+                  {/* Video Thumbnail */}
+                  <div className="relative h-40 bg-secondary/30 overflow-hidden">
+                    <div className="relative h-full">
                       <img
-                        src={testimonial.avatar}
+                        src={testimonial.thumbnail}
                         alt={testimonial.name}
-                        className="w-9 h-9 rounded-full object-cover border-2 border-primary/30 group-hover:border-primary/60 transition-colors"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                       />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+                      <button
+                        onClick={() => handleVideoPlay(testimonial.id)}
+                        className="absolute inset-0 flex items-center justify-center group/play"
+                      >
+                        <div className="w-12 h-12 rounded-full bg-primary/90 flex items-center justify-center group-hover/play:scale-110 transition-transform shadow-lg">
+                          <Play className="w-5 h-5 text-white fill-white" />
+                        </div>
+                        <div className="absolute bottom-3 right-3 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          {testimonial.duration}
+                        </div>
+                      </button>
                     </div>
-                    <div>
-                      <div className="font-heading font-semibold text-foreground text-sm">
-                        {testimonial.name}
+                  </div>
+
+                  {/* Content */}
+                  <div className="p-5">
+                    {/* Rating */}
+
+
+                    {/* Quote */}
+                    <p className="text-muted-foreground text-sm mb-4 line-clamp-3 leading-relaxed">
+                      "{testimonial.text}"
+                    </p>
+
+                    {/* Author */}
+                    <div className="flex items-center gap-3 pt-3 border-t border-border/50">
+                      <div className="relative">
+                        <img
+                          src={testimonial.avatar}
+                          alt={testimonial.name}
+                          className="w-9 h-9 rounded-full object-cover border-2 border-primary/30 group-hover:border-primary/60 transition-colors"
+                        />
                       </div>
-                      <div className="text-muted-foreground text-xs">
-                        {testimonial.role}
+                      <div>
+                        <div className="font-heading font-semibold text-foreground text-sm">
+                          {testimonial.name}
+                        </div>
+                        <div className="text-muted-foreground text-xs">
+                          {testimonial.role}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
+
+        <style>{`
+          @keyframes horizontal-scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-33.33%); } 
+          }
+          .animate-horizontal-scroll {
+            animation: horizontal-scroll 40s linear infinite;
+          }
+          .hover\\:pause-scroll:hover {
+            animation-play-state: paused;
+          }
+        `}</style>
 
         {/* Testimonials Carousel (Mobile) */}
         <div className="md:hidden relative">
@@ -203,17 +218,7 @@ const TestimonialsSection = () => {
                 <Quote className="w-8 h-8 text-primary/20 mx-auto mb-4" />
 
                 {/* Rating */}
-                <div className="flex gap-1 mb-4 justify-center">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <Star
-                      key={i}
-                      className={`w-5 h-5 ${i < testimonials[activeIndex].rating
-                          ? "text-primary fill-primary"
-                          : "text-muted/50"
-                        }`}
-                    />
-                  ))}
-                </div>
+
 
                 {/* Quote */}
                 <p className="text-muted-foreground text-center mb-6 leading-relaxed">
@@ -302,15 +307,9 @@ const TestimonialsSection = () => {
             <span className="font-semibold">50K+</span>
             <span className="text-sm text-muted-foreground">Happy Users</span>
           </div>
-          <div className="h-6 w-px bg-border" />
-          <div className="flex items-center gap-2">
-            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-            <span className="font-semibold">4.9</span>
-            <span className="text-sm text-muted-foreground">Rating</span>
-          </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };
 

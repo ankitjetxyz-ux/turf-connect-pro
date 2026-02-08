@@ -294,222 +294,26 @@ const TournamentsPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background relative">
+    <div className="min-h-screen bg-background relative flex flex-col">
       <Navbar />
 
-      <main className="pt-24 pb-12 relative z-10">
+      <main className="pt-24 pb-12 relative z-10 flex-1">
         <div className="container px-4">
           {/* Header */}
           <div className="mb-8 text-center space-y-3">
-            <Badge variant="outline" className="mb-2 bg-primary/10 text-primary border-primary/20">
-              Compete & Win
-            </Badge>
-            <h1 className="font-heading text-3xl md:text-4xl font-bold">
+            <h1 className="text-4xl md:text-5xl lg:text-7xl tracking-tight mb-6" style={{ fontFamily: '"Inter Display", sans-serif', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.04em' }}>
               Upcoming <span className="text-gradient">Tournaments</span>
             </h1>
-            <p className="text-muted-foreground">
-              Join local tournaments, push your limits, and play like a champion.
-            </p>
-            <div className="text-xs md:text-sm text-muted-foreground/80 space-y-1 max-w-xl mx-auto">
-              <p>"Hard work beats talent when talent doesn&apos;t work hard."</p>
-              <p>"You miss 100% of the shots you don&apos;t take."</p>
-            </div>
-          </div>
-
-          {/* Tabs for My Tournaments */}
-          {role === "player" && (
-            <div className="flex justify-center mb-6">
-              <div className="bg-secondary/50 p-1 rounded-xl flex gap-1">
-                <button
-                  onClick={() => setFilterType("all")}
-                  className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${filterType === "all"
-                    ? "bg-primary text-white shadow-lg"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
-                >
-                  All Tournaments
-                </button>
-                <button
-                  onClick={() => setFilterType("joined")}
-                  className={`px-6 py-2 rounded-lg text-sm font-medium transition-all ${filterType === "joined"
-                    ? "bg-primary text-white shadow-lg"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
-                >
-                  My Tournaments
-                </button>
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-6">
+              <div className="w-24 h-24 rounded-3xl bg-primary/10 flex items-center justify-center animate-pulse">
+                <Trophy className="w-12 h-12 text-primary" />
               </div>
+              <h2 className="text-3xl font-bold">Tournament Feature Coming Soon</h2>
+              <p className="text-muted-foreground max-w-md">
+                We are working hard to bring you the best tournament experience.
+                Stay tuned for exciting competitions and rewards!
+              </p>
             </div>
-          )}
-
-          {/* Tournament Stats Bar */}
-          {!loading && tournaments.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-              <Card className="bg-gradient-to-br from-orange-500/10 to-amber-500/5 border-orange-500/20">
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-orange-500/20 flex items-center justify-center">
-                    <Trophy className="w-6 h-6 text-orange-400" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-orange-400">{tournamentStats.total}</div>
-                    <p className="text-sm text-muted-foreground">Active Tournaments</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-rose-500/10 to-pink-500/5 border-rose-500/20">
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-rose-400" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-rose-400">{tournamentStats.totalTeams}</div>
-                    <p className="text-sm text-muted-foreground">Teams Registered</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="bg-gradient-to-br from-amber-500/10 to-yellow-500/5 border-amber-500/20">
-                <CardContent className="p-5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-amber-500/20 flex items-center justify-center">
-                    <Target className="w-6 h-6 text-amber-400" />
-                  </div>
-                  <div>
-                    <div className="text-2xl font-bold text-amber-400">{tournamentStats.totalSpots}</div>
-                    <p className="text-sm text-muted-foreground">Spots Open</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-
-          <Card className="mb-8">
-            <CardContent className="p-4">
-              <div className="flex flex-col lg:flex-row gap-4">
-                <div className="flex-1 flex items-center gap-3 bg-secondary/50 px-4 py-3 rounded-xl">
-                  <Search className="w-5 h-5" />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search tournaments..."
-                    className="flex-1 bg-transparent outline-none"
-                  />
-                </div>
-
-                <Button
-                  variant="outline"
-                  className="lg:hidden"
-                  onClick={() => setShowFilters(!showFilters)}
-                >
-                  <Filter className="w-4 h-4 mr-2" />
-                  Filters
-                  <ChevronDown
-                    className={`ml-2 w-4 h-4 ${showFilters ? "rotate-180" : ""
-                      }`}
-                  />
-                </Button>
-              </div>
-
-              <div
-                className={`mt-4 ${showFilters ? "block" : "hidden lg:block"
-                  }`}
-              >
-                <select
-                  value={selectedSport}
-                  onChange={(e) => setSelectedSport(e.target.value)}
-                  className="bg-secondary px-4 py-3 rounded-xl w-full"
-                >
-                  {sportFilters.map((s) => (
-                    <option key={s}>{s}</option>
-                  ))}
-                </select>
-              </div>
-            </CardContent>
-          </Card>
-
-          {loading && <p>Loading tournaments...</p>}
-
-          {!loading && filteredTournaments.length === 0 && (
-            <div className="text-center py-12 text-muted-foreground">
-              <Trophy className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              <p className="text-lg">No tournaments found matching your criteria.</p>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTournaments.map((t) => {
-              const spotsLeft = t.spots_left ?? t.max_teams;
-              const capacityLabel =
-                spotsLeft !== undefined && t.max_teams
-                  ? `${spotsLeft} / ${t.max_teams} spots left`
-                  : `${t.max_teams || 0} teams`;
-
-              return (
-                <Card key={t.id}>
-                  {t.image && (
-                    <img
-                      src={t.image}
-                      alt={t.name}
-                      className="h-48 w-full object-cover"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).style.display = "none";
-                      }}
-                    />
-                  )}
-                  <CardContent className="p-5 space-y-3">
-                    <h3 className="text-lg font-bold">{t.name}</h3>
-                    <div className="flex items-center gap-2">
-                      <Badge variant="outline">{t.sport}</Badge>
-                      <Badge
-                        variant={
-                          t.status === "upcoming" ? "default" : "secondary"
-                        }
-                      >
-                        {t.status}
-                      </Badge>
-                    </div>
-
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <div className="flex gap-2">
-                        <Calendar className="w-4 h-4" />
-                        {t.start_date} - {t.end_date}
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <Users className="w-4 h-4" />
-                        <span>{capacityLabel}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-between items-center text-sm pt-2">
-                      <span>Entry: ₹{t.entry_fee}</span>
-                      <button
-                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                        onClick={() => openTeamsModal(t)}
-                        type="button"
-                      >
-                        <Users className="w-3 h-3" /> View Teams
-                      </button>
-                    </div>
-
-                    <Button
-                      className="w-full mt-2"
-                      disabled={
-                        role !== "player" ||
-                        t.already_joined ||
-                        (spotsLeft || 0) <= 0
-                      }
-                      onClick={() => openJoinModal(t)}
-                    >
-                      {t.already_joined
-                        ? "Already Joined"
-                        : (spotsLeft || 0) > 0
-                          ? "Join Tournament"
-                          : "Full"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              );
-            })}
           </div>
         </div>
       </main>

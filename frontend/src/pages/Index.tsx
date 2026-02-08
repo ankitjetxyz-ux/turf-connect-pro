@@ -9,19 +9,22 @@ import TestimonialsSection from "@/components/home/TestimonialsSection";
 import PromotionalVideos from "@/components/home/PromotionalVideos";
 import AboutUsSection from "../components/home/AboutUsSection";
 import ContactUsSection from "../components/home/ContactUsSection";
+import Marquee from "@/components/common/Marquee";
 
 
 const Index = () => {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      <main>
+      <main className="flex-1">
         <HeroSection />
         <FeaturedTurfs />
-        <FeaturesSection />
+        <Marquee text="BOOK TURF" />
+
         <PromotionalVideos />
-        <TournamentsSection />
+
         <HowItWorks />
+        <Marquee text="BOOK TURF" />
         <TestimonialsSection />
 
         <AboutUsSection /> {/* New About Us section */}

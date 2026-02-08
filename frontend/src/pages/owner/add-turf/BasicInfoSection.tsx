@@ -3,7 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { MapPin, Building2, IndianRupee, FileText, Globe } from "lucide-react";
+import { MapPin, Building2, IndianRupee, FileText, Globe, Phone } from "lucide-react";
 
 interface BasicInfoSectionProps {
     formData: any;
@@ -105,6 +105,22 @@ const BasicInfoSection: React.FC<BasicInfoSectionProps> = ({ formData, handleCha
                             onChange={handleChange}
                             className="pl-9 bg-secondary/30 border-white/10 focus:border-primary/60 focus:ring-primary/20 transition-all duration-300"
                             min="0"
+                        />
+                    </div>
+                </div>
+
+                {/* Contact Number */}
+                <div className="space-y-2">
+                    <Label htmlFor="owner_phone" className="text-foreground/80">Contact Number <span className="text-destructive">*</span></Label>
+                    <div className="relative">
+                        <Phone className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
+                        <Input
+                            id="owner_phone"
+                            name="owner_phone"
+                            placeholder="e.g. +91 9876543210"
+                            value={formData.owner_phone}
+                            onChange={handleChange}
+                            className="pl-9 bg-secondary/30 border-white/10 focus:border-primary/60 focus:ring-primary/20 transition-all duration-300"
                         />
                     </div>
                 </div>

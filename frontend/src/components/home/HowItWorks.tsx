@@ -2,6 +2,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { User, Building2, Shield, ArrowRight, Check } from "lucide-react";
+import bk3 from "../layout/BK3.png";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const roles = [
   {
@@ -49,25 +52,37 @@ const roles = [
 ];
 
 const HowItWorks = () => {
+  const sectionRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.9", "center center"]
+  });
+  const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
+
   return (
-    <section className="py-24 relative overflow-hidden">
+    <motion.section
+      ref={sectionRef}
+      style={{ opacity, y }}
+      className="min-h-screen py-24 relative overflow-hidden flex items-center"
+    >
       {/* Background */}
-      <div className="absolute inset-0 bg-gradient-to-b from-card via-background to-card" />
-      <div className="absolute inset-0 grid-overlay opacity-30" />
-      
-      {/* Ambient glow */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px]" />
+      <div className="absolute inset-0 bg-gradient-to-b from-card via-background to-card z-0" />
+
+      {/* Background Image - Dull */}
+      <div
+        className="absolute inset-0 z-0 opacity-30 bg-center bg-cover bg-no-repeat pointer-events-none"
+        style={{ backgroundImage: `url(${bk3})` }}
+      />
+
+      <div className="absolute inset-0 grid-overlay opacity-30 z-0" />
 
       <div className="container px-4 relative z-10">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <Badge variant="success" className="mb-4">How It Works</Badge>
-          <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
-            Simple Steps to <span className="text-gradient">Get Started</span>
+        <div className="text-center max-w-4xl mx-auto mb-20">
+          <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight mb-4" style={{ fontFamily: '"Inter Display", sans-serif', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.04em' }}>
+            Simple Steps to <span className="text-gradient block mt-2">Get Started</span>
           </h2>
-          <p className="text-muted-foreground text-lg">
-            Book your favorite turf in just a few easy steps
-          </p>
         </div>
 
         {/* Steps */}
@@ -91,18 +106,18 @@ const HowItWorks = () => {
           ].map((item, index) => (
             <Card
               key={item.step}
-              variant="default"
+              variant="glass"
               className="group animate-slide-up opacity-0 hover-lift glass-card"
               style={{ animationDelay: `${index * 0.15}s` }}
             >
               <CardContent className="p-8 text-center">
-                <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow group-hover:scale-110 transition-transform duration-300">
+                <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow group-hover:scale-110 transition-transform duration-300">
                   <span className="text-2xl font-bold text-primary-foreground">{item.step}</span>
                 </div>
-                <h3 className="font-heading text-xl font-bold text-foreground mb-2">
+                <h3 className="font-heading text-2xl font-bold text-foreground mb-4">
                   {item.title}
                 </h3>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-foreground/90 text-lg leading-relaxed">
                   {item.description}
                 </p>
               </CardContent>
@@ -110,7 +125,7 @@ const HowItWorks = () => {
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };
 

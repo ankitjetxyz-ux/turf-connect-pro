@@ -233,10 +233,10 @@ const ClientDashboard = () => {
     .slice(0, 2) || "U";
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
       <Navbar />
 
-      <main className="pt-24 pb-12">
+      <main className="pt-24 pb-12 flex-1">
         <div className="container px-4">
           <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
             {/* LEFT SIDEBAR - PROFILE EDIT */}
@@ -356,13 +356,6 @@ const ClientDashboard = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        loadHistory();
-                        setHistoryOpen(true);
-                      }}>
-                        <History className="w-4 h-4 mr-2" />
-                        History
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={handleLogout}>
                         <LogOut className="w-4 h-4 mr-2" />
                         Logout

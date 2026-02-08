@@ -3,8 +3,9 @@ import { Button } from "@/components/ui/button";
 import TurfCard from "@/components/turfs/TurfCard";
 import { ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "@/services/api";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 type Turf = {
   id: string;
@@ -47,20 +48,33 @@ const FeaturedTurfs = () => {
     fetchTurfs();
   }, []);
 
+  const sectionRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.9", "center center"]
+  });
+  const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
+
   return (
-    <section className="py-24 relative overflow-hidden">
+    <motion.section
+      ref={sectionRef}
+      style={{ opacity, y }}
+      className="min-h-screen py-24 relative overflow-hidden flex items-center"
+    >
       <div className="absolute inset-0 bg-gradient-to-b from-background via-card/50 to-background" />
+
       <div className="absolute inset-0 grid-overlay opacity-40" />
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px]" />
+
 
       <div className="container px-4 relative z-10">
         {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-12">
           <div className="space-y-3">
-            <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold">
+            <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight" style={{ fontFamily: '"Inter Display", sans-serif', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.04em' }}>
               Featured <span className="text-gradient">Turfs</span>
             </h2>
-            <p className="text-muted-foreground max-w-md">
+            <p className="text-lg text-muted-foreground font-medium max-w-lg leading-relaxed">
               Discover top-rated sports turfs loved by players in your area
             </p>
           </div>
@@ -117,8 +131,6 @@ const FeaturedTurfs = () => {
                     location={turf.location}
                     image={displayImage}
                     price={turf.price_per_slot}
-                    rating={4.5}
-                    reviews={0}
                     sports={sports}
                     availableSlots={5}
                   />
@@ -128,7 +140,7 @@ const FeaturedTurfs = () => {
           </div>
         )}
       </div>
-    </section>
+    </motion.section>
   );
 };
 

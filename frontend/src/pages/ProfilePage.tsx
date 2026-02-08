@@ -202,9 +202,9 @@ const ProfilePage = () => {
 
   // Loading or unknown role - show loading/error
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
-      <main className="pt-24 pb-12 container mx-auto px-4">
+      <main className="pt-24 pb-12 container mx-auto px-4 flex-1">
         {loading && (
           <p className="text-center text-muted-foreground">Loading profile...</p>
         )}

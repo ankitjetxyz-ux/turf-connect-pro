@@ -1,85 +1,78 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Search, MapPin, ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
-import heroImage from "@/assets/hero-turf.jpg";
+
+import heroBg from "@/assets/hero-bg-bk2.jpeg";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image with Overlay */}
-      <div className="absolute inset-0">
+    <section className="relative min-h-screen flex items-start overflow-hidden pt-28">
+      {/* Background Gradients */}
+      <div className="absolute inset-0 bg-background" />
+
+      {/* Dull Background Image */}
+      <div className="absolute inset-0 z-0">
         <img
-          src={heroImage}
-          alt="Sports turf arena"
-          className="w-full h-full object-cover scale-105 animate-[scale-in_1.5s_ease-out]"
+          src={heroBg}
+          alt="Hero Background"
+          className="w-full h-full object-cover opacity-80 brightness-90"
+          style={{ objectPosition: '10% 35%' }}
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-background/90 via-background/70 to-background" />
-        <div className="absolute inset-0 bg-gradient-to-r from-background/90 via-transparent to-background/60" />
+        <div className="absolute inset-0 bg-background/30" /> {/* Overlay to further dull it */}
       </div>
 
-      {/* Grid Overlay - Enhanced */}
-      <div className="absolute inset-0 grid-overlay-intense opacity-70" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background/40 to-background/80" />
 
-      {/* Ambient Glow Effects */}
-      <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-primary/12 rounded-full blur-[120px] animate-glow-pulse" />
-      <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-primary/8 rounded-full blur-[100px] animate-glow-pulse" style={{ animationDelay: '1s' }} />
+      {/* Grid Overlay */}
+      <div className="absolute inset-0 grid-overlay-intense opacity-50 z-0" />
+
+
 
       {/* Content */}
-      <div className="container relative z-10 px-4 pt-20">
-        <div className="max-w-4xl mx-auto text-center space-y-8">
-          {/* Badge */}
-          <div className="animate-slide-down opacity-0 stagger-1">
-            <Badge variant="premium" className="px-4 py-2 neon-border">
-              <Sparkles className="w-4 h-4 mr-2" />
-              India's #1 Turf Booking Platform
-            </Badge>
-          </div>
-
+      <div className="w-full mx-auto px-4 relative z-10">
+        <div className="w-full text-right space-y-8 max-w-max ml-auto">
           {/* Heading */}
-          <h1 className="font-heading text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold leading-tight animate-slide-up opacity-0 stagger-2">
-            <span className="inline-block text-foreground">Book Your Perfect</span>
-            <span className="text-gradient block mt-2">Sports Turf</span>
+          <h1 className="animate-slide-up opacity-0 stagger-2 whitespace-nowrap leading-none"
+            style={{
+              fontFamily: '"Inter Display", sans-serif',
+              fontSize: '10.2vw', // Reverted to occupy full breadth
+              fontWeight: 900,
+              fontStyle: 'normal',
+              letterSpacing: '-0.04em',
+              color: 'rgb(255, 255, 255)',
+              textTransform: 'uppercase',
+              transform: 'scaleY(2.2)'
+            }}>
+            BOOK YOUR <span style={{ color: 'hsl(82, 84%, 55%)' }}>TURF</span>
           </h1>
-
-          {/* Animated Glow Divider */}
-          <div className="glow-divider glow-divider-lg animate-fade-in opacity-0 stagger-2" />
-
-          {/* Search Box - City Based */}
-          <div className="animate-scale-in opacity-0 stagger-3">
-            <div className="glass-effect rounded-2xl p-2 max-w-2xl mx-auto shadow-elevated hover:shadow-glow transition-shadow duration-500">
-              <div className="flex items-center gap-2">
-                <div className="flex-1 flex items-center gap-3 bg-secondary/60 rounded-xl px-4 py-3.5 border border-border/30 transition-all duration-300 focus-within:border-primary/50 focus-within:bg-secondary/80">
-                  <MapPin className="w-5 h-5 text-primary shrink-0" />
-                  <input
-                    type="text"
-                    placeholder="Enter city (e.g., Mumbai, Delhi, Bangalore)..."
-                    className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground text-sm"
-                  />
-                </div>
-                <Button variant="hero" size="lg" className="shadow-glow-sm hover:shadow-glow transition-shadow duration-300">
-                  <Search className="w-5 h-5" />
-                </Button>
-              </div>
-            </div>
-          </div>
-
 
 
           {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up opacity-0 stagger-4">
-            <Button variant="hero" size="xl" className="group shadow-glow hover:shadow-elevated transition-all duration-300" asChild>
-              <Link to="/turfs">
+          <div className="flex flex-col sm:flex-row gap-6 justify-end animate-slide-up opacity-0 stagger-4 mr-4">
+            <Button
+              variant="outline"
+              size="xl"
+              className="animate-float"
+              asChild
+            >
+              <Link to="/turfs" className="flex items-center gap-2">
                 Explore Turfs
-                <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-5 h-5" />
               </Link>
             </Button>
-            <Button variant="glass" size="xl" className="hover:bg-secondary/50 transition-all duration-300" asChild>
-              <Link to="/register">List Your Turf</Link>
-            </Button>
+          </div>
+
+          {/* Info Text */}
+          <div className="text-right space-y-2 animate-slide-up opacity-0 stagger-5 mr-4 pt-4">
+            <p className="text-2xl font-bold text-white tracking-tight">Play more. Wait less.</p>
+            <p className="text-lg text-white/90 font-medium max-w-lg ml-auto leading-relaxed">
+              Find nearby turfs, check availability, and book your slot in seconds.
+            </p>
           </div>
         </div>
       </div>
+
 
       {/* Scroll Indicator */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-float">
@@ -87,7 +80,7 @@ const HeroSection = () => {
           <div className="w-1.5 h-3 bg-primary rounded-full animate-bounce" />
         </div>
       </div>
-    </section>
+    </section >
   );
 };
 

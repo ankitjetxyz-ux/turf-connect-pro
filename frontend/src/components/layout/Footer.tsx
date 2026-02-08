@@ -40,8 +40,8 @@ const Footer = () => {
                 { label: "Contact", href: "/contact" },
               ].map((item) => (
                 <li key={item.label}>
-                  <Link 
-                    to={item.href} 
+                  <Link
+                    to={item.href}
                     className="text-muted-foreground hover:text-primary text-sm transition-colors inline-flex items-center gap-1 group"
                   >
                     {item.label}
@@ -58,13 +58,10 @@ const Footer = () => {
             <ul className="space-y-3">
               {[
                 { label: "List Your Turf", href: "/register?role=client" },
-                { label: "Partner Program", href: "/partner" },
-                { label: "Advertising", href: "/advertising" },
-                { label: "API Access", href: "/api-docs" },
               ].map((item) => (
                 <li key={item.label}>
-                  <Link 
-                    to={item.href} 
+                  <Link
+                    to={item.href}
                     className="text-muted-foreground hover:text-primary text-sm transition-colors inline-flex items-center gap-1 group"
                   >
                     {item.label}
@@ -98,21 +95,8 @@ const Footer = () => {
                 123 Sports Complex, Mumbai, India
               </li>
             </ul>
-            
-            {/* Newsletter */}
-            <div className="glass-effect rounded-xl p-4">
-              <p className="text-sm text-muted-foreground mb-3">Subscribe to our newsletter</p>
-              <div className="flex gap-2">
-                <input 
-                  type="email" 
-                  placeholder="Enter email..."
-                  className="flex-1 bg-secondary/50 rounded-lg px-3 py-2 text-sm border border-border/30 focus:border-primary/50 focus:outline-none transition-colors"
-                />
-                <Button variant="hero" size="sm">
-                  Subscribe
-                </Button>
-              </div>
-            </div>
+
+
           </div>
         </div>
 
@@ -122,9 +106,9 @@ const Footer = () => {
           </p>
           <div className="flex flex-wrap justify-center gap-6">
             {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
-              <a 
-                key={item} 
-                href="#" 
+              <a
+                key={item}
+                href="#"
                 className="text-muted-foreground hover:text-primary text-sm transition-colors"
               >
                 {item}

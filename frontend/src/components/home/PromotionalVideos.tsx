@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Play, Sparkles } from "lucide-react";
 import api from "@/services/api";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 interface PromotionalVideo {
   id: string;
@@ -35,8 +36,20 @@ const PromotionalVideos = () => {
     return null;
   }
 
+  const sectionRef = useRef(null);
+  const { scrollYProgress } = useScroll({
+    target: sectionRef,
+    offset: ["start 0.9", "center center"]
+  });
+  const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+  const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
+
   return (
-    <section className="py-16 md:py-24 relative overflow-hidden">
+    <motion.section
+      ref={sectionRef}
+      style={{ opacity, y }}
+      className="py-16 md:py-24 relative overflow-hidden"
+    >
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-primary/5" />
       <div className="container px-4 relative z-10">
         <div className="text-center mb-12 space-y-4">
@@ -94,7 +107,7 @@ const PromotionalVideos = () => {
           ))}
         </div>
       </div>
-    </section>
+    </motion.section>
   );
 };
 

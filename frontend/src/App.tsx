@@ -23,6 +23,8 @@ import ClientBookings from "./pages/client/ClientBookings";
 import ChatPage from "./pages/ChatPage";
 import ProfilePage from "./pages/ProfilePage";
 
+import ScrollToTop from "./components/common/ScrollToTop";
+
 // Admin Imports
 import AdminLogin from "./pages/admin/AdminLogin";
 import AdminLayout from "./layouts/AdminLayout";
@@ -41,6 +43,7 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* PUBLIC ROUTES */}
           <Route path="/" element={<Index />} />

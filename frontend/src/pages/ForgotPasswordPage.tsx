@@ -575,10 +575,10 @@ const ForgotPasswordPage = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20">
+        <div className="min-h-screen bg-gradient-to-b from-background to-secondary/20 flex flex-col">
             <Navbar />
 
-            <main className="container mx-auto px-4 py-12 max-w-md">
+            <main className="container mx-auto px-4 py-12 max-w-md flex-1">
                 <div className="mb-6">
                     <Button
                         variant="ghost"

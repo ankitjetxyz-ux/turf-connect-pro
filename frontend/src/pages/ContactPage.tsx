@@ -53,6 +53,7 @@ const ContactPage = () => {
   });
 
   useEffect(() => {
+    window.scrollTo(0, 0);
     const token = localStorage.getItem("token");
     const name = localStorage.getItem("name") || "";
     const email = localStorage.getItem("email") || "";
@@ -120,10 +121,10 @@ const ContactPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
 
-      <main className="pt-24 pb-16 relative">
+      <main className="pt-24 pb-16 relative flex-1">
         {/* Background Effects */}
         <div className="absolute inset-0 grid-overlay-intense" />
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[120px] animate-glow-pulse" />

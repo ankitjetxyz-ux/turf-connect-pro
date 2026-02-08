@@ -13,6 +13,7 @@ exports.createTurf = async (req, res) => {
       facilities, // Text string (legacy)
       images, // Array of URLs
       google_maps_link,
+      owner_phone,
       verification_documents, // New: Array of { type, url }
     } = req.body;
 
@@ -27,9 +28,9 @@ exports.createTurf = async (req, res) => {
 
     const owner_id = req.user.id;
 
-    if (!name || !location || !price_per_slot) {
+    if (!name || !location || !price_per_slot || !owner_phone) {
       return res.status(400).json({
-        error: "Name, location and price are required",
+        error: "Name, location, price, and contact number are required",
       });
     }
 
@@ -81,6 +82,7 @@ exports.createTurf = async (req, res) => {
       verification_status: 'pending', // Default
       submitted_at: new Date(),
       google_maps_url: google_maps_link,
+      owner_phone, // Save phone number
     };
 
     if (latitude && longitude) {

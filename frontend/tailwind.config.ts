@@ -15,8 +15,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        heading: ['Sora', 'sans-serif'],
-        body: ['Inter', 'sans-serif'],
+        heading: ['"Geist Mono"', 'monospace'],
+        body: ['"Geist Mono"', 'monospace'],
       },
       colors: {
         border: "hsl(var(--border))",

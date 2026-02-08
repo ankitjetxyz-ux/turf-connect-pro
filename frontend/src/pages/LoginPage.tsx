@@ -62,13 +62,13 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
       <div className="absolute inset-0 grid-overlay opacity-20" />
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] animate-pulse" />
 
       <Navbar />
 
-      <main className="pt-24 pb-12 flex items-center justify-center min-h-screen relative z-10">
+      <main className="pt-24 pb-12 flex-1 flex items-center justify-center relative z-10">
         <div className="container px-4 max-w-md">
           <Card className="glass-card border-white/10 shadow-elevated animate-slide-up">
             <CardHeader className="text-center pb-2">

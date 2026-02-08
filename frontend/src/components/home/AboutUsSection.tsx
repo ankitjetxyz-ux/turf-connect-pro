@@ -1,9 +1,20 @@
+import { useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Target, Users, Trophy, Zap, Shield, CheckCircle2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const AboutUsSection = () => {
+    const sectionRef = useRef(null);
+    const { scrollYProgress } = useScroll({
+        target: sectionRef,
+        offset: ["start 0.9", "center center"]
+    });
+
+    const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+    const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
+
     const features = [
         {
             icon: Zap,
@@ -28,17 +39,20 @@ const AboutUsSection = () => {
     ];
 
     return (
-        <section className="py-20 bg-gradient-to-b from-background to-secondary/20">
+        <motion.section
+            ref={sectionRef}
+            style={{ opacity, y }}
+            className="py-20 bg-gradient-to-b from-background to-secondary/20 relative overflow-hidden"
+        >
             <div className="container px-4">
                 <div className="text-center mb-12">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
-                        <Target className="w-4 h-4" />
-                        About Us
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                    <h2
+                        className="text-4xl md:text-5xl lg:text-7xl tracking-tight mb-6"
+                        style={{ fontFamily: '"Inter Display", sans-serif', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.04em' }}
+                    >
                         Revolutionizing <span className="text-gradient">Sports Booking</span> in India
                     </h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                    <p className="text-lg text-muted-foreground font-medium max-w-3xl mx-auto leading-relaxed mb-12">
                         TurfBook is India's premier platform connecting sports enthusiasts with premium
                         facilities. We're on a mission to make sports accessible to everyone.
                     </p>
@@ -46,7 +60,7 @@ const AboutUsSection = () => {
 
                 <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
                     {features.map((feature, index) => (
-                        <Card key={index} className="border-border/50 hover:border-primary/30 transition-all hover:shadow-lg">
+                        <Card key={index} variant="glass" className="glass-card hover-lift transition-all hover:shadow-glow">
                             <CardContent className="p-6 text-center">
                                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                                     <feature.icon className="w-6 h-6 text-primary" />
@@ -79,7 +93,7 @@ const AboutUsSection = () => {
                             ))}
                         </ul>
                     </div>
-                    <Card className="border-border/50">
+                    <Card variant="glass" className="glass-card border-border/50">
                         <CardContent className="p-8">
                             <h3 className="text-2xl font-bold mb-4">Our Mission</h3>
                             <p className="text-muted-foreground mb-6">
@@ -98,7 +112,7 @@ const AboutUsSection = () => {
                     </Card>
                 </div>
             </div>
-        </section>
+        </motion.section>
     );
 };
 

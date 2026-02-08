@@ -3,6 +3,13 @@ import Footer from "@/components/layout/Footer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   MapPin,
   Star,
@@ -18,7 +25,13 @@ import {
   ChevronRight,
   CheckCircle2,
   Phone,
-  MessageCircle
+  MessageCircle,
+  Trash2,
+  Facebook,
+  Twitter,
+  Linkedin,
+  Copy,
+  Check
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
@@ -106,6 +119,57 @@ const TurfDetailPage = () => {
   const [comments, setComments] = useState<TurfComment[]>([]);
   const [newComment, setNewComment] = useState("");
   const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [isFavourite, setIsFavourite] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (turf?.id) {
+      const stored = localStorage.getItem('favourite_turfs');
+      if (stored) {
+        const favs = JSON.parse(stored);
+        setIsFavourite(favs.includes(turf.id));
+      }
+    }
+  }, [turf]);
+
+  const toggleFavourite = () => {
+    if (!turf?.id) return;
+    const stored = localStorage.getItem('favourite_turfs');
+    let favs = stored ? JSON.parse(stored) : [];
+
+    if (isFavourite) {
+      favs = favs.filter((fid: any) => fid !== turf.id);
+      showToast({ title: "Removed from Favourites", description: "Turf removed from your top list." });
+    } else {
+      favs.push(turf.id);
+      showToast({ title: "Added to Favourites", description: "This turf will now appear at the top of your list.", variant: "success" });
+    }
+
+    localStorage.setItem('favourite_turfs', JSON.stringify(favs));
+    setIsFavourite(!isFavourite);
+  };
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    showToast({ title: "Link Copied", description: "Turf link copied to clipboard." });
+  };
+
+  const shareSocial = (platform: string) => {
+    const url = encodeURIComponent(window.location.href);
+    const text = encodeURIComponent(`Check out this turf: ${turf?.name}`);
+    let link = '';
+
+    switch (platform) {
+      case 'facebook': link = `https://www.facebook.com/sharer/sharer.php?u=${url}`; break;
+      case 'twitter': link = `https://twitter.com/intent/tweet?url=${url}&text=${text}`; break;
+      case 'linkedin': link = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`; break;
+      case 'whatsapp': link = `https://wa.me/?text=${text}%20${url}`; break;
+    }
+
+    if (link) window.open(link, '_blank');
+  };
 
   /* AUTH */
 
@@ -461,9 +525,9 @@ const TurfDetailPage = () => {
 
   if (turf.verification_status && turf.verification_status !== "approved") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background flex flex-col">
         <Navbar />
-        <main className="pt-20 pb-12">
+        <main className="pt-20 pb-12 flex-1">
           <div className="container px-4">
             <div className="max-w-xl mx-auto">
               <Card>
@@ -520,7 +584,7 @@ const TurfDetailPage = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
 
       {toast && (
@@ -530,7 +594,7 @@ const TurfDetailPage = () => {
         </div>
       )}
 
-      <main className="pt-20 pb-12">
+      <main className="pt-20 pb-12 flex-1">
         {/* Image Gallery */}
         <section className="relative h-[50vh] md:h-[60vh] overflow-hidden">
           <img
@@ -571,12 +635,42 @@ const TurfDetailPage = () => {
           )}
 
           <div className="absolute top-4 right-4 flex gap-2">
-            <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-destructive transition-colors">
-              <Heart className="w-5 h-5" />
+            <button
+              onClick={toggleFavourite}
+              className={`w-10 h-10 rounded-full glass-effect flex items-center justify-center transition-all ${isFavourite ? "bg-white/20 text-red-500" : "text-foreground hover:text-red-500"}`}
+              title={isFavourite ? "Remove from favourites" : "Add to favourites"}
+            >
+              <Heart className={`w-5 h-5 ${isFavourite ? "fill-current" : ""}`} />
             </button>
-            <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary transition-colors">
-              <Share2 className="w-5 h-5" />
-            </button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="w-10 h-10 rounded-full glass-effect flex items-center justify-center text-foreground hover:text-primary transition-colors">
+                  <Share2 className="w-5 h-5" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48 bg-background border-border">
+                <DropdownMenuItem onClick={copyLink} className="cursor-pointer">
+                  {copied ? <Check className="w-4 h-4 mr-2 text-green-500" /> : <Copy className="w-4 h-4 mr-2" />}
+                  Copy Link
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => shareSocial('whatsapp')} className="cursor-pointer">
+                  <MessageCircle className="w-4 h-4 mr-2" />
+                  WhatsApp
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => shareSocial('facebook')} className="cursor-pointer">
+                  <Facebook className="w-4 h-4 mr-2" />
+                  Facebook
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => shareSocial('twitter')} className="cursor-pointer">
+                  <Twitter className="w-4 h-4 mr-2" />
+                  Twitter
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => shareSocial('linkedin')} className="cursor-pointer">
+                  <Linkedin className="w-4 h-4 mr-2" />
+                  LinkedIn
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </section>
 
@@ -597,15 +691,6 @@ const TurfDetailPage = () => {
                         <MapPin className="w-4 h-4" />
                         <span className="text-sm">{turf.location}</span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 bg-primary/10 px-3 py-2 rounded-lg">
-                      <Star className="w-5 h-5 text-primary fill-primary" />
-                      <span className="font-heading font-bold text-primary">
-                        {turf.rating || 4.8}
-                      </span>
-                      <span className="text-muted-foreground text-sm">
-                        ({turf.reviews || 245} reviews)
-                      </span>
                     </div>
                   </div>
 
@@ -783,55 +868,74 @@ const TurfDetailPage = () => {
                     </p>
                   )}
 
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                     {comments.length === 0 ? (
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-sm text-muted-foreground col-span-full text-center py-8">
                         No comments yet. Be the first to share your experience.
                       </p>
                     ) : (
                       comments.map((c) => (
                         <div
                           key={c.id}
-                          className="p-3 rounded-lg bg-secondary/40 border border-border/40 flex items-start justify-between gap-3"
+                          className="p-5 rounded-2xl border border-white/10 bg-black/20 backdrop-blur-md shadow-lg hover:bg-black/30 transition-all flex flex-col gap-3 group relative overflow-hidden h-full"
+                          style={{
+                            boxShadow: '0 10px 30px -5px rgba(0, 0, 0, 0.2)',
+                          }}
                         >
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-muted-foreground mb-1">
-                              {c.users?.name || "User"}
-                              {c.created_at && (
-                                <span className="ml-2 opacity-70">
-                                  b7 {new Date(c.created_at).toLocaleString()}
-                                </span>
-                              )}
-                            </p>
-                            <p className="text-sm text-foreground whitespace-pre-wrap break-words">
-                              {c.comment}
-                            </p>
+                          {/* Glass shine effect */}
+                          <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+
+                          <div className="flex items-start justify-between gap-3 relative z-10">
+                            <div className="flex items-center gap-3">
+                              <Avatar className="h-10 w-10 border border-white/10 shadow-sm">
+                                <AvatarImage src={c.users?.profile_image_url || undefined} />
+                                <AvatarFallback className="bg-primary/20 text-primary font-bold">
+                                  {c.users?.name?.charAt(0) || "U"}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <p className="font-semibold text-sm text-foreground">{c.users?.name || "User"}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {c.created_at && new Date(c.created_at).toLocaleDateString(undefined, {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric'
+                                  })}
+                                </p>
+                              </div>
+                            </div>
+
+                            {isOwner && (
+                              <button
+                                onClick={async () => {
+                                  if (!id) return;
+                                  try {
+                                    await api.delete(`/turfs/${id}/comments/${c.id}`);
+                                    setComments((prev) => prev.filter((x) => x.id !== c.id));
+                                    showToast({
+                                      title: "Comment deleted",
+                                      description: "The comment has been removed.",
+                                    });
+                                  } catch (error: any) {
+                                    const errorMessage = error?.response?.data?.error || "Failed to delete comment";
+                                    showToast({
+                                      title: "Unable to delete comment",
+                                      description: errorMessage,
+                                      variant: "destructive",
+                                    });
+                                  }
+                                }}
+                                className="text-muted-foreground hover:text-red-500 transition-colors p-1"
+                                title="Delete comment"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
                           </div>
-                          {isOwner && (
-                            <button
-                              onClick={async () => {
-                                if (!id) return;
-                                try {
-                                  await api.delete(`/turfs/${id}/comments/${c.id}`);
-                                  setComments((prev) => prev.filter((x) => x.id !== c.id));
-                                  showToast({
-                                    title: "Comment deleted",
-                                    description: "The comment has been removed.",
-                                  });
-                                } catch (error: unknown) {
-                                  const errorMessage = (error as { response?: { data?: { error?: string } } })?.response?.data?.error || "Failed to delete comment";
-                                  showToast({
-                                    title: "Unable to delete comment",
-                                    description: errorMessage,
-                                    variant: "destructive",
-                                  });
-                                }
-                              }}
-                              className="ml-2 text-xs text-muted-foreground hover:text-destructive"
-                            >
-                              Delete
-                            </button>
-                          )}
+
+                          <p className="text-sm text-foreground/90 leading-relaxed whitespace-pre-wrap break-words relative z-10 pl-1">
+                            {c.comment}
+                          </p>
                         </div>
                       ))
                     )}
@@ -1104,12 +1208,12 @@ const TurfDetailPage = () => {
                 </CardContent>
               </Card>
             </div>
-          </div>
-        </div>
-      </main>
+          </div >
+        </div >
+      </main >
 
       <Footer />
-    </div>
+    </div >
   );
 };
 

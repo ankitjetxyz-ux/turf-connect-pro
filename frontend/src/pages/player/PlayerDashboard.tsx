@@ -213,14 +213,14 @@ const PlayerDashboard = () => {
         .slice(0, 2) || "U";
 
     return (
-        <div className="min-h-screen bg-background relative overflow-hidden">
+        <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
             <div className="absolute inset-0 grid-overlay opacity-20" />
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] pointer-events-none" />
 
             <Navbar />
 
-            <main className="pt-24 pb-12 relative z-10">
+            <main className="pt-24 pb-12 relative z-10 flex-1">
                 <div className="container px-4">
                     <div className="grid grid-cols-1 lg:grid-cols-[280px,1fr] gap-6">
                         {/* LEFT SIDEBAR - PROFILE */}
@@ -254,16 +254,7 @@ const PlayerDashboard = () => {
                                                 <Edit className="w-4 h-4 mr-2" />
                                                 Edit Profile
                                             </Button>
-                                            <div className="space-y-2 text-sm pt-4 border-t border-green-500/20">
-                                                <div className="flex justify-between">
-                                                    <span className="text-green-300/60">Phone</span>
-                                                    <span className="font-medium text-green-400">{profile?.phone || "Not set"}</span>
-                                                </div>
-                                                <div className="flex justify-between">
-                                                    <span className="text-green-300/60">Joined</span>
-                                                    <span className="font-medium text-green-400">Member</span>
-                                                </div>
-                                            </div>
+
                                         </div>
                                     </div>
                                 ) : (
@@ -340,13 +331,6 @@ const PlayerDashboard = () => {
                                         </Button>
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onClick={() => {
-                                            loadHistory();
-                                            setHistoryOpen(true);
-                                        }}>
-                                            <History className="w-4 h-4 mr-2" />
-                                            History
-                                        </DropdownMenuItem>
                                         <DropdownMenuItem onClick={handleLogout}>
                                             <LogOut className="w-4 h-4 mr-2" />
                                             Logout

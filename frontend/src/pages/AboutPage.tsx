@@ -99,7 +99,7 @@ const AboutPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
       {/* Reuse hero/contact style background for visual consistency */}
       <div className="absolute inset-0 grid-overlay-intense" />
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[120px]" />
@@ -107,7 +107,7 @@ const AboutPage = () => {
 
       <Navbar />
 
-      <main className="pt-24 pb-16 relative z-10">
+      <main className="pt-24 pb-16 relative z-10 flex-1">
         <div className="container px-4 relative z-10">
           <section className="text-center mb-20">
             <Badge variant="featured" className="mb-4">

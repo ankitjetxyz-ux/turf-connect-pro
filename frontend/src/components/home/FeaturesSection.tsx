@@ -1,10 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Shield, 
-  CreditCard, 
-  Clock, 
-  Users, 
+import {
+  Shield,
+  CreditCard,
+  Clock,
+  Users,
   Trophy,
   Sparkles
 } from "lucide-react";
@@ -50,29 +50,22 @@ const features = [
 
 const FeaturesSection = () => {
   return (
-    <section className="py-24 relative overflow-hidden">
+    <section className="min-h-screen py-24 relative overflow-hidden flex items-center">
       {/* Background */}
       <div className="absolute inset-0 bg-background" />
       <div className="absolute inset-0 grid-overlay-intense opacity-50" />
-      
+
       {/* Ambient effects */}
       <div className="absolute top-1/2 left-0 w-[400px] h-[400px] bg-primary/8 rounded-full blur-[100px] -translate-y-1/2" />
       <div className="absolute bottom-0 right-0 w-[300px] h-[300px] bg-primary/6 rounded-full blur-[80px]" />
 
       <div className="container px-4 relative z-10">
         {/* Header */}
-        <div className="text-center max-w-2xl mx-auto mb-16">
-          <div className="inline-flex items-center gap-2 mb-4">
-            <Sparkles className="w-5 h-5 text-primary" />
-            <Badge variant="premium">Why Choose Us</Badge>
-          </div>
-          <h2 className="font-heading text-3xl md:text-4xl lg:text-5xl font-bold text-foreground mb-4">
+        <div className="text-center max-w-5xl mx-auto mb-16">
+          <h2 className="font-heading text-5xl md:text-6xl lg:text-7xl font-extrabold text-foreground mb-4 tracking-tight leading-none">
             Everything You Need to
-            <span className="text-gradient block mt-1"> Play Better</span>
+            <span className="text-gradient block mt-2">Play Better</span>
           </h2>
-          <p className="text-muted-foreground text-lg">
-            From finding the perfect turf to joining matches, we've got you covered
-          </p>
         </div>
 
         {/* Features Grid */}
@@ -86,7 +79,7 @@ const FeaturesSection = () => {
             >
               {/* Gradient overlay on hover */}
               <div className={`absolute inset-0 bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
-              
+
               <CardContent className="p-6 relative z-10">
                 <div className="flex gap-4">
                   <div className="shrink-0">

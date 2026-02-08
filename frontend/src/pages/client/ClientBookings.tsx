@@ -65,10 +65,10 @@ const ClientBookings = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <Navbar />
 
-      <main className="pt-24 pb-12">
+      <main className="pt-24 pb-12 flex-1">
         <div className="container px-4">
           <h1 className="text-3xl font-bold mb-6">Bookings on My Turfs</h1>
 

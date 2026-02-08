@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Mail, Phone, MapPin, MessageSquare, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useRef } from "react";
+import { motion, useScroll, useTransform } from "framer-motion";
 
 const ContactUsSection = () => {
     const contactMethods = [
@@ -25,18 +27,26 @@ const ContactUsSection = () => {
         },
     ];
 
+    const sectionRef = useRef(null);
+    const { scrollYProgress } = useScroll({
+        target: sectionRef,
+        offset: ["start 0.9", "center center"]
+    });
+    const opacity = useTransform(scrollYProgress, [0, 1], [0, 1]);
+    const y = useTransform(scrollYProgress, [0, 1], [100, 0]);
+
     return (
-        <section className="py-20 bg-gradient-to-b from-secondary/20 to-background">
+        <motion.section
+            ref={sectionRef}
+            style={{ opacity, y }}
+            className="py-20 bg-gradient-to-b from-secondary/20 to-background relative overflow-hidden"
+        >
             <div className="container px-4">
                 <div className="text-center mb-12">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-full text-sm font-medium mb-4">
-                        <MessageSquare className="w-4 h-4" />
-                        Get in Touch
-                    </div>
-                    <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                    <h2 className="text-4xl md:text-5xl lg:text-7xl tracking-tight mb-6" style={{ fontFamily: '"Inter Display", sans-serif', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '-0.04em' }}>
                         Have Questions? <span className="text-gradient">Contact Us</span>
                     </h2>
-                    <p className="text-muted-foreground max-w-2xl mx-auto">
+                    <p className="text-lg text-muted-foreground font-medium max-w-3xl mx-auto leading-relaxed mb-12">
                         Our team is ready to help you with bookings, turf listings, tournament organization,
                         or any other queries you might have.
                     </p>
@@ -44,7 +54,7 @@ const ContactUsSection = () => {
 
                 <div className="grid md:grid-cols-3 gap-6 mb-12">
                     {contactMethods.map((method, index) => (
-                        <Card key={index} className="border-border/50 hover:border-primary/30 transition-all">
+                        <Card key={index} variant="glass" className="glass-card hover-lift transition-all hover:shadow-glow">
                             <CardContent className="p-6 text-center">
                                 <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-4">
                                     <method.icon className="w-6 h-6 text-primary" />
@@ -105,7 +115,7 @@ const ContactUsSection = () => {
                     </div>
                 </div>
             </div>
-        </section>
+        </motion.section>
     );
 };
 

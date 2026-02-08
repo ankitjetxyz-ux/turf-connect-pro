@@ -81,8 +81,8 @@ const ChatPage = () => {
 
       <Navbar />
 
-      <main className="flex-1 flex flex-col pt-20 pb-6 container mx-auto px-4 h-[calc(100vh-80px)] relative z-10">
-        <div className="flex-1 glass-card border border-white/10 rounded-xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 animate-in fade-in duration-500 backdrop-blur-md" style={{ height: 'calc(100vh - 104px)' }}>
+      <main className="flex-1 flex flex-col pt-24 pb-4 container mx-auto px-4 relative z-10 min-h-[calc(100vh-80px)]">
+        <div className="flex-1 glass-card border border-white/10 rounded-xl shadow-2xl overflow-hidden grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 animate-in fade-in duration-500 backdrop-blur-md">
 
           {/* Chat List Sidebar */}
           <div className={`md:col-span-1 lg:col-span-1 border-r border-white/10 bg-secondary/20 flex flex-col ${activeChat ? 'hidden md:flex' : 'flex'}`}>
