@@ -238,7 +238,7 @@ const PlayerDashboard = () => {
             setCancelModalOpen(false);
             toast({
                 title: "Booking cancelled",
-                description: cancelInfo.refund_percentage === 100 
+                description: cancelInfo.refund_percentage === 100
                     ? `Your booking has been cancelled. Full refund of ₹${cancelInfo.refund_amount} will be processed.`
                     : "Your booking has been cancelled. No refund (cancelled less than 2 hours before slot).",
             });
@@ -464,7 +464,7 @@ const PlayerDashboard = () => {
                                                                 </h3>
                                                                 <Badge
                                                                     variant="outline"
-                                                                    className={`capitalize border-0 mt-1 ${booking.status === "confirmed"
+                                                                    className={`capitalize border-0 mt-1 ${booking.status === "booked"
                                                                         ? "bg-green-500/10 text-green-500"
                                                                         : booking.status?.includes("cancelled")
                                                                             ? "bg-red-500/10 text-red-500"
@@ -491,10 +491,13 @@ const PlayerDashboard = () => {
                                                                     <span>Owner: {booking.turf_owner_name}</span>
                                                                 </div>
                                                             )}
+                                                            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                                                                <span>Amount: ₹{booking.total_amount || 0}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
 
-                                                    {booking.status === "confirmed" && (
+                                                    {booking.status === "booked" && (
                                                         <div className="p-4 bg-secondary/30 space-y-3">
                                                             {booking.verification_code && (
                                                                 <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
@@ -507,14 +510,17 @@ const PlayerDashboard = () => {
                                                                     </div>
                                                                 </div>
                                                             )}
-                                                            <Button
-                                                                variant="destructive"
-                                                                className="w-full gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"
-                                                                onClick={() => openCancelModal(booking.id)}
-                                                            >
-                                                                <XCircle className="w-4 h-4" />
-                                                                Cancel Booking
-                                                            </Button>
+                                                            {/* Cancel button disabled for now */
+                                                                false && (
+                                                                    <Button
+                                                                        variant="destructive"
+                                                                        className="w-full gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"
+                                                                        onClick={() => openCancelModal(booking.id)}
+                                                                    >
+                                                                        <XCircle className="w-4 h-4" />
+                                                                        Cancel Booking
+                                                                    </Button>
+                                                                )}
                                                         </div>
                                                     )}
                                                 </CardContent>
@@ -632,15 +638,13 @@ const PlayerDashboard = () => {
                         ) : cancelInfo ? (
                             <div className="space-y-4">
                                 {/* Refund Info */}
-                                <div className={`p-4 rounded-lg border ${
-                                    cancelInfo.refund_percentage === 100
-                                        ? "bg-green-500/10 border-green-500/30"
-                                        : "bg-red-500/10 border-red-500/30"
-                                }`}>
-                                    <div className="text-sm text-muted-foreground mb-1">Refund Amount</div>
-                                    <div className={`text-2xl font-bold ${
-                                        cancelInfo.refund_percentage === 100 ? "text-green-500" : "text-red-500"
+                                <div className={`p-4 rounded-lg border ${cancelInfo.refund_percentage === 100
+                                    ? "bg-green-500/10 border-green-500/30"
+                                    : "bg-red-500/10 border-red-500/30"
                                     }`}>
+                                    <div className="text-sm text-muted-foreground mb-1">Refund Amount</div>
+                                    <div className={`text-2xl font-bold ${cancelInfo.refund_percentage === 100 ? "text-green-500" : "text-red-500"
+                                        }`}>
                                         ₹{cancelInfo.refund_amount} ({cancelInfo.refund_percentage}%)
                                     </div>
                                 </div>
@@ -723,7 +727,7 @@ const PlayerDashboard = () => {
                                                 <h4 className="font-semibold">{booking.turf_name}</h4>
                                                 <p className="text-sm text-muted-foreground">{booking.player_name || "Guest"}</p>
                                             </div>
-                                            <Badge variant={booking.status === "confirmed" ? "success" : "secondary"}>
+                                            <Badge variant={booking.status === "booked" ? "success" : "secondary"}>
                                                 {booking.status}
                                             </Badge>
                                         </div>

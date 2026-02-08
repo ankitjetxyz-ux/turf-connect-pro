@@ -14,6 +14,9 @@ import ComingSoonPage from "./pages/ComingSoonPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import NotFound from "./pages/NotFound";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import CookiePolicy from "./pages/CookiePolicy";
+import TermsPage from "./pages/TermsPage";
 
 import ProtectedRoute from "./routes/ProtectedRoute";
 import TurfSlotsPage from "./pages/client/TurfSlotsPage";
@@ -58,6 +61,9 @@ const App = () => (
           <Route path="/api-docs" element={<ComingSoonPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+          <Route path="/cookie-policy" element={<CookiePolicy />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route
             path="/client/turfs/:turfId/slots"
             element={

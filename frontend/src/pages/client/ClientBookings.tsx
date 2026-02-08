@@ -94,7 +94,7 @@ const ClientBookings = () => {
                     {b.slot_time}
                   </div>
 
-                  {b.verification_code && b.status === "confirmed" && (
+                  {b.verification_code && b.status === "booked" && (
                     <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg mb-3">
                       <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
                       <div className="text-xl font-mono font-bold text-primary tracking-wider text-center">
@@ -115,7 +115,7 @@ const ClientBookings = () => {
                           <MessageSquare className="w-4 h-4" />
                         </Button>
                       )}
-                      {b.status === "confirmed" && (
+                      {b.status === "booked" && (
                         <Button size="sm" variant="destructive" onClick={() => handleCancel(b.id)}>
                           <XCircle className="w-4 h-4" />
                         </Button>

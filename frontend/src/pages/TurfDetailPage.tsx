@@ -503,7 +503,20 @@ const TurfDetailPage = () => {
           const sDay = String(d.getDate()).padStart(2, '0');
           const slotDateStr = `${sYear}-${sMonth}-${sDay}`;
 
-          return slotDateStr === selectedDateStr;
+          if (slotDateStr !== selectedDateStr) return false;
+
+          // If selected date is today, filter out past slots
+          const now = new Date();
+          const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+          if (slotDateStr === todayStr) {
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const [hours, minutes] = slot.start_time.split(':').map(Number);
+            const slotMinutes = hours * 60 + minutes;
+            if (slotMinutes <= currentMinutes) return false;
+          }
+
+          return true;
         }
         return false;
       });

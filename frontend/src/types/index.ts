@@ -54,6 +54,9 @@ export interface Booking {
   slot_date?: string;
   slot_start_time?: string;
   slot_end_time?: string;
+  total_amount?: number;
+  turf_owner_name?: string;
+  turf_owner_email?: string;
 }
 
 export interface Conversation {

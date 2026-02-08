@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS payments (
   user_id uuid REFERENCES users(id),
   amount numeric(10,2) NOT NULL,
   currency text DEFAULT 'INR',
-  payment_status text DEFAULT 'pending',
+
   razorpay_payment_id text,
   razorpay_order_id text,
   razorpay_signature text,
@@ -130,6 +130,7 @@ CREATE TABLE IF NOT EXISTS tournament_participants (
   team_members text[], -- Array of names
   status text DEFAULT 'registered',
   payment_status text DEFAULT 'pending',
+
   created_at timestamptz DEFAULT now()
 );
 

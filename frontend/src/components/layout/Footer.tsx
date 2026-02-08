@@ -75,25 +75,11 @@ const Footer = () => {
           {/* Contact & Newsletter */}
           <div>
             <h4 className="font-heading font-semibold text-foreground mb-5">Contact Us</h4>
-            <ul className="space-y-3 mb-6">
-              <li className="flex items-center gap-3 text-muted-foreground text-sm">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Mail className="w-4 h-4 text-primary" />
-                </div>
-                support@turfbook.com
-              </li>
-              <li className="flex items-center gap-3 text-muted-foreground text-sm">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Phone className="w-4 h-4 text-primary" />
-                </div>
-                +91 9876 543 210
-              </li>
-              <li className="flex items-start gap-3 text-muted-foreground text-sm">
-                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <MapPin className="w-4 h-4 text-primary" />
-                </div>
-                123 Sports Complex, Mumbai, India
-              </li>
+            <ul className="space-y-2 text-sm text-muted-foreground">
+              <li><Link to="/contact" className="hover:text-primary transition-colors">Help Center</Link></li>
+              <li><Link to="/privacy-policy" className="hover:text-primary transition-colors">Privacy Policy</Link></li>
+              <li><Link to="/terms" className="hover:text-primary transition-colors">Terms of Service</Link></li>
+              <li><Link to="/cookie-policy" className="hover:text-primary transition-colors">Cookie Policy</Link></li>
             </ul>
 
 
@@ -105,15 +91,9 @@ const Footer = () => {
             © 2024 TurfBook. All rights reserved.
           </p>
           <div className="flex flex-wrap justify-center gap-6">
-            {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((item) => (
-              <a
-                key={item}
-                href="#"
-                className="text-muted-foreground hover:text-primary text-sm transition-colors"
-              >
-                {item}
-              </a>
-            ))}
+            <Link to="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">Privacy Policy</Link>
+            <Link to="/terms" className="text-muted-foreground hover:text-primary text-sm transition-colors">Terms of Service</Link>
+            <Link to="/cookie-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">Cookie Policy</Link>
           </div>
         </div>
       </div>

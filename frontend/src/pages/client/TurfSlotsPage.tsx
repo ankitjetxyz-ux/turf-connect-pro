@@ -450,7 +450,26 @@ const TurfSlotsPage = () => {
 
   /* GET SLOTS FOR DATE */
   const getSlotsForDate = (date: string) => {
-    return slots.filter(s => s.date === date);
+    let daySlots = slots.filter(s => s.date === date);
+
+    // Filter out past slots
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+
+    if (date < todayStr) {
+      // Past date: hide all slots
+      return [];
+    } else if (date === todayStr) {
+      // Today: filter based on time
+      const currentMinutes = today.getHours() * 60 + today.getMinutes();
+      daySlots = daySlots.filter(s => {
+        const [hours, minutes] = s.start_time.split(':').map(Number);
+        const slotMinutes = hours * 60 + minutes;
+        return slotMinutes > currentMinutes;
+      });
+    }
+
+    return daySlots;
   };
 
   const getDaySlots = getSlotsForDate(selectedDate);
@@ -647,10 +666,10 @@ const TurfSlotsPage = () => {
                     <div
                       key={slot.id}
                       className={`p-3 rounded-lg border transition-all ${slot.status === "booked"
-                        ? "bg-slate-100 border-slate-200"
+                        ? "bg-green-500/10 border-green-500/50 text-green-500"
                         : slot.status === "held"
                           ? "bg-amber-500/5 border-amber-500/20"
-                          : "bg-green-500/5 border-green-500/20 hover:border-green-500/40"
+                          : "bg-secondary border-border hover:border-primary text-foreground"
                         }`}
                     >
                       <div className="flex items-center justify-between mb-2">
@@ -662,10 +681,10 @@ const TurfSlotsPage = () => {
                           variant={slot.status === "booked" ? "secondary" : slot.status === "held" ? "outline" : "outline"}
                           className={
                             slot.status === "booked"
-                              ? "bg-slate-200 text-slate-600"
+                              ? "bg-green-500/20 text-green-600 border-green-500/30"
                               : slot.status === "held"
                                 ? "bg-amber-500/20 text-amber-600 border-amber-500/30"
-                                : "bg-green-500/20 text-green-600 border-green-500/30"
+                                : "bg-secondary text-muted-foreground border-border"
                           }
                         >
                           {slot.status}

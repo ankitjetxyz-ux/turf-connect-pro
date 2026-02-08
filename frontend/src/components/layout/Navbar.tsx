@@ -228,7 +228,7 @@ const Navbar = () => {
           )}
         </div>
       </header>
-      <AiSupportWidget />
+      {/* <AiSupportWidget /> */}
     </>
   );
 };

@@ -83,6 +83,7 @@ const ClientDashboard = () => {
 
   // Owner cancellation stats
   const [cancelStats, setCancelStats] = useState<{ cancellations_this_month: number; remaining: number } | null>(null);
+  const [totalBookedCount, setTotalBookedCount] = useState(0);
 
   // Cancellation modal state
   const [cancelModalOpen, setCancelModalOpen] = useState(false);
@@ -111,6 +112,7 @@ const ClientDashboard = () => {
       if (bookingsData && typeof bookingsData === "object" && "bookings" in bookingsData) {
         setBookings(bookingsData.bookings || []);
         setHasMoreBookings(bookingsData.has_more || false);
+        setTotalBookedCount(bookingsData.total_booked || 0);
       } else {
         setBookings(Array.isArray(bookingsData) ? bookingsData : []);
         setHasMoreBookings(false);
@@ -277,7 +279,7 @@ const ClientDashboard = () => {
     // Join per-user room so backend can push booking notifications
     socket.emit("join_user", userId);
 
-    socket.on("booking_confirmed", () => {
+    socket.on("booking_booked", () => {
       toast({
         title: "New booking received",
         description: "A player has just booked one of your turfs.",
@@ -487,7 +489,7 @@ const ClientDashboard = () => {
               <AnimatedStatsBar
                 stats={[
                   { value: turfs.length, label: "Total Turfs" },
-                  { value: bookings.length, label: "Total Bookings" },
+                  { value: totalBookedCount, label: "Total Bookings" },
                   { value: myTournaments.length, label: "Total Tournaments" },
                 ]}
               />
@@ -757,12 +759,13 @@ const ClientDashboard = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    {cancelStats && (
-                      <div className="text-sm text-muted-foreground">
-                        Cancellations this month: <span className="font-semibold text-foreground">{cancelStats.cancellations_this_month}/10</span>
-                        <span className="ml-2 text-xs">({cancelStats.remaining} remaining)</span>
-                      </div>
-                    )}
+                    {/* Cancel stats hidden for now */
+                      false && cancelStats && (
+                        <div className="text-sm text-muted-foreground">
+                          Cancellations this month: <span className="font-semibold text-foreground">{cancelStats.cancellations_this_month}/10</span>
+                          <span className="ml-2 text-xs">({cancelStats.remaining} remaining)</span>
+                        </div>
+                      )}
                   </div>
 
                   {bookings.length === 0 && !loading && (
@@ -779,7 +782,7 @@ const ClientDashboard = () => {
                             <h3 className="font-semibold">{b.turf_name}</h3>
                             <Badge
                               variant={
-                                b.status === "confirmed" ? "success" : "secondary"
+                                b.status === "booked" ? "success" : "secondary"
                               }
                               className="mt-1"
                             >
@@ -801,20 +804,12 @@ const ClientDashboard = () => {
                               <Clock className="w-4 h-4" />
                               {b.slot_date} ({b.slot_start_time?.slice(0, 5)} - {b.slot_end_time?.slice(0, 5)})
                             </div>
-                            {b.verification_code && (
-                              <div className="mt-2 p-2 bg-secondary/50 rounded-md border border-border/50 flex items-center justify-between">
-                                <span className="text-xs text-muted-foreground">Verification Code:</span>
-                                <span className="font-mono font-bold text-primary tracking-widest">{b.verification_code}</span>
-                              </div>
-                            )}
+                            <div className="text-sm text-foreground font-semibold flex items-center gap-2">
+                              <span>₹{b.total_amount}</span>
+                            </div>
                           </div>
 
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Clock className="w-4 h-4" />
-                            {b.slot_time || "N/A"}
-                          </div>
-
-                          {b.status === "confirmed" && b.verification_code && (
+                          {b.status === "booked" && b.verification_code && (
                             <div className="p-3 bg-primary/10 border border-primary/30 rounded-lg">
                               <div className="text-xs text-muted-foreground mb-1">Verification Code</div>
                               <div className="text-xl font-mono font-bold text-primary tracking-wider text-center">
@@ -823,16 +818,17 @@ const ClientDashboard = () => {
                             </div>
                           )}
 
-                          {b.status === "confirmed" && (
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="w-full"
-                              onClick={() => openCancelModal(b.id)}
-                            >
-                              Cancel Booking
-                            </Button>
-                          )}
+                          {/* Cancel button disabled for now */
+                            false && b.status === "booked" && (
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                className="w-full"
+                                onClick={() => openCancelModal(b.id)}
+                              >
+                                Cancel Booking
+                              </Button>
+                            )}
                         </CardContent>
                       </Card>
                     ))}
@@ -980,7 +976,7 @@ const ClientDashboard = () => {
                         <h4 className="font-semibold">{booking.turf_name}</h4>
                         <p className="text-sm text-muted-foreground">{booking.player_name || "Guest"}</p>
                       </div>
-                      <Badge variant={booking.status === "confirmed" ? "success" : "secondary"}>
+                      <Badge variant={booking.status === "booked" ? "success" : "secondary"}>
                         {booking.status}
                       </Badge>
                     </div>

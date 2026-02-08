@@ -45,9 +45,9 @@ const testimonials = [
     avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150",
     rating: 4,
     text: "Love the real-time availability feature. No more calling multiple turfs to check slots. Everything is just one click away!",
-    videoSrc: "/videos/testimonial4.mp4",
-    thumbnail: "https://images.unsplash.com/photo-1519861531473-920034658307?w=400&h=300&fit=crop",
-    duration: "1:55"
+    videoSrc: "/videos/testimonial3.mp4",
+    thumbnail: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400&h=300&fit=crop",
+    duration: "1:30"
   },
 ];
 

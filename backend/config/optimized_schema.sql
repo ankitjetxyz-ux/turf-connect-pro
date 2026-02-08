@@ -296,6 +296,7 @@ CREATE TABLE IF NOT EXISTS tournament_participants (
   leader_contact_phone text, -- Team leader's contact
   status text DEFAULT 'registered',
   payment_status text DEFAULT 'pending',
+
   razorpay_order_id text,
   razorpay_payment_id text,
   created_at timestamptz DEFAULT now()

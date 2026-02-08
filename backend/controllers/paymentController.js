@@ -29,7 +29,7 @@ exports.createOrder = async (req, res, next) => {
     const order = await razorpay.orders.create(options);
 
     // create pending payment record
-    const { data: insertData, error: insertErr } = await supabase.from("payments").insert({ booking_id, turf_id, payer_id, amount, currency, razorpay_order_id: order.id, status: "pending" });
+    const { data: insertData, error: insertErr } = await supabase.from("payments").insert({ booking_id, turf_id, payer_id, amount, currency, razorpay_order_id: order.id, status: "held" });
     if (insertErr) {
       console.error("Failed to create payment record:", insertErr.message || insertErr);
     }
@@ -135,7 +135,7 @@ exports.verifyPayment = async (req, res, next) => {
           amount: payment.amount || totalAmount,
           razorpay_payment_id,
           razorpay_signature,
-          status: "paid",
+          status: "booked",
         })
         .eq("id", payment.id);
 
@@ -226,7 +226,7 @@ exports.verifyPayment = async (req, res, next) => {
     // 5) Mark bookings confirmed and slots unavailable
     const { error: bookingUpdateErr } = await supabase
       .from("bookings")
-      .update({ status: "confirmed" })
+      .update({ status: "booked" })
       .in("id", bookingIds);
 
     if (bookingUpdateErr) {
@@ -372,7 +372,7 @@ exports.verifyPayment = async (req, res, next) => {
       try {
         const io = req.app.get("io");
         if (io && ownerId) {
-          io.to(ownerId).emit("booking_confirmed", {
+          io.to(ownerId).emit("booking_booked", {
             chat_id: chatId,
             booking_ids: bookingIds,
             amount: totalAmount,

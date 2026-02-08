@@ -50,7 +50,7 @@ exports.bookSlot = async (req, res) => {
       .insert({
         user_id,
         slot_id,
-        status: "confirmed",
+        status: "booked",
         total_amount: slotPrice,
       })
       .select()
@@ -148,7 +148,7 @@ exports.createBookingAndOrder = async (req, res) => {
         slots.map((s) => ({
           user_id,
           slot_id: s.id,
-          status: "pending",
+          status: "held",
           razorpay_order_id: order.id,
           total_amount: Number(s.price) || 0,
         }))
@@ -170,7 +170,7 @@ exports.createBookingAndOrder = async (req, res) => {
       amount: totalAmount,
       currency: "INR",
       razorpay_order_id: order.id,
-      status: "pending"
+      status: "held"
     };
 
     const { error: paymentError } = await supabase
@@ -208,14 +208,15 @@ exports.getMyBookings = async (req, res) => {
       .select(`
         id,
         status,
+        total_amount,
         slots(date, start_time, end_time,
-          turfs(name, location)
+          turfs(name, location, owner_id, users:owner_id(name, email))
         )
       `)
       .eq("user_id", req.user.id)
       .neq("status", "cancelled_by_user")
       .neq("status", "cancelled_by_owner")
-      .neq("status", "pending") // Exclude pending bookings
+      .neq("status", "held") // Exclude held bookings
       .order("created_at", { ascending: false })
       .gte("slots.date", thresholdDate);
 
@@ -252,6 +253,9 @@ exports.getMyBookings = async (req, res) => {
       status: b.status,
       turf_name: b.slots?.turfs?.name || null,
       location: b.slots?.turfs?.location || null,
+      turf_owner_name: b.slots?.turfs?.users?.name || null,
+      turf_owner_email: b.slots?.turfs?.users?.email || null,
+      total_amount: b.total_amount || 0,
       slot_time:
         b.slots?.date && b.slots?.start_time && b.slots?.end_time
           ? `${b.slots.date} ${b.slots.start_time} - ${b.slots.end_time}`
@@ -290,7 +294,7 @@ exports.cancelBooking = async (req, res) => {
       return res.status(404).json({ error: "Booking not found" });
     }
 
-    if (booking.status !== "confirmed" && booking.status !== "pending") {
+    if (booking.status !== "booked" && booking.status !== "held") {
       return res.status(400).json({ error: "This booking cannot be cancelled" });
     }
 
@@ -653,7 +657,7 @@ exports.getClientBookings = async (req, res) => {
       .in("turf_id", turfIds)
       .neq("status", "cancelled_by_player")
       .neq("status", "cancelled_by_owner")
-      .neq("status", "pending");
+      .neq("status", "held");
 
     // Filter by date logic
     if (date) {
@@ -699,6 +703,13 @@ exports.getClientBookings = async (req, res) => {
       console.error("[getClientBookings] Query error", error);
       return res.status(500).json({ error: "Failed to load client bookings" });
     }
+
+    // Get total count of 'booked' status for this owner (for dashboard stats)
+    const { count: totalBookedCount } = await supabase
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .in("turf_id", turfIds)
+      .eq("status", "booked");
 
     // Fetch verification codes
     const bookingIds = (data || []).map(b => b.id);
@@ -750,6 +761,7 @@ exports.getClientBookings = async (req, res) => {
     res.json({
       bookings: formatted,
       total: count || 0,
+      total_booked: totalBookedCount || 0,
       has_more: (parsedOffset + parsedLimit) < (count || 0),
       limit: parsedLimit,
       offset: parsedOffset

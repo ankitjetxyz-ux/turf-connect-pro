@@ -106,7 +106,7 @@ exports.getAllAnalytics = async (req, res) => {
                 .from('bookings')
                 .select('total_amount, created_at')
                 .eq('turf_id', turf_id)
-                .in('status', ['confirmed', 'completed', 'paid', 'success'])
+                .in('status', ['booked', 'confirmed', 'completed', 'paid', 'success'])
                 .gte('created_at', startISO)
                 .lte('created_at', endISO),
 
@@ -122,7 +122,7 @@ exports.getAllAnalytics = async (req, res) => {
                 .from('bookings')
                 .select('total_amount')
                 .eq('turf_id', turf_id)
-                .in('status', ['confirmed', 'completed', 'paid', 'success'])
+                .in('status', ['booked', 'confirmed', 'completed', 'paid', 'success'])
                 .gte('created_at', prevStart.toISOString())
                 .lte('created_at', prevEnd.toISOString()),
 
@@ -162,7 +162,7 @@ exports.getAllAnalytics = async (req, res) => {
                     slots(start_time)
                 `)
                 .eq('turf_id', turf_id)
-                .in('status', ['confirmed', 'completed', 'paid', 'success'])
+                .in('status', ['booked', 'confirmed', 'completed', 'paid', 'success'])
                 .gte('created_at', startISO)
                 .lte('created_at', endISO)
         ]);
@@ -197,13 +197,13 @@ exports.getAllAnalytics = async (req, res) => {
         const avgRating =
             reviewsRes.data?.length > 0
                 ? reviewsRes.data.reduce((s, r) => s + r.rating, 0) /
-                  reviewsRes.data.length
+                reviewsRes.data.length
                 : 0;
 
         const prevAvgRating =
             prevReviewsRes.data?.length > 0
                 ? prevReviewsRes.data.reduce((s, r) => s + r.rating, 0) /
-                  prevReviewsRes.data.length
+                prevReviewsRes.data.length
                 : 0;
 
         /* --------------------------------------------------------------------
