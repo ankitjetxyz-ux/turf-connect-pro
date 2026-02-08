@@ -19,6 +19,8 @@ import {
   X,
   TrendingUp,
   BarChart3,
+  ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
 import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
 import TurfAnalytics from "@/components/analytics/TurfAnalytics";
@@ -42,7 +44,18 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { getClientBookings, getOwnerCancellationStats, ownerCancelBooking } from "@/services/bookingService";
 
 const ClientDashboard = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
@@ -61,21 +74,49 @@ const ClientDashboard = () => {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyData, setHistoryData] = useState<Booking[]>([]);
 
+  // Pagination & date filter state for Recent Bookings
+  const [bookingLimit] = useState(5);
+  const [bookingOffset, setBookingOffset] = useState(0);
+  const [hasMoreBookings, setHasMoreBookings] = useState(false);
+  const [dateFilter, setDateFilter] = useState<"today" | "week" | "month" | "all">("all");
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  // Owner cancellation stats
+  const [cancelStats, setCancelStats] = useState<{ cancellations_this_month: number; remaining: number } | null>(null);
+
+  // Cancellation modal state
+  const [cancelModalOpen, setCancelModalOpen] = useState(false);
+  const [cancelBookingId, setCancelBookingId] = useState<string | number | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelling, setCancelling] = useState(false);
+
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const fetchData = useCallback(async () => {
     try {
-      const [turfsRes, bookingsRes, tournamentsRes, profileRes] =
+      const [turfsRes, bookingsRes, tournamentsRes, profileRes, statsRes] =
         await Promise.all([
           api.get("/turfs/my"),
-          api.get("/bookings/client"),
+          getClientBookings({ limit: bookingLimit, offset: 0, date_filter: dateFilter }),
           api.get("/tournaments/my"),
           api.get("/profile/me"),
+          getOwnerCancellationStats().catch(() => ({ data: null })),
         ]);
 
       setTurfs(Array.isArray(turfsRes.data) ? turfsRes.data : []);
-      setBookings(Array.isArray(bookingsRes.data) ? bookingsRes.data : []);
+
+      // Handle paginated bookings response
+      const bookingsData = bookingsRes.data;
+      if (bookingsData && typeof bookingsData === "object" && "bookings" in bookingsData) {
+        setBookings(bookingsData.bookings || []);
+        setHasMoreBookings(bookingsData.has_more || false);
+      } else {
+        setBookings(Array.isArray(bookingsData) ? bookingsData : []);
+        setHasMoreBookings(false);
+      }
+      setBookingOffset(0);
+
       setMyTournaments(
         Array.isArray(tournamentsRes.data) ? tournamentsRes.data : [],
       );
@@ -88,19 +129,70 @@ const ClientDashboard = () => {
           localStorage.setItem("profile_image_url", user.profile_image_url);
         }
       }
+
+      // Set cancellation stats
+      if (statsRes.data) {
+        setCancelStats(statsRes.data);
+      }
     } catch (err: unknown) {
       console.error("Client dashboard error:", err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [bookingLimit, dateFilter]);
 
   const loadHistory = async () => {
     try {
-      const res = await api.get("/bookings/client");
-      setHistoryData(Array.isArray(res.data) ? res.data : []);
+      const res = await getClientBookings({ show_all: true });
+      const data = res.data;
+      if (data && typeof data === "object" && "bookings" in data) {
+        setHistoryData(data.bookings || []);
+      } else {
+        setHistoryData(Array.isArray(data) ? data : []);
+      }
     } catch (e) {
       console.error("Failed to load history", e);
+    }
+  };
+
+  // Load more bookings (pagination)
+  const loadMoreBookings = async () => {
+    setLoadingMore(true);
+    try {
+      const newOffset = bookingOffset + bookingLimit;
+      const res = await getClientBookings({ limit: bookingLimit, offset: newOffset, date_filter: dateFilter });
+      const data = res.data;
+      if (data && typeof data === "object" && "bookings" in data) {
+        setBookings(prev => [...prev, ...(data.bookings || [])]);
+        setHasMoreBookings(data.has_more || false);
+        setBookingOffset(newOffset);
+      }
+    } catch (e) {
+      console.error("Failed to load more bookings", e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
+  // Handle date filter change
+  const handleDateFilterChange = async (value: "today" | "week" | "month" | "all") => {
+    setDateFilter(value);
+    setLoading(true);
+    try {
+      const res = await getClientBookings({ limit: bookingLimit, offset: 0, date_filter: value });
+      const data = res.data;
+      if (data && typeof data === "object" && "bookings" in data) {
+        setBookings(data.bookings || []);
+        setHasMoreBookings(data.has_more || false);
+      } else {
+        setBookings(Array.isArray(data) ? data : []);
+        setHasMoreBookings(false);
+      }
+      setBookingOffset(0);
+    } catch (e) {
+      console.error("Failed to filter bookings", e);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -198,20 +290,44 @@ const ClientDashboard = () => {
     };
   }, [fetchData, toast]);
 
-  const handleCancel = async (bookingId: string | number) => {
-    if (!confirm("Are you sure you want to cancel this booking?")) return;
+  // Open cancel modal
+  const openCancelModal = (bookingId: string | number) => {
+    setCancelBookingId(bookingId);
+    setCancelReason("");
+    setCancelModalOpen(true);
+  };
 
-    try {
-      const res = await api.post("/bookings/owner-cancel", {
-        booking_id: bookingId,
+  // Confirm cancellation with reason
+  const handleConfirmCancel = async () => {
+    if (!cancelBookingId) return;
+    if (!cancelReason.trim()) {
+      toast({
+        title: "Reason required",
+        description: "Please provide a reason for cancellation.",
+        variant: "destructive",
       });
+      return;
+    }
 
-      // Instantly remove from UI
-      setBookings(prev => prev.filter(b => b.id !== bookingId));
+    setCancelling(true);
+    try {
+      const res = await ownerCancelBooking(cancelBookingId, cancelReason.trim());
+
+      // Remove from UI
+      setBookings(prev => prev.filter(b => b.id !== cancelBookingId));
+      setCancelModalOpen(false);
+
+      // Update stats
+      if (cancelStats) {
+        setCancelStats({
+          cancellations_this_month: cancelStats.cancellations_this_month + 1,
+          remaining: Math.max(0, cancelStats.remaining - 1),
+        });
+      }
 
       toast({
         title: "Booking cancelled",
-        description: res.data.message || "The booking was cancelled successfully.",
+        description: res.data.message || "The booking was cancelled. ₹80 penalty applied and player refunded 100%.",
       });
     } catch (err: unknown) {
       console.error("Cancel booking error:", err);
@@ -221,6 +337,8 @@ const ClientDashboard = () => {
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
+      setCancelling(false);
     }
   };
 
@@ -623,9 +741,33 @@ const ClientDashboard = () => {
 
               {activeSection === "bookings" && (
                 <>
-                  {bookings.length === 0 && (
+                  {/* Date Filter & Cancel Stats */}
+                  <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm text-muted-foreground">Filter by:</span>
+                      <Select value={dateFilter} onValueChange={(v) => handleDateFilterChange(v as any)}>
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All Time</SelectItem>
+                          <SelectItem value="today">Today</SelectItem>
+                          <SelectItem value="week">This Week</SelectItem>
+                          <SelectItem value="month">This Month</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {cancelStats && (
+                      <div className="text-sm text-muted-foreground">
+                        Cancellations this month: <span className="font-semibold text-foreground">{cancelStats.cancellations_this_month}/10</span>
+                        <span className="ml-2 text-xs">({cancelStats.remaining} remaining)</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {bookings.length === 0 && !loading && (
                     <Card variant="glass" className="p-8 text-center">
-                      <p className="text-muted-foreground">No bookings yet</p>
+                      <p className="text-muted-foreground">No bookings found</p>
                     </Card>
                   )}
 
@@ -646,9 +788,25 @@ const ClientDashboard = () => {
                           </div>
                           </div>
 
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <User className="w-4 h-4" />
-                            {b.player_name || "Guest"}
+                          <div className="space-y-1">
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <User className="w-4 h-4" />
+                              {b.player_name || "Guest"}
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <MapPin className="w-4 h-4" />
+                              {b.turf_location || "Location not available"}
+                            </div>
+                            <div className="text-sm text-muted-foreground flex items-center gap-2">
+                              <Clock className="w-4 h-4" />
+                              {b.slot_date} ({b.slot_start_time?.slice(0, 5)} - {b.slot_end_time?.slice(0, 5)})
+                            </div>
+                            {b.verification_code && (
+                              <div className="mt-2 p-2 bg-secondary/50 rounded-md border border-border/50 flex items-center justify-between">
+                                <span className="text-xs text-muted-foreground">Verification Code:</span>
+                                <span className="font-mono font-bold text-primary tracking-widest">{b.verification_code}</span>
+                              </div>
+                            )}
                           </div>
 
                           <div className="text-sm text-muted-foreground flex items-center gap-2">
@@ -670,7 +828,7 @@ const ClientDashboard = () => {
                               variant="destructive"
                               size="sm"
                               className="w-full"
-                              onClick={() => handleCancel(b.id)}
+                              onClick={() => openCancelModal(b.id)}
                             >
                               Cancel Booking
                             </Button>
@@ -679,6 +837,25 @@ const ClientDashboard = () => {
                       </Card>
                     ))}
                   </div>
+
+                  {/* See More Button */}
+                  {hasMoreBookings && (
+                    <div className="flex justify-center mt-6">
+                      <Button
+                        variant="outline"
+                        onClick={loadMoreBookings}
+                        disabled={loadingMore}
+                        className="gap-2"
+                      >
+                        {loadingMore ? (
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4" />
+                        )}
+                        See More
+                      </Button>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -725,6 +902,65 @@ const ClientDashboard = () => {
           </div>
         </div>
       </main>
+
+      {/* OWNER CANCELLATION MODAL */}
+      <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-500" />
+              Cancel Booking
+            </DialogTitle>
+            <DialogDescription>
+              Cancelling this booking will apply a <span className="font-semibold text-red-500">₹80 penalty</span> to your account
+              and refund <span className="font-semibold text-green-500">100%</span> to the player.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-sm">
+              <p className="text-yellow-600 dark:text-yellow-400">
+                You can cancel up to 10 bookings per month.
+                {cancelStats && (
+                  <span className="block mt-1 font-medium">
+                    Remaining: {cancelStats.remaining} cancellations
+                  </span>
+                )}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason" className="text-sm font-medium">
+                Reason for cancellation <span className="text-red-500">*</span>
+              </Label>
+              <Textarea
+                id="cancel-reason"
+                placeholder="Please provide a reason for cancelling this booking..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="min-h-[100px]"
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setCancelModalOpen(false)}
+              disabled={cancelling}
+            >
+              Keep Booking
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={cancelling || !cancelReason.trim()}
+            >
+              {cancelling ? "Cancelling..." : "Confirm Cancellation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* HISTORY DIALOG */}
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>

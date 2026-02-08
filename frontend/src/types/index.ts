@@ -30,6 +30,7 @@ export interface Slot {
   date?: string;
   is_available?: boolean;
   is_booked?: boolean;
+  status?: string;
   start_time: string;
   end_time: string;
   price: number;
@@ -45,10 +46,14 @@ export interface Booking {
   slot_time?: string;
   status?: string;
   location?: string;
+  turf_location?: string;
   turf_owner_name?: string;
   turf_owner_email?: string;
   verification_code?: string;
   verification_expires_at?: string;
+  slot_date?: string;
+  slot_start_time?: string;
+  slot_end_time?: string;
 }
 
 export interface Conversation {

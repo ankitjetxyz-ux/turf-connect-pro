@@ -7,7 +7,9 @@ const {
   getMyBookings,
   getClientBookings,
   cancelBooking,
-  ownerCancelBooking
+  ownerCancelBooking,
+  getCancellationInfo,
+  getOwnerCancellationStats
 } = require("../controllers/bookingController");
 
 const { verifyToken, allowRoles } = require("../middleware/authMiddleware");
@@ -48,6 +50,14 @@ router.post(
   cancelBooking
 );
 
+// Get cancellation info for preview modal
+router.get(
+  "/cancel-info/:booking_id",
+  verifyToken,
+  allowRoles("player"),
+  getCancellationInfo
+);
+
 /* =====================
    CLIENT ROUTES
 ===================== */
@@ -66,6 +76,14 @@ router.get(
   verifyToken,
   allowRoles("client"),
   getClientBookings
+);
+
+// Get owner cancellation stats
+router.get(
+  "/owner-cancel-stats",
+  verifyToken,
+  allowRoles("client"),
+  getOwnerCancellationStats
 );
 
 module.exports = router;

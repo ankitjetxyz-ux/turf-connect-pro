@@ -33,10 +33,10 @@ import {
   Copy,
   Check
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getTurfDetails } from "@/services/turfService";
-import { getSlotsByTurf } from "@/services/slotService";
+import { getSlotsByTurf, holdSlot } from "@/services/slotService";
 import { createBooking, verifyPayment } from "@/services/bookingService";
 import { Turf, Slot, RazorpayResponse, RazorpayErrorResponse } from "@/types";
 import api from "@/services/api";
@@ -194,6 +194,7 @@ const TurfDetailPage = () => {
   /* SLOT AVAILABILITY */
 
   const isSlotAvailable = (slot: Slot): boolean => {
+    if (slot.status === "held") return false;
     if (typeof slot.is_booked === "boolean") {
       return slot.is_booked === false;
     }
@@ -208,6 +209,14 @@ const TurfDetailPage = () => {
       if (prev.includes(slotId)) {
         return prev.filter((id) => id !== slotId);
       } else {
+        if (prev.length >= 3) {
+          showToast({
+            title: "Limit Reached",
+            description: "You can select up to 3 slots only",
+            variant: "destructive"
+          });
+          return prev;
+        }
         return [...prev, slotId];
       }
     });
@@ -248,6 +257,10 @@ const TurfDetailPage = () => {
     }
 
     try {
+      // 1. Hold slots first
+      await holdSlot(selectedSlots);
+
+      // 2. Create booking
       const { data } = await createBooking(selectedSlots);
 
       const options = {
@@ -257,6 +270,11 @@ const TurfDetailPage = () => {
         name: "Book My Turf",
         description: "Turf Booking",
         order_id: data.order.id,
+        modal: {
+          ondismiss: () => {
+            fetchSlots();
+          }
+        },
         handler: async (response: RazorpayResponse) => {
           try {
             const verifyRes = await verifyPayment({
@@ -267,6 +285,9 @@ const TurfDetailPage = () => {
             });
             const verificationCodes = verifyRes.data?.verification_codes || [];
             const firstCode = verificationCodes[0]?.verification_code;
+
+            // Refresh slots immediately to show booked status
+            fetchSlots();
 
             if (firstCode) {
               showToast({
@@ -291,6 +312,7 @@ const TurfDetailPage = () => {
               description: "Payment verification failed",
               variant: "destructive"
             });
+            fetchSlots(); // Refresh on error too
           }
         },
         prefill: {
@@ -312,6 +334,7 @@ const TurfDetailPage = () => {
           description: response.error.description,
           variant: "destructive"
         });
+        fetchSlots(); // Refresh on failure
       });
 
     } catch (error: unknown) {
@@ -460,43 +483,41 @@ const TurfDetailPage = () => {
   }, [id]);
 
   /* FETCH SLOTS WHEN DATE CHANGES */
-  useEffect(() => {
-    const fetchSlots = async () => {
-      if (!id) return;
-      try {
-        const slotsRes = await getSlotsByTurf(id);
-        const allSlots = slotsRes.data;
+  const fetchSlots = useCallback(async () => {
+    if (!id) return;
+    try {
+      const slotsRes = await getSlotsByTurf(id);
+      const allSlots = slotsRes.data;
 
-        // Filter slots by selected date
-        // Filter slots by selected date using LOCAL date string to avoid timezone shifts
-        const year = selectedDate.getFullYear();
-        const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
-        const day = String(selectedDate.getDate()).padStart(2, '0');
-        const selectedDateStr = `${year}-${month}-${day}`;
+      // Filter slots by selected date using LOCAL date string to avoid timezone shifts
+      const year = selectedDate.getFullYear();
+      const month = String(selectedDate.getMonth() + 1).padStart(2, '0');
+      const day = String(selectedDate.getDate()).padStart(2, '0');
+      const selectedDateStr = `${year}-${month}-${day}`;
 
-        const filteredSlots = allSlots.filter((slot: Slot) => {
-          if (slot.date) {
-            // Check if slot date string matches directly (assuming DB returns YYYY-MM-DD)
-            // If slot.date is ISO, convert to local YYYY-MM-DD
-            const d = new Date(slot.date);
-            const sYear = d.getFullYear();
-            const sMonth = String(d.getMonth() + 1).padStart(2, '0');
-            const sDay = String(d.getDate()).padStart(2, '0');
-            const slotDateStr = `${sYear}-${sMonth}-${sDay}`;
+      const filteredSlots = allSlots.filter((slot: Slot) => {
+        if (slot.date) {
+          const d = new Date(slot.date);
+          const sYear = d.getFullYear();
+          const sMonth = String(d.getMonth() + 1).padStart(2, '0');
+          const sDay = String(d.getDate()).padStart(2, '0');
+          const slotDateStr = `${sYear}-${sMonth}-${sDay}`;
 
-            return slotDateStr === selectedDateStr;
-          }
-          return false;
-        });
+          return slotDateStr === selectedDateStr;
+        }
+        return false;
+      });
 
-        setSlots(filteredSlots);
-      } catch (error) {
-        console.error(error);
-        setSlots([]);
-      }
-    };
-    fetchSlots();
+      setSlots(filteredSlots);
+    } catch (error) {
+      console.error(error);
+      setSlots([]);
+    }
   }, [id, selectedDate]);
+
+  useEffect(() => {
+    fetchSlots();
+  }, [fetchSlots]);
 
   /* LOADING STATE */
 
@@ -1066,8 +1087,22 @@ const TurfDetailPage = () => {
 
               {/* Time Slots */}
               <Card variant="default">
-                <CardHeader>
-                  <CardTitle>Available Time Slots</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-xl font-bold">Available Time Slots</CardTitle>
+                  <div className="flex items-center gap-4 text-[10px] md:text-xs font-medium">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-secondary border border-transparent"></div>
+                      <span className="text-muted-foreground">Open</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-yellow-500/10 border border-yellow-500/50"></div>
+                      <span className="text-yellow-600">Held</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-3 h-3 rounded bg-green-500/10 border border-green-500/50"></div>
+                      <span className="text-green-600">Booked</span>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
@@ -1105,11 +1140,15 @@ const TurfDetailPage = () => {
                             key={slot.id}
                             disabled={!available}
                             onClick={() => available && toggleSlotSelection(slot.id)}
-                            className={`p-3 rounded-lg text-center transition-all ${!available
-                              ? "bg-secondary/30 text-muted-foreground cursor-not-allowed line-through"
-                              : isSelected
-                                ? "gradient-primary text-primary-foreground shadow-glow"
-                                : "bg-secondary text-foreground hover:border-primary border border-transparent"
+                            className={`p-3 rounded-lg text-center transition-all ${slot.status === 'held'
+                              ? "bg-yellow-500/10 text-yellow-600 border-yellow-500/50 cursor-not-allowed"
+                              : slot.status === 'booked'
+                                ? "bg-green-500/10 text-green-600 border-green-500/50 cursor-not-allowed"
+                                : !available
+                                  ? "bg-secondary/30 text-muted-foreground cursor-not-allowed line-through"
+                                  : isSelected
+                                    ? "gradient-primary text-primary-foreground shadow-glow"
+                                    : "bg-secondary text-foreground hover:border-primary border border-transparent"
                               }`}
                           >
                             <div className="text-sm font-semibold">
