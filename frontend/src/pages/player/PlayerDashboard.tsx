@@ -3,7 +3,7 @@ import Footer from "@/components/layout/Footer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Clock, XCircle, User, Calendar, Users, MoreVertical, History, LogOut, Edit, Save, X, Trophy } from "lucide-react";
+import { MapPin, Clock, XCircle, User, Calendar, Users, MoreVertical, History, LogOut, Edit, Save, X, Trophy, AlertTriangle } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
@@ -23,8 +23,11 @@ import {
     DialogContent,
     DialogHeader,
     DialogTitle,
+    DialogFooter,
+    DialogDescription,
 } from "@/components/ui/dialog";
 import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
+import { getCancellationInfo } from "@/services/bookingService";
 
 const PlayerDashboard = () => {
     const [bookings, setBookings] = useState<Booking[]>([]);
@@ -41,6 +44,21 @@ const PlayerDashboard = () => {
     const [activeSection, setActiveSection] = useState<"bookings" | "tournaments">("bookings");
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyData, setHistoryData] = useState<Booking[]>([]);
+
+    // Cancellation modal state
+    const [cancelModalOpen, setCancelModalOpen] = useState(false);
+    const [cancelBookingId, setCancelBookingId] = useState<string | number | null>(null);
+    const [cancelling, setCancelling] = useState(false);
+    const [cancelInfo, setCancelInfo] = useState<{
+        can_cancel: boolean;
+        refund_percentage: number;
+        refund_amount: number;
+        hours_until_slot: number;
+        message: string;
+        cancellations_this_month?: number;
+        remaining_cancellations?: number;
+    } | null>(null);
+    const [loadingCancelInfo, setLoadingCancelInfo] = useState(false);
 
     const loadConversations = async () => {
         const userId = localStorage.getItem("user_id");
@@ -184,23 +202,55 @@ const PlayerDashboard = () => {
         fetchProfile();
     }, []);
 
-    const cancelBooking = async (bookingId: number | string) => {
-        if (!confirm("Cancel this booking? Refund will be processed after 5% deduction.")) return;
+    // Open cancel modal and fetch cancellation info
+    const openCancelModal = async (bookingId: number | string) => {
+        setCancelBookingId(bookingId);
+        setCancelInfo(null);
+        setCancelModalOpen(true);
+        setLoadingCancelInfo(true);
 
         try {
-            await api.post("/bookings/cancel", { booking_id: bookingId });
-            // Instantly remove from UI
-            setBookings(prev => prev.filter(b => b.id !== bookingId));
+            const res = await getCancellationInfo(bookingId);
+            setCancelInfo(res.data);
+        } catch (err: any) {
+            const errorMsg = err?.response?.data?.error || "Failed to load cancellation info";
+            setCancelInfo({
+                can_cancel: false,
+                refund_percentage: 0,
+                refund_amount: 0,
+                hours_until_slot: 0,
+                message: errorMsg,
+            });
+        } finally {
+            setLoadingCancelInfo(false);
+        }
+    };
+
+    // Confirm cancellation
+    const confirmCancelBooking = async () => {
+        if (!cancelBookingId || !cancelInfo?.can_cancel) return;
+
+        setCancelling(true);
+        try {
+            await api.post("/bookings/cancel", { booking_id: cancelBookingId });
+            // Remove from UI
+            setBookings(prev => prev.filter(b => b.id !== cancelBookingId));
+            setCancelModalOpen(false);
             toast({
                 title: "Booking cancelled",
-                description: "Your booking has been cancelled successfully.",
+                description: cancelInfo.refund_percentage === 100 
+                    ? `Your booking has been cancelled. Full refund of ₹${cancelInfo.refund_amount} will be processed.`
+                    : "Your booking has been cancelled. No refund (cancelled less than 2 hours before slot).",
             });
-        } catch {
+        } catch (err: any) {
+            const errorMsg = err?.response?.data?.error || "We couldn't cancel this booking. Please try again.";
             toast({
                 title: "Cancellation failed",
-                description: "We couldn't cancel this booking. Please try again.",
+                description: errorMsg,
                 variant: "destructive",
             });
+        } finally {
+            setCancelling(false);
         }
     };
 
@@ -476,7 +526,7 @@ const PlayerDashboard = () => {
                                                             <Button
                                                                 variant="destructive"
                                                                 className="w-full gap-2 bg-red-500/10 text-red-500 hover:bg-red-500/20 border-0"
-                                                                onClick={() => cancelBooking(booking.id)}
+                                                                onClick={() => openCancelModal(booking.id)}
                                                             >
                                                                 <XCircle className="w-4 h-4" />
                                                                 Cancel Booking
@@ -576,6 +626,100 @@ const PlayerDashboard = () => {
                     </div>
                 </div>
             </main>
+
+            {/* PLAYER CANCELLATION MODAL */}
+            <Dialog open={cancelModalOpen} onOpenChange={setCancelModalOpen}>
+                <DialogContent className="max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <AlertTriangle className="w-5 h-5 text-yellow-500" />
+                            Cancel Booking
+                        </DialogTitle>
+                        <DialogDescription>
+                            Review the cancellation details before confirming.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4">
+                        {loadingCancelInfo ? (
+                            <div className="flex justify-center py-8">
+                                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                            </div>
+                        ) : cancelInfo ? (
+                            <div className="space-y-4">
+                                {/* Refund Info */}
+                                <div className={`p-4 rounded-lg border ${
+                                    cancelInfo.refund_percentage === 100
+                                        ? "bg-green-500/10 border-green-500/30"
+                                        : "bg-red-500/10 border-red-500/30"
+                                }`}>
+                                    <div className="text-sm text-muted-foreground mb-1">Refund Amount</div>
+                                    <div className={`text-2xl font-bold ${
+                                        cancelInfo.refund_percentage === 100 ? "text-green-500" : "text-red-500"
+                                    }`}>
+                                        ₹{cancelInfo.refund_amount} ({cancelInfo.refund_percentage}%)
+                                    </div>
+                                </div>
+
+                                {/* Time Warning */}
+                                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                                    <div className="flex items-start gap-2">
+                                        <Clock className="w-4 h-4 text-yellow-500 mt-0.5" />
+                                        <div className="text-sm">
+                                            <span className="font-medium text-yellow-600 dark:text-yellow-400">
+                                                {cancelInfo.hours_until_slot.toFixed(1)} hours until slot
+                                            </span>
+                                            <p className="text-muted-foreground mt-1">
+                                                {cancelInfo.refund_percentage === 100
+                                                    ? "Cancel ≥2 hours before for 100% refund."
+                                                    : "Cancelling <2 hours before = 0% refund."}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Monthly Limit Info */}
+                                {cancelInfo.cancellations_this_month !== undefined && (
+                                    <div className="text-sm text-muted-foreground">
+                                        Cancellations this month: <span className="font-semibold text-foreground">
+                                            {cancelInfo.cancellations_this_month}/5
+                                        </span>
+                                        {cancelInfo.remaining_cancellations !== undefined && (
+                                            <span className="ml-2">({cancelInfo.remaining_cancellations} remaining)</span>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Cannot Cancel Warning */}
+                                {!cancelInfo.can_cancel && (
+                                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-sm text-red-500">
+                                        {cancelInfo.message}
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <p className="text-muted-foreground text-center py-4">Unable to load cancellation info</p>
+                        )}
+                    </div>
+
+                    <DialogFooter className="gap-2">
+                        <Button
+                            variant="outline"
+                            onClick={() => setCancelModalOpen(false)}
+                            disabled={cancelling}
+                        >
+                            Keep Booking
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            onClick={confirmCancelBooking}
+                            disabled={cancelling || !cancelInfo?.can_cancel}
+                        >
+                            {cancelling ? "Cancelling..." : "Confirm Cancellation"}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* HISTORY DIALOG */}
             <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>

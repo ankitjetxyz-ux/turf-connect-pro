@@ -722,3 +722,103 @@ exports.uploadTurfDocuments = async (req, res) => {
     res.status(500).json({ error: "Failed to upload documents" });
   }
 };
+
+/* =======================
+   TOGGLE BOOKMARK
+======================= */
+exports.toggleBookmark = async (req, res) => {
+    try {
+        const { id: turfId } = req.params;
+        const userId = req.user.id;
+
+        // Check if already bookmarked
+        const { data: existing, error: fetchError } = await supabase
+            .from('bookmarks')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('turf_id', turfId)
+            .single();
+
+        if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "No rows found"
+            console.error('Check bookmark error:', fetchError);
+            return res.status(500).json({ error: 'Failed to check bookmark status' });
+        }
+
+        if (existing) {
+            // Remove bookmark
+            const { error: deleteError } = await supabase
+                .from('bookmarks')
+                .delete()
+                .eq('id', existing.id);
+
+            if (deleteError) {
+                return res.status(500).json({ error: 'Failed to remove bookmark' });
+            }
+
+            return res.json({ bookmarked: false, message: 'Removed from bookmarks' });
+        } else {
+            // Add bookmark
+            const { error: insertError } = await supabase
+                .from('bookmarks')
+                .insert({ user_id: userId, turf_id: turfId });
+
+            if (insertError) {
+                // Handle race condition
+                if (insertError.code === '23505') { // Unique violation
+                    return res.json({ bookmarked: true, message: 'Added to bookmarks' });
+                }
+                return res.status(500).json({ error: 'Failed to add bookmark' });
+            }
+
+            return res.json({ bookmarked: true, message: 'Added to bookmarks' });
+        }
+    } catch (err) {
+        console.error('Toggle bookmark error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+/* =======================
+   GET USER BOOKMARKS
+======================= */
+exports.getUserBookmarks = async (req, res) => {
+    try {
+        const userId = req.user.id;
+
+        const { data, error } = await supabase
+            .from('bookmarks')
+            .select(`
+        turf_id,
+        created_at,
+        turfs:turf_id (
+          id,
+          name,
+          location,
+          images,
+          price_per_slot,
+          rating,
+          reviews,
+          open_hours,
+          formatted_address
+        )
+      `)
+            .eq('user_id', userId)
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Get bookmarks error:', error);
+            return res.status(500).json({ error: 'Failed to fetch bookmarks' });
+        }
+
+        // Flatten structure
+        const bookmarks = data.map(item => ({
+            ...item.turfs,
+            bookmarked_at: item.created_at
+        })).filter(t => t); // filter nulls execution
+
+        res.json(bookmarks);
+    } catch (err) {
+        console.error('Get bookmarks unexpected error:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};

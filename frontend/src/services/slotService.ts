@@ -82,8 +82,14 @@ export const slotService = {
   // Apply template
   applyTemplate: (data: { template_id: string; start_date: string; end_date: string }) => {
     return api.post('/slots/templates/apply', data);
+  },
+
+  // Hold slots
+  holdSlot: (slotIds: number[]) => {
+    return api.post('/slots/hold', { slot_ids: slotIds });
   }
 };
 
 export const getSlotsByTurf = slotService.getSlotsByTurf;
 export const createSlot = slotService.createSlot;
+export const holdSlot = slotService.holdSlot;

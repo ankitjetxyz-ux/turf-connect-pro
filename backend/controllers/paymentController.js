@@ -15,7 +15,7 @@ exports.createOrder = async (req, res, next) => {
     if (!razorpay) return res.status(500).json({ error: "Razorpay not configured on server" });
     const { booking_id, amount, currency = "INR", turf_id } = req.body;
     const payer_id = req.user?.id; // Use authenticated user ID for security
-    
+
     if (!booking_id || !amount) return res.status(400).json({ error: "booking_id and amount required" });
     if (!payer_id) return res.status(401).json({ error: "Authentication required" });
 
@@ -237,9 +237,15 @@ exports.verifyPayment = async (req, res, next) => {
     }
 
     if (slotIds.length > 0) {
+      // Update slots: mark as booked, clear any holds, update status
       const { error: slotErr } = await supabase
         .from("slots")
-        .update({ is_booked: true })
+        .update({
+          is_booked: true,
+          status: 'booked',
+          locked_by: null,
+          lock_expires_at: null
+        })
         .in("id", slotIds);
       if (slotErr) {
         console.error(
@@ -289,7 +295,7 @@ exports.verifyPayment = async (req, res, next) => {
 
           // Generate unique 6-digit code
           const code = Math.floor(100000 + Math.random() * 900000).toString();
-          
+
           // Calculate expiration time (slot end time)
           const expiresAt = endIso;
 
@@ -380,8 +386,8 @@ exports.verifyPayment = async (req, res, next) => {
     }
 
     // 7) Response for frontend
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       booking_ids: bookingIds,
       verification_codes: verificationCodes
     });
@@ -402,7 +408,7 @@ exports.refundPayment = async (req, res, next) => {
       .eq("id", payment_id)
       .limit(1)
       .single();
-    
+
     if (paymentError || !payment) {
       if (paymentError) {
         console.error("Error fetching payment:", paymentError);
@@ -435,7 +441,7 @@ exports.refundPayment = async (req, res, next) => {
         .from("slots")
         .update({ is_booked: false })
         .eq("id", booking.slot_id);
-      
+
       if (slotError) {
         console.error("Error freeing slot:", slotError);
         // Continue with refund even if slot update fails
@@ -447,7 +453,7 @@ exports.refundPayment = async (req, res, next) => {
       .from("payments")
       .update({ status: "refunded" })
       .eq("id", payment_id);
-    
+
     if (paymentUpdateError) {
       console.error("Error updating payment status:", paymentUpdateError);
       return res.status(500).json({ error: "Failed to update payment status" });
