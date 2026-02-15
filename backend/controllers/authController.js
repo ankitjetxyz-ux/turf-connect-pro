@@ -246,14 +246,14 @@ exports.login = async (req, res) => {
         role: user.role,
         email: user.email
       },
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production',
+      process.env.JWT_SECRET,
       { expiresIn: "7d" } // Longer expiry for better UX
     );
 
     // Generate refresh token
     const refreshToken = jwt.sign(
       { id: user.id },
-      process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-change-in-production',
+      process.env.JWT_REFRESH_SECRET,
       { expiresIn: "30d" }
     );
 
@@ -476,7 +476,7 @@ exports.refreshToken = async (req, res) => {
     // Verify refresh token
     const decoded = jwt.verify(
       refreshToken,
-      process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-change-in-production'
+      process.env.JWT_REFRESH_SECRET
     );
 
     // Check if refresh token exists in database
@@ -786,7 +786,7 @@ exports.verifyToken = (req, res, next) => {
 
     const decoded = jwt.verify(
       token,
-      process.env.JWT_SECRET || 'your-secret-key-change-in-production'
+      process.env.JWT_SECRET
     );
 
     req.user = decoded;

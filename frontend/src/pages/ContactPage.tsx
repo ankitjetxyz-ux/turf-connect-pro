@@ -19,6 +19,8 @@ import {
   ChevronDown,
   ChevronUp
 } from "lucide-react";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 
 const FAQItem = ({ question, answer }: { question: string, answer: string }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,6 +45,8 @@ const FAQItem = ({ question, answer }: { question: string, answer: string }) => 
 
 const ContactPage = () => {
   const { toast } = useToast();
+  usePageSEO({ title: "Contact Us", description: "Get in touch with TurfBook team for support or inquiries." });
+
   const [loading, setLoading] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [formData, setFormData] = useState({

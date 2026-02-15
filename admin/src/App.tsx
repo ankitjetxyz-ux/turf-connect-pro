@@ -23,13 +23,13 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           {/* Default Route -> Admin Login */}
-          <Route path="/" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/" element={<Navigate to="/manage/login" replace />} />
 
-          <Route path="/login" element={<Navigate to="/admin/login" replace />} />
+          <Route path="/login" element={<Navigate to="/manage/login" replace />} />
 
           {/* ADMIN ROUTES */}
-          <Route path="/admin/login" element={<AdminLogin />} />
-          <Route path="/admin" element={<AdminLayout />}>
+          <Route path="/manage/login" element={<AdminLogin />} />
+          <Route path="/manage" element={<AdminLayout />}>
             <Route index element={<AdminDashboard />} />
             <Route path="dashboard" element={<AdminDashboard />} />
             <Route path="verification" element={<VerificationPanel />} />

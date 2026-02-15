@@ -107,7 +107,7 @@ const AdminDashboard = () => {
                         {statsLoading ? <Skeleton className="h-8 w-20" /> : (
                             <>
                                 <div className="text-2xl font-bold">{stats?.turfs.pending}</div>
-                                <Link to="/admin/verification" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
+                                <Link to="/manage/verification" className="text-xs text-blue-500 hover:underline flex items-center gap-1 mt-1">
                                     Review requests <ArrowRight className="h-3 w-3" />
                                 </Link>
                             </>
@@ -230,7 +230,7 @@ const AdminDashboard = () => {
                                                 </div>
                                             </div>
                                             <Button size="sm" variant="outline" asChild>
-                                                <Link to={`/admin/verification/${turf.id}`}>Review</Link>
+                                                <Link to={`/manage/verification/${turf.id}`}>Review</Link>
                                             </Button>
                                         </div>
                                     ))}

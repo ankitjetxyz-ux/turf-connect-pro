@@ -40,6 +40,8 @@ import { getSlotsByTurf, holdSlot } from "@/services/slotService";
 import { createBooking, verifyPayment } from "@/services/bookingService";
 import { Turf, Slot, RazorpayResponse, RazorpayErrorResponse } from "@/types";
 import api from "@/services/api";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 
 /* TYPES */
 
@@ -131,6 +133,12 @@ const TurfDetailPage = () => {
       }
     }
   }, [turf]);
+
+  usePageSEO({
+    title: turf ? turf.name : "Turf Details",
+    description: turf ? `Book ${turf.name} in ${turf.location}. Best rates for ${Array.isArray(turf.sports) ? turf.sports.join(", ") : turf.sports}.` : "View turf details."
+  });
+
 
   const toggleFavourite = () => {
     if (!turf?.id) return;

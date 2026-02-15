@@ -9,9 +9,13 @@ import { Turf } from "@/types";
 import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 
 const TurfPage = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
+  usePageSEO({ title: "Browse Turfs", description: "Explore and book top-rated sports turfs in your area." });
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchCity, setSearchCity] = useState("");

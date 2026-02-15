@@ -14,10 +14,14 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser } from "@/services/authService";
 import { useToast } from "@/components/ui/use-toast";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  usePageSEO({ title: "Login", description: "Login to your TurfBook account to manage bookings and profile." });
+
 
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({

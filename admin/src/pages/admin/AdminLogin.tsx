@@ -34,7 +34,7 @@ const AdminLogin = () => {
                     description: "Welcome to the Admin Portal.",
                 });
 
-                navigate("/admin/dashboard");
+                navigate("/manage/dashboard");
             } else {
                 throw new Error(data.error || "Login failed");
             }
@@ -71,7 +71,6 @@ const AdminLogin = () => {
                             <Input
                                 id="email"
                                 type="email"
-                                placeholder="admin@bookmyturf.com"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 required

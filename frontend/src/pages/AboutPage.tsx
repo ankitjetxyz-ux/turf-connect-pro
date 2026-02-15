@@ -21,8 +21,12 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 
 const AboutPage = () => {
+  usePageSEO({ title: "About Us", description: "Learn about TurfBook's mission to revolutionize sports turf booking in India." });
+
   const platformFeatures = [
     {
       icon: Zap,

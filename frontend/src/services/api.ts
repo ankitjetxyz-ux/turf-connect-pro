@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: import.meta.env.VITE_API_URL,
   withCredentials: true,
 });
 
@@ -30,7 +30,7 @@ api.interceptors.response.use(
       if (isAdminDetails) {
         localStorage.removeItem("adminToken");
         localStorage.removeItem("adminUser");
-        window.location.href = "/admin/login";
+        window.location.href = "/manage/login";
       } else {
         localStorage.removeItem("token");
         localStorage.removeItem("role");

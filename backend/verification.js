@@ -4,7 +4,8 @@
 async function verify() {
     console.log("Testing Backend connection...");
     try {
-        const response = await fetch("http://localhost:5000/api/ai/chat", {
+        const apiUrl = process.env.API_URL || "http://localhost:5000";
+        const response = await fetch(`${apiUrl}/api/ai/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ message: "Hello, are you there?" })

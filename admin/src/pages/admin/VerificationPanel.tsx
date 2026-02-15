@@ -149,7 +149,7 @@ const VerificationPanel = () => {
                                                     </TableCell>
                                                     <TableCell className="text-right">
                                                         <Button asChild size="sm" variant="ghost">
-                                                            <Link to={`/admin/verification/${turf.id}`}>
+                                                            <Link to={`/manage/verification/${turf.id}`}>
                                                                 <Eye className="h-4 w-4 mr-2" />
                                                                 Review
                                                             </Link>

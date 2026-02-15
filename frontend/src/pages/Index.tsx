@@ -1,4 +1,6 @@
 import Navbar from "@/components/layout/Navbar";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 import Footer from "@/components/layout/Footer";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturedTurfs from "@/components/home/FeaturedTurfs";
@@ -13,6 +15,10 @@ import Marquee from "@/components/common/Marquee";
 
 
 const Index = () => {
+  usePageSEO({
+    title: "TurfBook - Book Sports Turfs Online",
+    description: "Book premium sports turfs near you. Football, cricket, badminton & more. Instant booking, secure payments, and exclusive offers."
+  });
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Navbar />

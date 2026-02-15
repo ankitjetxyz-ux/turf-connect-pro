@@ -28,6 +28,8 @@ import { registerUser, sendOTP, verifyOTP } from "@/services/authService";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { usePageSEO } from "@/hooks/usePageSEO";
+
 
 // Add proper type definitions
 interface FormData {
@@ -48,6 +50,8 @@ interface FormErrors {
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  usePageSEO({ title: "Register", description: "Create a new TurfBook account to start booking turfs." });
+
 
   const [showPassword, setShowPassword] = useState(false);
   const [selectedRole, setSelectedRole] = useState<"player" | "client">("player");

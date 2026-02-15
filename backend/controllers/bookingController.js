@@ -30,11 +30,12 @@ exports.bookSlot = async (req, res) => {
     // Fetch slot with price so we can persist total_amount on the booking
     const { data: slot, error: slotError } = await supabase
       .from("slots")
-      .select("id, price, turfs(owner_id, verification_status)")
+      .select("id, price, turf_id, turfs(owner_id, verification_status)")
       .eq("id", slot_id)
       .eq("is_booked", false)
       .eq("turfs.verification_status", "approved")
       .single();
+
 
     if (slotError || !slot) {
       if (slotError) {
@@ -51,8 +52,10 @@ exports.bookSlot = async (req, res) => {
         user_id,
         slot_id,
         status: "booked",
+        turf_id: slot.turf_id,
         total_amount: slotPrice,
       })
+
       .select()
       .single();
 
@@ -150,8 +153,10 @@ exports.createBookingAndOrder = async (req, res) => {
           slot_id: s.id,
           status: "held",
           razorpay_order_id: order.id,
+          turf_id: s.turf_id,
           total_amount: Number(s.price) || 0,
         }))
+
       )
       .select();
 

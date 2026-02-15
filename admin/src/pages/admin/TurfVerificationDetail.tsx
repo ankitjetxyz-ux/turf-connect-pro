@@ -72,7 +72,7 @@ const TurfVerificationDetail = () => {
         },
         onSuccess: () => {
             toast({ title: "Turf Approved", description: "The turf is now live on the platform." });
-            navigate("/admin/verification");
+            navigate("/manage/verification");
         },
         onError: () => {
             toast({ variant: "destructive", title: "Error", description: "Failed to approve turf." });
@@ -90,7 +90,7 @@ const TurfVerificationDetail = () => {
         },
         onSuccess: () => {
             toast({ title: "Turf Rejected", description: "The owner has been notified." });
-            navigate("/admin/verification");
+            navigate("/manage/verification");
         },
         onError: () => {
             toast({ variant: "destructive", title: "Error", description: "Failed to reject turf." });
@@ -107,7 +107,7 @@ const TurfVerificationDetail = () => {
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
                         <Button variant="ghost" size="sm" asChild className="-ml-3 text-muted-foreground hover:text-foreground">
-                            <Link to="/admin/verification">
+                            <Link to="/manage/verification">
                                 <ArrowLeft className="mr-1 h-4 w-4" />
                                 Back
                             </Link>

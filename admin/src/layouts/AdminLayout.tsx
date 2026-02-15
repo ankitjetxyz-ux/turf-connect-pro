@@ -15,14 +15,14 @@ const AdminLayout = () => {
 
     useEffect(() => {
         if (!token) {
-            navigate("/admin/login");
+            navigate("/manage/login");
         }
     }, [token, navigate]);
 
     const handleLogout = () => {
         localStorage.removeItem("adminToken");
         localStorage.removeItem("adminUser");
-        navigate("/admin/login");
+        navigate("/manage/login");
     };
 
     if (!token) return null;
@@ -33,21 +33,21 @@ const AdminLayout = () => {
             <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
                 <div className="container flex h-16 items-center justify-between px-4">
                     <div className="flex items-center gap-6">
-                        <Link to="/admin/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
+                        <Link to="/manage/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
                             <ShieldCheck className="h-6 w-6" />
                             <span>Admin Portal</span>
                         </Link>
 
                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
                             <Link
-                                to="/admin/dashboard"
-                                className={`transition-colors hover:text-primary ${location.pathname === '/admin/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
+                                to="/manage/dashboard"
+                                className={`transition-colors hover:text-primary ${location.pathname === '/manage/dashboard' ? 'text-primary' : 'text-muted-foreground'}`}
                             >
                                 Dashboard
                             </Link>
                             <Link
-                                to="/admin/verification"
-                                className={`transition-colors hover:text-primary ${location.pathname.startsWith('/admin/verification') ? 'text-primary' : 'text-muted-foreground'}`}
+                                to="/manage/verification"
+                                className={`transition-colors hover:text-primary ${location.pathname.startsWith('/manage/verification') ? 'text-primary' : 'text-muted-foreground'}`}
                             >
                                 Verification
                             </Link>

@@ -19,7 +19,7 @@ const analyticsRoutes = require("./routes/analyticsRoutes");
 const app = express();
 
 // Warn about commonly required environment variables to help local dev
-const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"];
+const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET", "JWT_REFRESH_SECRET", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"];
 const missing = requiredEnvs.filter((k) => !process.env[k]);
 if (missing.length > 0) {
   console.warn(`⚠️  Missing env vars: ${missing.join(", ")}. See .env.example`);
@@ -28,7 +28,35 @@ if (missing.length > 0) {
 /* =========================
    GLOBAL MIDDLEWARE
 ========================= */
-app.use(cors());
+/* =========================
+   CORS CONFIGURATION
+========================= */
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173", // Vite default
+  "http://localhost:3001", // Admin Panel
+];
+
+if (process.env.FRONTEND_URL) {
+  const urls = process.env.FRONTEND_URL.split(',').map(url => url.trim());
+  allowedOrigins.push(...urls);
+}
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+};
+
+app.use(cors(corsOptions));
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
@@ -64,7 +92,7 @@ process.on('uncaughtException', (err) => {
    API ROUTES
 ========================= */
 app.get("/api/test", (req, res) => {
-  res.json({ message: "Backend is working", frontend: "http://localhost:3000" });
+  res.json({ message: "Backend is working", frontend: process.env.FRONTEND_URL || "http://localhost:3000" });
 });
 
 app.use("/api/auth", authRoutes);
@@ -106,15 +134,16 @@ app.use((err, req, res, next) => {
 /* =========================
    START SERVER
 ========================= */
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 5000;
 
 const http = require('http');
 const server = http.createServer(app);
 const { Server } = require("socket.io");
 const io = new Server(server, {
   cors: {
-    origin: "*", // Adjust as needed for production
-    methods: ["GET", "POST"]
+    origin: allowedOrigins,
+    methods: ["GET", "POST"],
+    credentials: true
   }
 });
 
