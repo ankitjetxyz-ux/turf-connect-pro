@@ -3,6 +3,7 @@ import { Conversation } from "@/pages/ChatPage";
 import { useChat } from "@/hooks/useChat";
 import type { Socket } from "socket.io-client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 const MessageWindow = ({
   chatId,
@@ -67,7 +68,7 @@ const MessageWindow = ({
         </button>
 
         <Avatar className="w-10 h-10 shadow-glow-sm">
-          {profileImage && <AvatarImage src={profileImage} alt={displayName} />}
+          {profileImage && <AvatarImage src={resolveMediaUrl(profileImage)} alt={displayName} />}
           <AvatarFallback className="gradient-primary text-white font-bold text-sm">
             {initial}
           </AvatarFallback>

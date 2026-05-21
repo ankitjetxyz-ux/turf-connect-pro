@@ -6,6 +6,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import api from "@/services/api";
 import { Tournament } from "@/types";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 const TournamentsSection = () => {
   const navigate = useNavigate();
@@ -101,7 +102,7 @@ const TournamentsSection = () => {
               {tournament.image && (
                 <div className="relative aspect-[16/10] overflow-hidden">
                   <img
-                    src={tournament.image}
+                    src={resolveMediaUrl(tournament.image)}
                     alt={tournament.name}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     onError={(e) => {

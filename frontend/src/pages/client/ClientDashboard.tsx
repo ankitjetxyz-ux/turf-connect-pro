@@ -27,6 +27,7 @@ import TurfAnalytics from "@/components/analytics/TurfAnalytics";
 import { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { useToast } from "@/components/ui/use-toast";
 import { io, Socket } from "socket.io-client";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -344,7 +345,7 @@ const ClientDashboard = () => {
     }
   };
 
-  const displayAvatar = avatarPreview || profile?.profile_image_url || undefined;
+  const displayAvatar = avatarPreview || resolveMediaUrl(profile?.profile_image_url) || undefined;
   const initials = profile?.name
     ?.split(" ")
     .map((n) => n[0])

@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import { Conversation } from "@/pages/ChatPage";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { MoreVertical, Star, StarOff } from "lucide-react";
 import api from "@/services/api";
 import { useToast } from "@/components/ui/use-toast";
@@ -98,7 +99,7 @@ const ChatList = ({
                 )}
                 
                 <Avatar className={`w-12 h-12 shadow-glow-sm shrink-0 ${c.is_favorite ? 'ring-2 ring-yellow-400/50' : ''}`}>
-                  {profileImage && <AvatarImage src={profileImage} alt={displayName} />}
+                  {profileImage && <AvatarImage src={resolveMediaUrl(profileImage)} alt={displayName} />}
                   <AvatarFallback className="gradient-primary text-white font-bold">
                     {initial}
                   </AvatarFallback>

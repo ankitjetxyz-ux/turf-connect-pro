@@ -2,11 +2,10 @@ import { useEffect } from "react";
 import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
-    LayoutDashboard,
-    ShieldCheck,
     LogOut,
     Menu
 } from "lucide-react";
+import SiteLogo from "@/components/common/SiteLogo";
 
 const AdminLayout = () => {
     const navigate = useNavigate();
@@ -33,10 +32,10 @@ const AdminLayout = () => {
             <header className="sticky top-0 z-40 w-full border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
                 <div className="container flex h-16 items-center justify-between px-4">
                     <div className="flex items-center gap-6">
-                        <Link to="/manage/dashboard" className="flex items-center gap-2 font-bold text-xl text-primary">
-                            <ShieldCheck className="h-6 w-6" />
-                            <span>Admin Portal</span>
-                        </Link>
+                        <SiteLogo
+                            to="/manage/dashboard"
+                            imageClassName="h-9 w-9 object-contain"
+                        />
 
                         <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
                             <Link

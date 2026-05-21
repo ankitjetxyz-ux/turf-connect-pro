@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useEffect, useState } from "react";
 import api from "@/services/api";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import ClientDashboard from "./client/ClientDashboard";
 import PlayerDashboard from "./player/PlayerDashboard";
 
@@ -183,7 +184,7 @@ const ProfilePage = () => {
     }
   };
 
-  const displayAvatar = avatarPreview || user?.profile_image_url || undefined;
+  const displayAvatar = avatarPreview || resolveMediaUrl(user?.profile_image_url) || undefined;
   const initials = user?.name
     ?.split(" ")
     .map((n) => n[0])

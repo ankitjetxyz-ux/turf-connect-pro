@@ -7,6 +7,7 @@ import { MapPin, Clock, XCircle, User, Calendar, Users, MoreVertical, History, L
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "@/services/api";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Booking, Conversation, Tournament, UserProfile } from "@/types";
 import { useToast } from "@/components/ui/use-toast";
@@ -254,7 +255,7 @@ const PlayerDashboard = () => {
         }
     };
 
-    const displayAvatar = avatarPreview || profile?.profile_image_url || undefined;
+    const displayAvatar = avatarPreview || resolveMediaUrl(profile?.profile_image_url) || undefined;
     const initials = profile?.name
         ?.split(" ")
         .map((n) => n[0])

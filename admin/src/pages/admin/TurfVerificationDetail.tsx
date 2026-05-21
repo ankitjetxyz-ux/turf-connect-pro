@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Check, X, ArrowLeft, MapPin, User, Phone, Mail, Calendar, FileText, Image as ImageIcon, ExternalLink, ShieldCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 // Types
 interface VerificationDocument {
@@ -267,9 +268,9 @@ const TurfVerificationDetail = () => {
                                         <div
                                             key={idx}
                                             className="aspect-square relative rounded-md overflow-hidden border cursor-pointer hover:opacity-90 transition-opacity"
-                                            onClick={() => setSelectedImage(img)}
+                                            onClick={() => setSelectedImage(resolveMediaUrl(img))}
                                         >
-                                            <img src={img} alt={`Turf ${idx}`} className="object-cover w-full h-full" />
+                                            <img src={resolveMediaUrl(img)} alt={`Turf ${idx}`} className="object-cover w-full h-full" />
                                         </div>
                                     ))}
                                 </div>
@@ -304,7 +305,7 @@ const TurfVerificationDetail = () => {
                                                 </div>
                                             </div>
                                             <Button variant="outline" size="sm" asChild>
-                                                <a href={doc.document_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
+                                                <a href={resolveMediaUrl(doc.document_url)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1">
                                                     View
                                                     <ExternalLink className="h-3 w-3" />
                                                 </a>

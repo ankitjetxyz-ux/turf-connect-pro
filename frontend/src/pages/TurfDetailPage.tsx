@@ -41,6 +41,7 @@ import { createBooking, verifyPayment } from "@/services/bookingService";
 import { Turf, Slot, RazorpayResponse, RazorpayErrorResponse } from "@/types";
 import api from "@/services/api";
 import { usePageSEO } from "@/hooks/usePageSEO";
+import { resolveMediaUrl, resolveMediaUrls } from "@/lib/mediaUrl";
 
 
 /* TYPES */
@@ -594,11 +595,17 @@ const TurfDetailPage = () => {
 
   /* DATA NORMALIZATION */
 
-  const images = Array.isArray(turf.images)
-    ? turf.images
-    : typeof turf.images === "string"
-      ? turf.images.split(",").map(img => img.trim())
+  const images = (() => {
+    const raw = Array.isArray(turf.images)
+      ? turf.images
+      : typeof turf.images === "string"
+        ? turf.images.split(",").map((img) => img.trim())
+        : [];
+    const resolved = resolveMediaUrls(raw);
+    return resolved.length > 0
+      ? resolved
       : ["https://images.unsplash.com/photo-1529900748604-07564a03e7a6?w=1200"];
+  })();
 
   const facilitiesList = Array.isArray(turf.facilities)
     ? turf.facilities
@@ -807,10 +814,10 @@ const TurfDetailPage = () => {
                         <div
                           key={item.id}
                           className="aspect-square rounded-lg overflow-hidden cursor-pointer hover:opacity-90 transition-opacity"
-                          onClick={() => window.open(item.image_url, '_blank')}
+                          onClick={() => window.open(resolveMediaUrl(item.image_url), "_blank")}
                         >
                           <img
-                            src={item.image_url}
+                            src={resolveMediaUrl(item.image_url)}
                             alt="Gallery"
                             className="w-full h-full object-cover"
                           />
@@ -868,7 +875,7 @@ const TurfDetailPage = () => {
                         maxLength={3000}
                         rows={4}
                         className="w-full rounded-md border border-border bg-background/60 p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/60"
-                        placeholder="Share your experience at this turf (50-60 lines max)."
+                        placeholder="Share your experience — surface quality, booking process, facilities, etc."
                       />
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
@@ -930,7 +937,7 @@ const TurfDetailPage = () => {
                           <div className="flex items-start justify-between gap-3 relative z-10">
                             <div className="flex items-center gap-3">
                               <Avatar className="h-10 w-10 border border-white/10 shadow-sm">
-                                <AvatarImage src={c.users?.profile_image_url || undefined} />
+                                <AvatarImage src={resolveMediaUrl(c.users?.profile_image_url) || undefined} />
                                 <AvatarFallback className="bg-primary/20 text-primary font-bold">
                                   {c.users?.name?.charAt(0) || "U"}
                                 </AvatarFallback>

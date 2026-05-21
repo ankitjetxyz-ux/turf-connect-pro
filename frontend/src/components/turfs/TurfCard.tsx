@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, Clock, Heart, Phone, ChevronDown, ChevronUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 interface TurfCardProps {
   id: string | number;
@@ -96,7 +97,7 @@ const TurfCard = ({
     >
       <div className="relative aspect-[4/3] overflow-hidden shrink-0">
         <img
-          src={image}
+          src={resolveMediaUrl(image) || "/placeholder.jpg"}
           alt={name}
           onError={(e) => {
             (e.target as HTMLImageElement).src = "/placeholder.jpg";

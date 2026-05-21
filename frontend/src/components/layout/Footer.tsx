@@ -1,7 +1,6 @@
 import { Link } from "react-router-dom";
-import { MapPin, Mail, Phone, ArrowUpRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import SocialMediaLinks from "@/components/common/SocialMediaLinks";
+import { ArrowUpRight } from "lucide-react";
+import SiteLogo from "@/components/common/SiteLogo";
 
 const Footer = () => {
   return (
@@ -15,18 +14,10 @@ const Footer = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           {/* Brand */}
           <div className="space-y-5">
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-11 h-11 rounded-xl gradient-primary flex items-center justify-center shadow-glow-sm group-hover:shadow-glow transition-shadow duration-300">
-                <MapPin className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-heading font-bold text-xl text-foreground">
-                Turf<span className="text-primary">Book</span>
-              </span>
-            </Link>
+            <SiteLogo imageClassName="h-12 w-12" />
             <p className="text-muted-foreground text-sm leading-relaxed">
               India's leading turf booking platform. Find and book sports turfs near you with ease.
             </p>
-            <SocialMediaLinks variant="glass" />
           </div>
 
           {/* Quick Links */}
@@ -88,7 +79,7 @@ const Footer = () => {
 
         <div className="border-t border-border/30 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-muted-foreground text-sm">
-            © 2024 TurfBook. All rights reserved.
+            © 2026 TurfBook.
           </p>
           <div className="flex flex-wrap justify-center gap-6">
             <Link to="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">Privacy Policy</Link>

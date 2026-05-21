@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
+import SiteLogo from "@/components/common/SiteLogo";
 
 const AdminLogin = () => {
     const [email, setEmail] = useState("");
@@ -53,11 +54,12 @@ const AdminLogin = () => {
         <div className="flex items-center justify-center min-h-screen bg-slate-950">
             <Card className="w-full max-w-md border-slate-800 bg-slate-900 text-slate-50">
                 <CardHeader className="space-y-1 text-center">
-                    <div className="flex justify-center mb-4">
-                        {/* Simple Logo Placeholder */}
-                        <div className="h-12 w-12 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-bold text-xl">
-                            BM
-                        </div>
+                    <div className="flex justify-center mb-2">
+                        <SiteLogo
+                            to={null}
+                            imageClassName="h-16 w-16 md:h-20 md:w-20 object-contain mx-auto"
+                            className="justify-center"
+                        />
                     </div>
                     <CardTitle className="text-2xl font-bold tracking-tight text-white">Admin Portal</CardTitle>
                     <CardDescription className="text-slate-400">

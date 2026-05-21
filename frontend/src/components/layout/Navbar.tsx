@@ -4,13 +4,14 @@ import { Button } from "@/components/ui/button";
 import {
   Menu,
   X,
-  MapPin,
   LogIn,
   User,
   LogOut,
   LayoutDashboard,
 } from "lucide-react";
 import AiSupportWidget from "@/components/ai/AiSupportWidget";
+import SiteLogo from "@/components/common/SiteLogo";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Navbar = () => {
@@ -60,14 +61,7 @@ const Navbar = () => {
           <nav className="flex items-center justify-between h-20 md:h-24">
 
             {/* LOGO */}
-            <Link to="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-primary-foreground" />
-              </div>
-              <span className="font-heading font-extrabold text-3xl">
-                Turf<span className="text-primary">Book</span>
-              </span>
-            </Link>
+            <SiteLogo />
 
             {/* DESKTOP LINKS */}
             <div className="hidden md:flex items-center gap-1">
@@ -124,7 +118,7 @@ const Navbar = () => {
                 >
                   <Avatar className="h-8 w-8">
                     {profileImage && (
-                      <AvatarImage src={profileImage} alt={displayName} />
+                      <AvatarImage src={profileImage ? resolveMediaUrl(profileImage) : undefined} alt={displayName} />
                     )}
                     <AvatarFallback>
                       {displayName

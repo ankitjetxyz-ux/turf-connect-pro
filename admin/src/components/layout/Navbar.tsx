@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import AiSupportWidget from "@/components/ai/AiSupportWidget";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 const Navbar = () => {
@@ -124,7 +125,7 @@ const Navbar = () => {
                 >
                   <Avatar className="h-8 w-8">
                     {profileImage && (
-                      <AvatarImage src={profileImage} alt={displayName} />
+                      <AvatarImage src={profileImage ? resolveMediaUrl(profileImage) : undefined} alt={displayName} />
                     )}
                     <AvatarFallback>
                       {displayName

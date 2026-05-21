@@ -7,10 +7,17 @@ import { useEffect, useState, useMemo } from "react";
 import { getAllTurfs } from "@/services/turfService";
 import { Turf } from "@/types";
 import AnimatedStatsBar from "@/components/ui/AnimatedStatsBar";
-import { Search } from "lucide-react";
+import { Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { usePageSEO } from "@/hooks/usePageSEO";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+} from "@/components/ui/pagination";
 
+const TURFS_PER_PAGE = 9;
 
 const TurfPage = () => {
   const [turfs, setTurfs] = useState<Turf[]>([]);
@@ -21,6 +28,7 @@ const TurfPage = () => {
   const [searchCity, setSearchCity] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [refreshFavorite, setRefreshFavorite] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const suggestions = useMemo(() => {
     if (!searchCity.trim()) return [];
@@ -85,6 +93,29 @@ const TurfPage = () => {
     }
     return result;
   }, [turfs, searchCity, refreshFavorite]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredTurfs.length / TURFS_PER_PAGE));
+
+  const paginatedTurfs = useMemo(() => {
+    const start = (currentPage - 1) * TURFS_PER_PAGE;
+    return filteredTurfs.slice(start, start + TURFS_PER_PAGE);
+  }, [filteredTurfs, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchCity]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const goToPage = (page: number) => {
+    const nextPage = Math.min(Math.max(1, page), totalPages);
+    setCurrentPage(nextPage);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
@@ -173,48 +204,100 @@ const TurfPage = () => {
         )}
 
         {(!loading && !error && filteredTurfs.length > 0) && (
-          <div className="h-[75vh] min-h-[500px] overflow-y-auto rounded-2xl border border-white/20 bg-black/90 p-6 shadow-2xl backdrop-blur-md overscroll-contain">
+          <div className="space-y-8">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredTurfs.map((turf, index) => {
-                const images = Array.isArray(turf.images)
-                  ? turf.images
-                  : typeof turf.images === "string"
-                    ? turf.images.split(",")
-                    : [];
-                const displayImage = images[0] || undefined;
-                const sports = Array.isArray(turf.sports)
-                  ? turf.sports
-                  : typeof turf.sports === "string"
-                    ? turf.sports.split(",")
-                    : [];
+              {paginatedTurfs.map((turf, index) => {
+                  const images = Array.isArray(turf.images)
+                    ? turf.images
+                    : typeof turf.images === "string"
+                      ? turf.images.split(",")
+                      : [];
+                  const displayImage = images[0] || undefined;
+                  const sports = Array.isArray(turf.sports)
+                    ? turf.sports
+                    : typeof turf.sports === "string"
+                      ? turf.sports.split(",")
+                      : [];
 
-                const tournamentsHosted = turf.tournaments_hosted ?? 0;
-                const matchesPlayed = turf.matches_played ?? 0;
-                const isPopular = Boolean(turf.is_popular);
+                  const tournamentsHosted = turf.tournaments_hosted ?? 0;
+                  const matchesPlayed = turf.matches_played ?? 0;
+                  const isPopular = Boolean(turf.is_popular);
 
-                return (
-                  <div
-                    key={turf.id}
-                    className="animate-slide-up opacity-0"
-                    style={{ animationDelay: `${index * 0.05}s` }}
-                  >
-                    <TurfCard
-                      id={turf.id}
-                      name={turf.name}
-                      location={turf.location}
-                      image={displayImage}
-                      price={turf.price_per_slot}
-                      sports={sports}
-                      availableSlots={0}
-                      featured={isPopular}
-                      tournamentsHosted={tournamentsHosted}
-                      matchesPlayed={matchesPlayed}
-                      onToggleFavorite={() => setRefreshFavorite(prev => prev + 1)}
-                    />
-                  </div>
+                  return (
+                    <div
+                      key={turf.id}
+                      className="animate-slide-up opacity-0"
+                      style={{ animationDelay: `${index * 0.05}s` }}
+                    >
+                      <TurfCard
+                        id={turf.id}
+                        name={turf.name}
+                        location={turf.location}
+                        image={displayImage}
+                        price={turf.price_per_slot}
+                        sports={sports}
+                        availableSlots={0}
+                        featured={isPopular}
+                        tournamentsHosted={tournamentsHosted}
+                        matchesPlayed={matchesPlayed}
+                        onToggleFavorite={() => setRefreshFavorite(prev => prev + 1)}
+                      />
+                    </div>
                 );
               })}
             </div>
+
+            {totalPages > 1 && (
+              <Pagination className="pb-2">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationLink
+                      href="#"
+                      size="icon"
+                      aria-label="Go to previous page"
+                      className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage > 1) goToPage(currentPage - 1);
+                      }}
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </PaginationLink>
+                  </PaginationItem>
+
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
+                    <PaginationItem key={page}>
+                      <PaginationLink
+                        href="#"
+                        isActive={currentPage === page}
+                        className="cursor-pointer"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          goToPage(page);
+                        }}
+                      >
+                        {page}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+
+                  <PaginationItem>
+                    <PaginationLink
+                      href="#"
+                      size="icon"
+                      aria-label="Go to next page"
+                      className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        if (currentPage < totalPages) goToPage(currentPage + 1);
+                      }}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </PaginationLink>
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         )}
       </main>

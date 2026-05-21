@@ -3,6 +3,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Image as ImageIcon, Upload, X } from "lucide-react";
 import { toast } from "@/components/ui/use-toast";
+import { resolveMediaUrl } from "@/lib/mediaUrl";
 
 interface ImageUploadSectionProps {
     imageFiles: File[];
@@ -18,7 +19,7 @@ const ImageUploadSection: React.FC<ImageUploadSectionProps> = ({ imageFiles, set
     useEffect(() => {
         const filePreviews = imageFiles.map(f => URL.createObjectURL(f));
         // Combine existing (string URLs) + new (blob URLs)
-        setPreviews([...existingImages, ...filePreviews]);
+        setPreviews([...existingImages.map(resolveMediaUrl), ...filePreviews]);
 
         return () => {
             filePreviews.forEach(url => URL.revokeObjectURL(url));
