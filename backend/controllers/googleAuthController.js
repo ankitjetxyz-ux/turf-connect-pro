@@ -13,6 +13,60 @@ function sanitizeUser(user) {
   return rest;
 }
 
+function isDuplicateKeyError(error) {
+  const message = String(error?.message || error?.details || "");
+  return error?.code === "23505" || /duplicate key|unique constraint/i.test(message);
+}
+
+async function findUserByGoogleId(googleId) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("google_id", googleId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error && /google_id/i.test(error.message || "")) {
+    return { user: null, schemaError: error };
+  }
+
+  return { user: data, error };
+}
+
+async function findUserByEmail(email) {
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("email", email)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  return { user: data, error };
+}
+
+async function linkGoogleToUser(user, googleId, picture) {
+  const updates = {
+    google_id: googleId,
+    auth_provider: user.auth_provider === "email" ? "email" : "google",
+    email_verified: true,
+    email_verified_at: user.email_verified_at || new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
+
+  if (picture && !user.profile_image_url) {
+    updates.profile_image_url = picture;
+  }
+
+  const { data, error } = await supabase
+    .from("users")
+    .update(updates)
+    .eq("id", user.id)
+    .select("*")
+    .single();
+
+  return { user: data, error };
+}
+
 exports.googleAuth = async (req, res) => {
   try {
     if (!isGoogleAuthConfigured()) {
@@ -41,73 +95,25 @@ exports.googleAuth = async (req, res) => {
     const { googleId, email, name: googleName, picture } = googleUser;
     const displayName = name || googleName;
 
-    let { data: user, error: findError } = await supabase
-      .from("users")
-      .select("*")
-      .eq("google_id", googleId)
-      .is("deleted_at", null)
-      .maybeSingle();
-
-    if (findError && /google_id/i.test(findError.message || "")) {
+    const byGoogle = await findUserByGoogleId(googleId);
+    if (byGoogle.schemaError) {
       return res.status(503).json({
         error: "Google sign-in requires a database update. Run backend/config/migration_google_auth.sql in Supabase.",
       });
     }
 
-    if (!user) {
-      const { data: byEmail, error: emailError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", email)
-        .is("deleted_at", null)
-        .maybeSingle();
-
-      if (emailError) {
-        console.error("Google auth lookup error:", emailError);
-        return res.status(500).json({ error: "Failed to look up account" });
-      }
-
-      user = byEmail;
-
-      if (user) {
-        const updates = {
-          google_id: googleId,
-          auth_provider: "google",
-          email_verified: true,
-          email_verified_at: user.email_verified_at || new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        };
-
-        if (picture && !user.profile_image_url) {
-          updates.profile_image_url = picture;
-        }
-
-        const { data: linked, error: linkError } = await supabase
-          .from("users")
-          .update(updates)
-          .eq("id", user.id)
-          .select("*")
-          .single();
-
-        if (linkError) {
-          if (/google_id/i.test(linkError.message || "")) {
-            return res.status(503).json({
-              error: "Google sign-in requires a database update. Run backend/config/migration_google_auth.sql in Supabase.",
-            });
-          }
-          console.error("Google account link error:", linkError);
-          return res.status(500).json({ error: "Failed to link Google account" });
-        }
-
-        user = linked;
-      }
+    const byEmail = await findUserByEmail(email);
+    if (byEmail.error) {
+      console.error("Google auth email lookup error:", byEmail.error);
+      return res.status(500).json({ error: "Failed to look up account" });
     }
 
-    if (!user) {
-      if (!isRegistration) {
-        return res.status(404).json({
-          error: "No account found with this Google email. Please register first.",
-          code: "ACCOUNT_NOT_FOUND",
+    // One Gmail = one account — block duplicate registration
+    if (isRegistration) {
+      if (byGoogle.user || byEmail.user) {
+        return res.status(409).json({
+          error: "An account with this Gmail already exists. Please sign in instead.",
+          code: "EMAIL_ALREADY_REGISTERED",
         });
       }
 
@@ -147,6 +153,12 @@ exports.googleAuth = async (req, res) => {
         .single();
 
       if (insertError) {
+        if (isDuplicateKeyError(insertError)) {
+          return res.status(409).json({
+            error: "An account with this Gmail already exists. Please sign in instead.",
+            code: "EMAIL_ALREADY_REGISTERED",
+          });
+        }
         if (/google_id/i.test(insertError.message || "")) {
           return res.status(503).json({
             error: "Google sign-in requires a database update. Run backend/config/migration_google_auth.sql in Supabase.",
@@ -156,10 +168,9 @@ exports.googleAuth = async (req, res) => {
         return res.status(500).json({ error: "Registration failed", details: insertError.message });
       }
 
-      user = created;
       sendWelcomeEmail(email, displayName).catch(() => {});
 
-      const session = await issueSessionTokens(user, req);
+      const session = await issueSessionTokens(created, req);
       return res.status(201).json({
         success: true,
         message: "Account created successfully",
@@ -167,6 +178,38 @@ exports.googleAuth = async (req, res) => {
         ...session,
         user: sanitizeUser(session.user),
       });
+    }
+
+    // Login — find existing account by Google ID or email
+    let user = byGoogle.user || byEmail.user;
+
+    if (!user) {
+      return res.status(404).json({
+        error: "No account found with this Gmail. Please register first.",
+        code: "ACCOUNT_NOT_FOUND",
+      });
+    }
+
+    if (user.google_id && user.google_id !== googleId) {
+      return res.status(409).json({
+        error: "This Gmail is linked to a different Google account.",
+        code: "GOOGLE_ACCOUNT_MISMATCH",
+      });
+    }
+
+    if (!user.google_id) {
+      const { user: linked, error: linkError } = await linkGoogleToUser(user, googleId, picture);
+      if (linkError) {
+        if (isDuplicateKeyError(linkError)) {
+          return res.status(409).json({
+            error: "An account with this Gmail already exists. Please sign in instead.",
+            code: "EMAIL_ALREADY_REGISTERED",
+          });
+        }
+        console.error("Google account link error:", linkError);
+        return res.status(500).json({ error: "Failed to link Google account" });
+      }
+      user = linked;
     }
 
     await supabase

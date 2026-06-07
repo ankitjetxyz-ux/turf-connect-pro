@@ -81,11 +81,21 @@ const RegisterPage = () => {
 
       navigate("/profile");
     } catch (err: unknown) {
+      const code = (err as { response?: { data?: { code?: string } } })?.response?.data?.code;
+      const message = getApiErrorMessage(
+        err,
+        "Google sign-up failed. Please try again.",
+      );
+
       toast({
-        title: "Registration failed",
-        description: getApiErrorMessage(err, "Google sign-up failed. Please try again."),
+        title: code === "EMAIL_ALREADY_REGISTERED" ? "Gmail already registered" : "Registration failed",
+        description: message,
         variant: "destructive",
       });
+
+      if (code === "EMAIL_ALREADY_REGISTERED") {
+        setTimeout(() => navigate("/login"), 2000);
+      }
     } finally {
       setIsSubmitting(false);
     }

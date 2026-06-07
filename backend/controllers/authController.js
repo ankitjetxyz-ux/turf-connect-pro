@@ -87,10 +87,12 @@ exports.register = async (req, res) => {
     }
 
     // Check if user already exists
+    const emailNormalized = String(email || "").trim().toLowerCase();
     const { data: existingUser, error: checkError } = await supabase
       .from("users")
-      .select("email, email_verified")
-      .eq("email", email)
+      .select("email, email_verified, google_id")
+      .eq("email", emailNormalized)
+      .is("deleted_at", null)
       .maybeSingle();
 
     if (checkError) {
@@ -101,9 +103,10 @@ exports.register = async (req, res) => {
     }
 
     if (existingUser) {
-      if (existingUser.email_verified) {
-        return res.status(400).json({
-          error: "User already exists with this email"
+      if (existingUser.email_verified || existingUser.google_id) {
+        return res.status(409).json({
+          error: "An account with this email already exists. Please sign in instead.",
+          code: "EMAIL_ALREADY_REGISTERED",
         });
       } else {
         // If user exists but email not verified, delete old record

@@ -15,3 +15,6 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS has_login_password boolean DEFAULT tr
 UPDATE users SET has_login_password = false WHERE google_id IS NOT NULL;
 
 COMMENT ON COLUMN users.has_login_password IS 'False until user sets a password for manual email login';
+
+-- Enforce one account per Gmail (case-insensitive)
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(email)) WHERE deleted_at IS NULL;
