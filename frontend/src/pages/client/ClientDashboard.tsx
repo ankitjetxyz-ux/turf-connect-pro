@@ -30,6 +30,7 @@ import api from "@/services/api";
 import { resolveMediaUrl } from "@/lib/mediaUrl";
 import { useToast } from "@/components/ui/use-toast";
 import { io, Socket } from "socket.io-client";
+import { getBackendOrigin } from "@/lib/apiConfig";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Turf, Booking, Tournament, UserProfile } from "@/types";
 import {
@@ -272,7 +273,7 @@ const ClientDashboard = () => {
     const userId = localStorage.getItem("user_id");
     if (!userId) return;
 
-    const socket = io({
+    const socket = io(getBackendOrigin(), {
       path: "/socket.io",
       transports: ["polling", "websocket"],
     });

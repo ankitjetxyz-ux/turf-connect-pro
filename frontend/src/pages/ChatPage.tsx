@@ -5,6 +5,7 @@ import api from "@/services/api";
 import ChatList from "@/components/chat/ChatList";
 import MessageWindow from "@/components/chat/MessageWindow";
 import { io, Socket } from "socket.io-client";
+import { getBackendOrigin } from "@/lib/apiConfig";
 
 export type Conversation = {
   id: string;
@@ -39,7 +40,7 @@ const ChatPage = () => {
   }, []);
   useEffect(() => {
     // Connect Socket.IO (shared instance for the whole chat page)
-    const s = io({
+    const s = io(getBackendOrigin(), {
       path: "/socket.io",
       transports: ["polling", "websocket"],
     });

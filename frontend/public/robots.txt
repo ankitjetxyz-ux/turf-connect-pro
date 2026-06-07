@@ -13,4 +13,4 @@ Allow: /
 User-agent: *
 Allow: /
 
-Sitemap: https://turfbook.com/sitemap.xml
+Sitemap: https://bookmyturf.xyz/sitemap.xml

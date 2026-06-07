@@ -1,20 +1,4 @@
-function getBackendOrigin(): string {
-  const explicit = import.meta.env.VITE_BACKEND_URL as string | undefined;
-  if (explicit?.trim()) {
-    return explicit.trim().replace(/\/$/, "");
-  }
-
-  const apiUrl = (import.meta.env.VITE_API_URL as string | undefined) || "/api";
-
-  if (apiUrl.startsWith("http://") || apiUrl.startsWith("https://")) {
-    const parsed = new URL(apiUrl.replace(/\/$/, ""));
-    const basePath = parsed.pathname.replace(/\/api\/?$/, "");
-    return `${parsed.origin}${basePath}`.replace(/\/$/, "");
-  }
-
-  // Relative /api in dev — Vite proxies /uploads to the backend.
-  return "";
-}
+import { getBackendOrigin as resolveBackendOrigin } from "@/lib/apiConfig";
 
 /** Turn API upload paths (/uploads/...) into a browser-loadable URL. */
 export function resolveMediaUrl(url?: string | null): string {
@@ -33,7 +17,7 @@ export function resolveMediaUrl(url?: string | null): string {
   }
 
   const path = trimmed.startsWith("/") ? trimmed : `/${trimmed}`;
-  const origin = getBackendOrigin();
+  const origin = resolveBackendOrigin();
   return origin ? `${origin}${path}` : path;
 }
 

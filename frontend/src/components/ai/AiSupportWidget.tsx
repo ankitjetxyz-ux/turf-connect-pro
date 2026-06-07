@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MessageCircle, X } from "lucide-react";
 import api from "@/services/api";
+import { getApiBaseUrl } from "@/lib/apiConfig";
 
 const faqs = [
   {
@@ -46,7 +47,7 @@ const AiSupportWidget = () => {
     try {
       // ✅ FIXED: Use API service instead of hardcoded URL
       // AI endpoint returns plain text, so we use fetch with proper base URL
-      const baseURL = import.meta.env.VITE_API_URL || "/api";
+      const baseURL = getApiBaseUrl();
       const token = localStorage.getItem("token");
       
       const response = await fetch(`${baseURL}/ai/chat`, {

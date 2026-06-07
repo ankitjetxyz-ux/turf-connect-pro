@@ -25,6 +25,7 @@ import {
 import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser, sendOTP, verifyOTP } from "@/services/authService";
+import { getApiErrorMessage } from "@/lib/apiConfig";
 import { useToast } from "@/components/ui/use-toast";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -156,8 +157,7 @@ const RegisterPage = () => {
         description: "Please check your email for the verification code.",
       });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      const message = error.response?.data?.error || "Failed to send OTP. Please try again.";
+      const message = getApiErrorMessage(err, "Failed to send OTP. Please try again.");
 
       toast({
         title: "Failed to send OTP",
@@ -191,8 +191,7 @@ const RegisterPage = () => {
         description: "Your email has been verified. You can now proceed.",
       });
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      const message = error.response?.data?.error || "Invalid OTP. Please try again.";
+      const message = getApiErrorMessage(err, "Invalid OTP. Please try again.");
 
       toast({
         title: "Verification failed",
@@ -255,9 +254,7 @@ const RegisterPage = () => {
       }, 1500);
     } catch (err: unknown) {
       console.error("Registration error:", err);
-      const error = err as { response?: { data?: { error?: string } } };
-      const message = error.response?.data?.error ||
-        (err instanceof Error ? err.message : "Registration failed. Please try again.");
+      const message = getApiErrorMessage(err, "Registration failed. Please try again.");
 
       toast({
         title: "Unable to register",
