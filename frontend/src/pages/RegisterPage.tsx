@@ -11,10 +11,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   User,
+  Lock,
   Building2,
   Users as UsersIcon,
   Loader2,
   AlertCircle,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -31,33 +34,65 @@ const RegisterPage = () => {
   const { toast } = useToast();
   usePageSEO({
     title: "Register",
-    description: "Create a TurfBook account with Google to start booking or managing turfs.",
+    description: "Create a TurfBook account with Google and a login password.",
   });
 
   const [selectedRole, setSelectedRole] = useState<"player" | "client">("player");
   const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [nameError, setNameError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmPasswordError, setConfirmPasswordError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const validateName = () => {
-    const trimmed = name.trim();
-    if (!trimmed) {
+  const validateForm = () => {
+    let valid = true;
+    const trimmedName = name.trim();
+
+    if (!trimmedName) {
       setNameError("Full name is required");
-      return false;
-    }
-    if (trimmed.length < 2) {
+      valid = false;
+    } else if (trimmedName.length < 2) {
       setNameError("Name must be at least 2 characters");
-      return false;
+      valid = false;
+    } else {
+      setNameError("");
     }
-    setNameError("");
-    return true;
+
+    if (!password) {
+      setPasswordError("Password is required");
+      valid = false;
+    } else if (password.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      valid = false;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
+      setPasswordError("Use uppercase, lowercase, and a number");
+      valid = false;
+    } else {
+      setPasswordError("");
+    }
+
+    if (!confirmPassword) {
+      setConfirmPasswordError("Please confirm your password");
+      valid = false;
+    } else if (password !== confirmPassword) {
+      setConfirmPasswordError("Passwords do not match");
+      valid = false;
+    } else {
+      setConfirmPasswordError("");
+    }
+
+    return valid;
   };
 
   const handleGoogleSignUp = async (credential: string) => {
-    if (!validateName()) {
+    if (!validateForm()) {
       toast({
-        title: "Enter your name",
-        description: "Please enter your full name before continuing with Google.",
+        title: "Complete the form",
+        description: "Enter your name and password before continuing with Google.",
         variant: "destructive",
       });
       return;
@@ -69,28 +104,36 @@ const RegisterPage = () => {
         credential,
         name: name.trim(),
         role: selectedRole,
+        password,
         register: true,
       });
 
       persistAuthSession(res.data);
 
       toast({
-        title: res.data.isNewUser ? "Welcome to TurfBook!" : "Signed in",
-        description: res.data.message,
+        title: "Welcome to TurfBook!",
+        description: "Use your Google email and password to sign in on any device.",
       });
 
       navigate("/profile");
     } catch (err: unknown) {
-      const message = getApiErrorMessage(err, "Google sign-up failed. Please try again.");
       toast({
         title: "Registration failed",
-        description: message,
+        description: getApiErrorMessage(err, "Google sign-up failed. Please try again."),
         variant: "destructive",
       });
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const inputClass = (hasError: boolean) =>
+    cn(
+      "w-full h-12 pl-12 pr-4 bg-secondary/30 border rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50",
+      hasError
+        ? "border-destructive focus:border-destructive focus:ring-destructive/50"
+        : "border-white/10",
+    );
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
@@ -111,7 +154,7 @@ const RegisterPage = () => {
               </Badge>
               <CardTitle className="text-3xl font-heading font-bold">Join TurfBook</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Choose your role, enter your name, and sign up with Google.
+                Choose your role, set a login password, then verify with Google.
               </CardDescription>
             </CardHeader>
 
@@ -173,9 +216,7 @@ const RegisterPage = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-medium text-muted-foreground ml-1">
-                  Full Name *
-                </label>
+                <label className="text-sm font-medium text-muted-foreground ml-1">Full Name *</label>
                 <div className="relative group">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                   <input
@@ -187,18 +228,81 @@ const RegisterPage = () => {
                       setName(e.target.value);
                       if (nameError) setNameError("");
                     }}
-                    className={cn(
-                      "w-full h-12 pl-12 pr-4 bg-secondary/30 border rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50",
-                      nameError
-                        ? "border-destructive focus:border-destructive focus:ring-destructive/50"
-                        : "border-white/10",
-                    )}
+                    className={inputClass(!!nameError)}
                   />
                 </div>
                 {nameError && (
                   <p className="text-sm text-destructive flex items-center gap-1">
                     <AlertCircle className="w-4 h-4" />
                     {nameError}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground ml-1">
+                  Login Password *
+                </label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="At least 8 characters"
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (passwordError) setPasswordError("");
+                    }}
+                    className={cn(inputClass(!!passwordError), "pr-12")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+                {passwordError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {passwordError}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-muted-foreground ml-1">
+                  Confirm Password *
+                </label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    placeholder="Re-enter password"
+                    value={confirmPassword}
+                    onChange={(e) => {
+                      setConfirmPassword(e.target.value);
+                      if (confirmPasswordError) setConfirmPasswordError("");
+                    }}
+                    className={cn(inputClass(!!confirmPasswordError), "pr-12")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                </div>
+                {confirmPasswordError && (
+                  <p className="text-sm text-destructive flex items-center gap-1">
+                    <AlertCircle className="w-4 h-4" />
+                    {confirmPasswordError}
                   </p>
                 )}
               </div>
@@ -225,7 +329,8 @@ const RegisterPage = () => {
                 )}
 
                 <p className="text-xs text-center text-muted-foreground">
-                  After registering, go to Login to create a password for manual sign-in on any device.
+                  Google verifies your email. Sign in later with that Gmail address and the password
+                  above.
                 </p>
               </div>
 

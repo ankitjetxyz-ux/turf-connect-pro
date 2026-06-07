@@ -12,7 +12,7 @@ const {
   changePassword
 } = require("../controllers/authController");
 
-const { googleAuth, setLoginPassword, setLoginPasswordViaGoogle } = require("../controllers/googleAuthController");
+const { googleAuth } = require("../controllers/googleAuthController");
 
 const {
   sendOTP,
@@ -45,7 +45,6 @@ router.get("/otp/status", checkOTPStatus);
 
 // Auth Routes
 router.post("/google", googleAuth);
-router.post("/google/set-login-password", setLoginPasswordViaGoogle);
 router.post("/register", register);
 router.post("/login", authRateLimiter, login);
 router.post("/forgot-password", forgotPassword);
@@ -56,7 +55,6 @@ router.post("/refresh-token", refreshToken);
 // PROTECTED ROUTES (require authentication)
 // ============================================
 router.post("/logout", verifyToken, logout);
-router.post("/set-login-password", verifyToken, setLoginPassword);
 router.post("/change-password", verifyToken, changePassword);
 
 module.exports = router;

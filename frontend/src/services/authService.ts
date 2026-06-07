@@ -71,17 +71,10 @@ export const googleAuth = (data: {
   credential: string;
   name?: string;
   role?: "player" | "client";
+  password?: string;
   register?: boolean;
 }) => {
   return api.post("/auth/google", data, { timeout: 30_000 });
-};
-
-export const setLoginPassword = (password: string) => {
-  return api.post("/auth/set-login-password", { password });
-};
-
-export const setLoginPasswordViaGoogle = (credential: string, password: string) => {
-  return api.post("/auth/google/set-login-password", { credential, password });
 };
 
 // Login user

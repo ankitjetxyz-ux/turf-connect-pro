@@ -9,36 +9,15 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2 } from "lucide-react";
+import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import {
-  loginUser,
-  googleAuth,
-  setLoginPassword,
-  setLoginPasswordViaGoogle,
-} from "@/services/authService";
+import { loginUser, googleAuth } from "@/services/authService";
 import { persistAuthSession } from "@/lib/authSession";
 import { getApiErrorMessage } from "@/lib/apiConfig";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { useToast } from "@/components/ui/use-toast";
 import { usePageSEO } from "@/hooks/usePageSEO";
-
-function validatePassword(password: string): string | null {
-  if (password.length < 8) return "Password must be at least 8 characters";
-  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-    return "Use uppercase, lowercase, and a number";
-  }
-  return null;
-}
 
 const LoginPage = () => {
   const navigate = useNavigate();
@@ -49,22 +28,11 @@ const LoginPage = () => {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showCreatePassword, setShowCreatePassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isSavingPassword, setIsSavingPassword] = useState(false);
-  const [showPasswordModal, setShowPasswordModal] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
-  const [createPassword, setCreatePassword] = useState("");
-  const [createConfirmPassword, setCreateConfirmPassword] = useState("");
   const [formData, setFormData] = useState({ email: "", password: "" });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const finishLogin = () => {
-    navigate("/profile");
   };
 
   const handleGoogleSignIn = async (credential: string) => {
@@ -72,13 +40,7 @@ const LoginPage = () => {
     try {
       const res = await googleAuth({ credential, register: false });
       persistAuthSession(res.data);
-
-      if (res.data.needsLoginPassword) {
-        setShowPasswordModal(true);
-        return;
-      }
-
-      finishLogin();
+      navigate("/profile");
     } catch (err: unknown) {
       toast({
         title: "Unable to sign in",
@@ -90,98 +52,21 @@ const LoginPage = () => {
     }
   };
 
-  const savePasswordAfterGoogleLogin = async () => {
-    const err = validatePassword(newPassword);
-    if (err) {
-      toast({ title: "Invalid password", description: err, variant: "destructive" });
-      return;
-    }
-    if (newPassword !== confirmNewPassword) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
-      return;
-    }
-
-    setIsSavingPassword(true);
-    try {
-      await setLoginPassword(newPassword);
-      toast({
-        title: "Password saved",
-        description: "You can now sign in with your email and password on any device.",
-      });
-      setShowPasswordModal(false);
-      finishLogin();
-    } catch (err: unknown) {
-      toast({
-        title: "Could not save password",
-        description: getApiErrorMessage(err, "Please try again."),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingPassword(false);
-    }
-  };
-
-  const handleCreatePasswordViaGoogle = async (credential: string) => {
-    const err = validatePassword(createPassword);
-    if (err) {
-      toast({ title: "Invalid password", description: err, variant: "destructive" });
-      return;
-    }
-    if (createPassword !== createConfirmPassword) {
-      toast({ title: "Passwords do not match", variant: "destructive" });
-      return;
-    }
-
-    setIsSavingPassword(true);
-    try {
-      const res = await setLoginPasswordViaGoogle(credential, createPassword);
-      toast({
-        title: "Password created",
-        description: res.data.message,
-      });
-      if (res.data.email) {
-        setFormData((prev) => ({ ...prev, email: res.data.email }));
-      }
-      setShowCreatePassword(false);
-      setCreatePassword("");
-      setCreateConfirmPassword("");
-    } catch (err: unknown) {
-      toast({
-        title: "Could not create password",
-        description: getApiErrorMessage(err, "Please try again."),
-        variant: "destructive",
-      });
-    } finally {
-      setIsSavingPassword(false);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       const res = await loginUser(formData);
       persistAuthSession(res.data);
-      finishLogin();
+      navigate("/profile");
     } catch (err: unknown) {
-      const response = (err as { response?: { data?: { error?: string; code?: string } } })
-        ?.response?.data;
-      const message = response?.error || (err instanceof Error ? err.message : "Login failed");
-
-      if (response?.code === "PASSWORD_NOT_SET") {
-        setShowCreatePassword(true);
-      }
-
       toast({
         title: "Unable to sign in",
-        description: message,
+        description: getApiErrorMessage(err, "Invalid email or password."),
         variant: "destructive",
       });
     }
   };
-
-  const passwordInputClass =
-    "w-full h-12 pl-12 pr-12 bg-secondary/30 border border-white/10 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50";
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden flex flex-col">
@@ -189,42 +74,6 @@ const LoginPage = () => {
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/5 rounded-full blur-[100px] animate-pulse" />
 
       <Navbar />
-
-      <Dialog open={showPasswordModal} onOpenChange={setShowPasswordModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create a login password</DialogTitle>
-            <DialogDescription>
-              Optional but recommended — use your Google email and this password to sign in manually
-              on any device without Google.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <input
-              type="password"
-              placeholder="New password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="w-full h-11 px-4 rounded-lg border bg-background"
-            />
-            <input
-              type="password"
-              placeholder="Confirm password"
-              value={confirmNewPassword}
-              onChange={(e) => setConfirmNewPassword(e.target.value)}
-              className="w-full h-11 px-4 rounded-lg border bg-background"
-            />
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button variant="ghost" onClick={finishLogin} disabled={isSavingPassword}>
-              Skip for now
-            </Button>
-            <Button onClick={savePasswordAfterGoogleLogin} disabled={isSavingPassword}>
-              {isSavingPassword ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save password"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <main className="pt-24 pb-12 flex-1 flex items-center justify-center relative z-10">
         <div className="container px-4 max-w-md">
@@ -272,7 +121,7 @@ const LoginPage = () => {
                       placeholder="••••••••"
                       value={formData.password}
                       onChange={handleInputChange}
-                      className={passwordInputClass}
+                      className="w-full h-12 pl-12 pr-12 bg-secondary/30 border border-white/10 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50"
                       required
                     />
                     <button
@@ -318,53 +167,6 @@ const LoginPage = () => {
                   }
                 />
               )}
-
-              <div className="mt-6 rounded-xl border border-white/10 bg-secondary/20 p-4 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setShowCreatePassword(!showCreatePassword)}
-                  className="text-sm font-medium text-primary hover:underline w-full text-left"
-                >
-                  Registered with Google? Create a password for manual sign-in
-                </button>
-
-                {showCreatePassword && (
-                  <div className="space-y-3 pt-1">
-                    <p className="text-xs text-muted-foreground">
-                      Choose a password, then verify with Google once. After that, use your Gmail
-                      address and this password above.
-                    </p>
-                    <input
-                      type="password"
-                      placeholder="New password"
-                      value={createPassword}
-                      onChange={(e) => setCreatePassword(e.target.value)}
-                      className="w-full h-11 px-4 rounded-lg border bg-background/50"
-                    />
-                    <input
-                      type="password"
-                      placeholder="Confirm password"
-                      value={createConfirmPassword}
-                      onChange={(e) => setCreateConfirmPassword(e.target.value)}
-                      className="w-full h-11 px-4 rounded-lg border bg-background/50"
-                    />
-                    {isSavingPassword ? (
-                      <Button variant="outline" className="w-full" disabled>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </Button>
-                    ) : (
-                      <GoogleSignInButton
-                        mode="signin"
-                        onCredential={handleCreatePasswordViaGoogle}
-                        onError={() =>
-                          toast({ title: "Google verification cancelled", variant: "destructive" })
-                        }
-                      />
-                    )}
-                  </div>
-                )}
-              </div>
 
               <p className="text-center mt-8 text-muted-foreground text-sm">
                 Don&apos;t have an account?{" "}
