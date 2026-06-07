@@ -71,6 +71,7 @@ export const googleAuth = (data: {
   credential: string;
   name?: string;
   role?: "player" | "client";
+  password?: string;
   register?: boolean;
 }) => {
   return api.post("/auth/google", data, { timeout: 30_000 });
