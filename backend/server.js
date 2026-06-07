@@ -29,7 +29,7 @@ const {
   testSupabaseConnection,
   supabaseConfig,
 } = require("./config/db");
-const { getTransporter, isSmtpConfigured } = require("./utils/mailTransport");
+const { getTransporter, isSmtpConfigured, verifySmtp } = require("./utils/mailTransport");
 
 /* =========================
    GLOBAL MIDDLEWARE
@@ -126,6 +126,14 @@ app.use("/api/ai", require("./routes/aiRoutes"));
 ========================= */
 app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "OK", uptime: process.uptime() });
+});
+
+app.get("/api/health/smtp", async (req, res) => {
+  const result = await verifySmtp();
+  res.status(result.ready ? 200 : 503).json({
+    status: result.ready ? "OK" : "ERROR",
+    ...result,
+  });
 });
 
 app.get("/api/health/db", async (req, res) => {

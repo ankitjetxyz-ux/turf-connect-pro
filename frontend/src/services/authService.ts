@@ -1,19 +1,38 @@
 import api from "./api";
 
+function normalizeEmail(email?: string) {
+  return (email ?? "").trim().toLowerCase();
+}
+
+function normalizeOtp(otp?: string) {
+  return (otp ?? "").trim();
+}
+
 // Send OTP with purpose (email_verification or password_reset)
 export const sendOTP = (email: string, purpose: string) => {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) {
+    return Promise.reject(new Error("Email is required"));
+  }
+
   return api.post(
     "/auth/otp/send",
-    { email: email.trim().toLowerCase(), purpose },
+    { email: normalizedEmail, purpose },
     { timeout: 45_000 },
   );
 };
 
 // Verify OTP with purpose
 export const verifyOTP = (email: string, otp: string, purpose: string) => {
+  const normalizedEmail = normalizeEmail(email);
+  const normalizedOtp = normalizeOtp(otp);
+  if (!normalizedEmail || !normalizedOtp) {
+    return Promise.reject(new Error("Email and verification code are required"));
+  }
+
   return api.post(
     "/auth/otp/verify",
-    { email: email.trim().toLowerCase(), otp: otp.trim(), purpose },
+    { email: normalizedEmail, otp: normalizedOtp, purpose },
     { timeout: 30_000 },
   );
 };

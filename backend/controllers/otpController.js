@@ -135,9 +135,9 @@ exports.sendOTP = async (req, res) => {
     const emailResult = await sendOTPEmail(email, otp, purpose);
 
     if (!emailResult.success) {
-      return res.status(500).json({
+      return res.status(503).json({
         error:
-          "Could not send email. Check that SMTP is set correctly on the server, then try again.",
+          "Could not send verification email. The mail server rejected the request — please try again shortly.",
         details:
           process.env.NODE_ENV === "development" ? emailResult.error : undefined,
       });
