@@ -22,7 +22,7 @@ import {
   Loader2,
   AlertCircle,
 } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser, sendOTP, verifyOTP } from "@/services/authService";
 import { getApiErrorMessage } from "@/lib/apiConfig";
@@ -71,6 +71,8 @@ const RegisterPage = () => {
     password: "",
     confirmPassword: "",
   });
+
+  const lastAutoVerifiedOtp = useRef("");
 
   // Countdown timer for OTP resend
   useEffect(() => {
@@ -151,10 +153,12 @@ const RegisterPage = () => {
     try {
       await sendOTP(formData.email, "email_verification");
       setOtpSent(true);
-      setOtpCountdown(60); // 60 seconds countdown
+      setOtp("");
+      lastAutoVerifiedOtp.current = "";
+      setOtpCountdown(15);
       toast({
-        title: "OTP sent successfully",
-        description: "Please check your email for the verification code.",
+        title: "Code sent",
+        description: "Check your inbox (and spam folder) for the 6-digit code.",
       });
     } catch (err: unknown) {
       const message = getApiErrorMessage(err, "Failed to send OTP. Please try again.");
@@ -172,11 +176,11 @@ const RegisterPage = () => {
     }
   };
 
-  const handleVerifyOTP = async () => {
+  const handleVerifyOTP = useCallback(async () => {
     if (!otp || otp.length !== 6) {
       toast({
-        title: "Invalid OTP",
-        description: "Please enter a 6-digit OTP code.",
+        title: "Enter 6-digit code",
+        description: "Check your email for the verification code.",
         variant: "destructive",
       });
       return;
@@ -187,12 +191,12 @@ const RegisterPage = () => {
       await verifyOTP(formData.email, otp, "email_verification");
       setOtpVerified(true);
       toast({
-        title: "Email verified successfully",
-        description: "Your email has been verified. You can now proceed.",
+        title: "Email verified",
+        description: "You can now create your account.",
       });
     } catch (err: unknown) {
-      const message = getApiErrorMessage(err, "Invalid OTP. Please try again.");
-
+      lastAutoVerifiedOtp.current = "";
+      const message = getApiErrorMessage(err, "Incorrect code. Try again or resend.");
       toast({
         title: "Verification failed",
         description: message,
@@ -201,7 +205,21 @@ const RegisterPage = () => {
     } finally {
       setVerifyingOTP(false);
     }
-  };
+  }, [formData.email, otp, toast]);
+
+  // Auto-verify when user finishes typing the 6-digit code
+  useEffect(() => {
+    if (
+      otp.length === 6 &&
+      otpSent &&
+      !otpVerified &&
+      !verifyingOTP &&
+      otp !== lastAutoVerifiedOtp.current
+    ) {
+      lastAutoVerifiedOtp.current = otp;
+      handleVerifyOTP();
+    }
+  }, [otp, otpSent, otpVerified, verifyingOTP, handleVerifyOTP]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -433,11 +451,11 @@ const RegisterPage = () => {
                           Sending...
                         </>
                       ) : otpSent && otpCountdown > 0 ? (
-                        `Resend OTP in ${otpCountdown}s`
+                        `Resend in ${otpCountdown}s`
                       ) : otpSent ? (
-                        "Resend OTP"
+                        "Resend code"
                       ) : (
-                        "Send Verification Code"
+                        "Send verification code"
                       )}
                     </Button>
                   )}
@@ -447,11 +465,12 @@ const RegisterPage = () => {
                 {otpSent && !otpVerified && (
                   <div className="space-y-2 animate-in fade-in duration-300">
                     <label className="text-sm font-medium text-muted-foreground ml-1">
-                      Enter OTP *
+                      Verification code *
                     </label>
                     <div className="flex gap-2">
                       <Input
                         type="text"
+                        inputMode="numeric"
                         placeholder="000000"
                         value={otp}
                         onChange={(e) => setOtp(e.target.value.replace(/\D/g, "").slice(0, 6))}
@@ -474,7 +493,7 @@ const RegisterPage = () => {
                       </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Enter the 6-digit code sent to {formData.email}
+                      Code sent to {formData.email}. It verifies automatically when you enter all 6 digits.
                     </p>
                   </div>
                 )}

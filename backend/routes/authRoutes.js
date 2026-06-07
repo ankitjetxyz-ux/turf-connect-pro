@@ -15,48 +15,30 @@ const {
 const {
   sendOTP,
   verifyOTP,
-  resendOTP,
   checkOTPStatus
 } = require("../controllers/otpController");
 
 // Import middleware from authMiddleware.js
 const { verifyToken } = require("../middleware/authMiddleware");
 
-// Rate limiting
 const rateLimit = require("express-rate-limit");
 
-const otpRateLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 3, // 3 requests per windowMs
-  message: {
-    success: false,
-    error: "Too many OTP requests. Please try again later.",
-    retryAfter: "10 minutes"
-  },
-  standardHeaders: true,
-  legacyHeaders: false
-});
-
 const authRateLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 login attempts per windowMs
+  windowMs: 15 * 60 * 1000,
+  max: 20,
   message: {
     success: false,
     error: "Too many login attempts. Please try again later.",
-    retryAfter: "15 minutes"
+    retryAfter: "15 minutes",
   },
   standardHeaders: true,
-  legacyHeaders: false
+  legacyHeaders: false,
 });
 
-// ============================================
-// PUBLIC ROUTES
-// ============================================
-
-// OTP Routes
-router.post("/otp/send", otpRateLimiter, sendOTP);
+// OTP Routes (no rate limiter — registration should stay simple)
+router.post("/otp/send", sendOTP);
 router.post("/otp/verify", verifyOTP);
-router.post("/otp/resend", otpRateLimiter, resendOTP);
+router.post("/otp/resend", sendOTP);
 router.get("/otp/status", checkOTPStatus);
 
 // Auth Routes
