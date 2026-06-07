@@ -1,5 +1,5 @@
 const supabase = require("../config/db");
-const { sendMail, isSmtpConfigured } = require("../utils/mailTransport");
+const { sendMail, isEmailConfigured } = require("../utils/emailSender");
 const { hashOTP, verifyOTPValue } = require("../utils/otpHash");
 const crypto = require("crypto");
 
@@ -42,8 +42,8 @@ const buildOtpEmail = (otp, purpose) => {
 };
 
 const sendOTPEmail = async (email, otp, purpose) => {
-  if (!isSmtpConfigured()) {
-    return { success: false, error: "SMTP is not configured on the server" };
+  if (!isEmailConfigured()) {
+    return { success: false, error: "Email is not configured on the server" };
   }
 
   try {
@@ -79,7 +79,7 @@ exports.sendOTP = async (req, res) => {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    if (!isSmtpConfigured()) {
+    if (!isEmailConfigured()) {
       return res.status(503).json({
         error: "Email service is not configured. Please contact support.",
       });

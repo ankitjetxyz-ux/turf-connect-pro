@@ -29,7 +29,11 @@ const {
   testSupabaseConnection,
   supabaseConfig,
 } = require("./config/db");
-const { getTransporter, isSmtpConfigured, verifySmtp } = require("./utils/mailTransport");
+const {
+  verifyEmailService,
+  isEmailConfigured,
+  getEmailProvider,
+} = require("./utils/emailSender");
 
 /* =========================
    GLOBAL MIDDLEWARE
@@ -129,7 +133,15 @@ app.get("/api/health", (req, res) => {
 });
 
 app.get("/api/health/smtp", async (req, res) => {
-  const result = await verifySmtp();
+  const result = await verifyEmailService();
+  res.status(result.ready ? 200 : 503).json({
+    status: result.ready ? "OK" : "ERROR",
+    ...result,
+  });
+});
+
+app.get("/api/health/email", async (req, res) => {
+  const result = await verifyEmailService();
   res.status(result.ready ? 200 : 503).json({
     status: result.ready ? "OK" : "ERROR",
     ...result,
@@ -244,10 +256,19 @@ server.listen(PORT, () => {
       console.error(`❌ Supabase connection failed: ${err.message}`);
     });
 
-  if (isSmtpConfigured()) {
-    getTransporter();
+  if (isEmailConfigured()) {
+    const provider = getEmailProvider();
+    console.log(`📧 Email provider: ${provider}`);
+    verifyEmailService().then((result) => {
+      if (result.ready) {
+        console.log(`✅ Email ready (${result.provider})`);
+      } else {
+        console.error(`❌ Email verify failed (${result.provider || "none"}):`, result.error);
+        if (result.hint) console.error("   Hint:", result.hint);
+      }
+    });
   } else {
-    console.warn("⚠️  SMTP not configured — OTP emails will fail");
+    console.warn("⚠️  Email not configured — set RESEND_API_KEY (Render free tier) or SMTP credentials");
   }
 });
 

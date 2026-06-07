@@ -1,7 +1,7 @@
-const { sendMail, isSmtpConfigured } = require("../utils/mailTransport");
+const { sendMail, isEmailConfigured } = require("../utils/emailSender");
 
 const sendEmail = async ({ to, subject, html, text }) => {
-  if (!isSmtpConfigured()) {
+  if (!isEmailConfigured()) {
     console.error("SMTP not configured — email not sent");
     return false;
   }

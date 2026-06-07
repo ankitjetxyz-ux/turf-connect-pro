@@ -2,6 +2,7 @@ const supabase = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const { verifyOTPValue } = require("../utils/otpHash");
+const { sendMail, isEmailConfigured } = require("../utils/emailSender");
 
 // ============================================
 // REGISTER USER
@@ -646,104 +647,56 @@ exports.changePassword = async (req, res) => {
 
 // Send welcome email
 const sendWelcomeEmail = async (email, name) => {
-  try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      }
-    });
+  if (!isEmailConfigured()) return;
 
-    await transporter.sendMail({
-      from: `"Turf Connect" <${process.env.SMTP_USER}>`,
+  try {
+    const dashboardUrl = (process.env.FRONTEND_URL || "https://bookmyturf.xyz").split(",")[0];
+
+    await sendMail({
       to: email,
-      subject: "Welcome to Turf Connect! 🎉",
+      subject: "Welcome to TurfBook!",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #2563eb;">Welcome to Turf Connect, ${name}!</h2>
-          <p>Thank you for registering with Turf Connect. Your account has been successfully created.</p>
-          
-          <div style="background: #eff6ff; padding: 20px; border-radius: 8px; margin: 20px 0;">
-            <h3 style="color: #1e40af; margin-top: 0;">Get Started:</h3>
-            <ul style="color: #374151;">
-              <li>Browse and book sports turfs in your area</li>
-              <li>Manage your bookings from your dashboard</li>
-              <li>Connect with other players and turf owners</li>
-              <li>Receive special offers and discounts</li>
-            </ul>
-          </div>
-          
+          <h2 style="color: #2563eb;">Welcome to TurfBook, ${name}!</h2>
+          <p>Thank you for registering. Your account has been successfully created.</p>
           <div style="text-align: center; margin: 30px 0;">
-            <a href="${process.env.FRONTEND_URL}/dashboard" 
-               style="background: #2563eb; color: white; padding: 12px 24px; 
+            <a href="${dashboardUrl}/dashboard"
+               style="background: #2563eb; color: white; padding: 12px 24px;
                       text-decoration: none; border-radius: 6px; font-weight: bold;">
               Go to Dashboard
             </a>
           </div>
-          
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-            <p style="color: #6b7280; font-size: 12px;">
-              If you have any questions, contact our support team at support@turfconnect.com
-            </p>
-          </div>
         </div>
-      `
+      `,
     });
-
   } catch (error) {
-    console.error("Failed to send welcome email:", error);
-    // Don't throw error - registration should still succeed
+    console.error("Failed to send welcome email:", error.message);
   }
 };
 
 // Send password change confirmation email
 const sendPasswordChangeEmail = async (email) => {
-  try {
-    const transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || "smtp.gmail.com",
-      port: process.env.SMTP_PORT || 587,
-      secure: false,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      }
-    });
+  if (!isEmailConfigured()) return;
 
-    await transporter.sendMail({
-      from: `"Turf Connect" <${process.env.SMTP_USER}>`,
+  try {
+    await sendMail({
       to: email,
-      subject: "Password Changed Successfully - Turf Connect",
+      subject: "Password Changed Successfully - TurfBook",
       html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
           <h2 style="color: #059669;">Password Changed Successfully</h2>
-          <p>Your Turf Connect account password was recently changed.</p>
-          
+          <p>Your TurfBook account password was recently changed.</p>
           <div style="background: #d1fae5; padding: 15px; border-radius: 6px; margin: 20px 0;">
             <p style="margin: 0; color: #065f46;">
-              <strong>✅ Change confirmed:</strong> ${new Date().toLocaleString()}
+              <strong>Change confirmed:</strong> ${new Date().toLocaleString()}
             </p>
           </div>
-          
-          <div style="background: #fef3c7; padding: 15px; border-radius: 6px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-            <p style="margin: 0; color: #92400e;">
-              <strong>⚠️ Security Notice:</strong> If you did not make this change, please contact our support team immediately.
-            </p>
-          </div>
-          
-          <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
-            <p style="color: #6b7280; font-size: 12px;">
-              This is an automated security notification from Turf Connect.
-            </p>
-          </div>
+          <p style="color: #92400e;">If you did not make this change, contact support immediately.</p>
         </div>
-      `
+      `,
     });
-
   } catch (error) {
-    console.error("Failed to send password change email:", error);
+    console.error("Failed to send password change email:", error.message);
   }
 };
 

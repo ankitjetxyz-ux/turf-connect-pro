@@ -1,5 +1,5 @@
 const supabase = require("../config/db");
-const { sendMail, isSmtpConfigured } = require("../utils/mailTransport");
+const { sendMail, isEmailConfigured } = require("../utils/emailSender");
 
 exports.submitContactForm = async (req, res) => {
   try {
@@ -33,7 +33,7 @@ exports.submitContactForm = async (req, res) => {
     }
 
     // Send email notification
-    if (isSmtpConfigured()) {
+    if (isEmailConfigured()) {
       try {
         await sendMail({
           to: "bookmyturfofficial@gmail.com",
