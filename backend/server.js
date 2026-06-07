@@ -19,11 +19,16 @@ const analyticsRoutes = require("./routes/analyticsRoutes");
 const app = express();
 
 // Warn about commonly required environment variables to help local dev
-const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET", "JWT_REFRESH_SECRET", "RAZORPAY_KEY_ID", "RAZORPAY_KEY_SECRET"];
+const requiredEnvs = ["SUPABASE_URL", "SUPABASE_ANON_KEY", "JWT_SECRET", "JWT_REFRESH_SECRET"];
 const missing = requiredEnvs.filter((k) => !process.env[k]);
 if (missing.length > 0) {
   console.warn(`⚠️  Missing env vars: ${missing.join(", ")}. See .env.example`);
 }
+
+const {
+  testSupabaseConnection,
+  supabaseConfig,
+} = require("./config/db");
 
 /* =========================
    GLOBAL MIDDLEWARE
@@ -122,6 +127,38 @@ app.get("/api/health", (req, res) => {
   res.status(200).json({ status: "OK", uptime: process.uptime() });
 });
 
+app.get("/api/health/db", async (req, res) => {
+  try {
+    const result = await testSupabaseConnection();
+    if (!result.ok) {
+      return res.status(503).json({
+        status: "ERROR",
+        database: "not_connected",
+        error: result.error,
+        code: result.code,
+        supabaseUrl: supabaseConfig.url,
+        usingServiceKey: supabaseConfig.usingServiceKey,
+        hints: result.hints || supabaseConfig.hints,
+      });
+    }
+    res.status(200).json({
+      status: "OK",
+      database: "connected",
+      supabaseUrl: supabaseConfig.url,
+      usingServiceKey: supabaseConfig.usingServiceKey,
+    });
+  } catch (err) {
+    res.status(503).json({
+      status: "ERROR",
+      database: "not_connected",
+      error: err.message,
+      supabaseUrl: supabaseConfig.url,
+      usingServiceKey: supabaseConfig.usingServiceKey,
+      hints: supabaseConfig.hints,
+    });
+  }
+});
+
 /* =========================
    404 HANDLER
 ========================= */
@@ -186,5 +223,16 @@ io.on('connection', (socket) => {
 
 server.listen(PORT, () => {
   console.log(`✅ Server (with Socket.IO) running on port ${PORT}`);
+  testSupabaseConnection()
+    .then((result) => {
+      if (result.ok) {
+        console.log(`✅ Supabase connected (${supabaseConfig.url})`);
+      } else {
+        console.error(`❌ Supabase connection failed: ${result.error}`);
+      }
+    })
+    .catch((err) => {
+      console.error(`❌ Supabase connection failed: ${err.message}`);
+    });
 });
 

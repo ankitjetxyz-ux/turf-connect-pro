@@ -49,7 +49,8 @@ const checkRateLimit = async (email, purpose) => {
     return recentRequests.length < OTP_CONFIG.MAX_REQUESTS_PER_10MIN;
   } catch (error) {
     console.error("Rate limit check error:", error);
-    return false;
+    // Don't block OTP when the database is temporarily unreachable
+    return true;
   }
 };
 

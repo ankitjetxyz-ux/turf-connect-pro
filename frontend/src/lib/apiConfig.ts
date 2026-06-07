@@ -10,24 +10,45 @@ function isProductionSite(): boolean {
   );
 }
 
+function isLocalhostUrl(url: string): boolean {
+  try {
+    const { hostname } = new URL(url);
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return false;
+  }
+}
+
+function useEnvUrl(url: string | undefined): string | null {
+  const trimmed = url?.trim();
+  if (!trimmed) return null;
+
+  // Ignore localhost URLs baked into production builds (common misconfiguration).
+  if (import.meta.env.PROD && isProductionSite() && isLocalhostUrl(trimmed)) {
+    return null;
+  }
+
+  return trimmed.replace(/\/$/, "");
+}
+
 /** Resolved API base URL for axios (includes /api suffix). */
 export function getApiBaseUrl(): string {
-  const envUrl = import.meta.env.VITE_API_URL as string | undefined;
-  if (envUrl?.trim()) {
-    return envUrl.trim().replace(/\/$/, "");
-  }
+  const fromEnv = useEnvUrl(import.meta.env.VITE_API_URL as string | undefined);
+  if (fromEnv) return fromEnv;
+
   if (import.meta.env.PROD && isProductionSite()) {
     return PRODUCTION_API_URL;
   }
+
   return "/api";
 }
 
 /** Backend origin for uploads and Socket.IO (no /api suffix). */
 export function getBackendOrigin(): string {
-  const explicit = import.meta.env.VITE_BACKEND_URL as string | undefined;
-  if (explicit?.trim()) {
-    return explicit.trim().replace(/\/$/, "");
-  }
+  const fromEnv = useEnvUrl(
+    import.meta.env.VITE_BACKEND_URL as string | undefined,
+  );
+  if (fromEnv) return fromEnv;
 
   const apiUrl = getApiBaseUrl();
   if (apiUrl.startsWith("http://") || apiUrl.startsWith("https://")) {
