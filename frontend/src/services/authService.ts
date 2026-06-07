@@ -66,6 +66,16 @@ export const registerUser = (data: {
   });
 };
 
+// Google sign-in / sign-up (no SMTP required)
+export const googleAuth = (data: {
+  credential: string;
+  name?: string;
+  role?: "player" | "client";
+  register?: boolean;
+}) => {
+  return api.post("/auth/google", data, { timeout: 30_000 });
+};
+
 // Login user
 export const loginUser = (data: {
   email: string;

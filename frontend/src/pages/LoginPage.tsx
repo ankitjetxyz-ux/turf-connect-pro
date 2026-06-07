@@ -12,7 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser } from "@/services/authService";
+import { loginUser, googleAuth } from "@/services/authService";
+import { persistAuthSession } from "@/lib/authSession";
+import { getApiErrorMessage } from "@/lib/apiConfig";
+import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
 import { useToast } from "@/components/ui/use-toast";
 import { usePageSEO } from "@/hooks/usePageSEO";
 
@@ -24,6 +27,7 @@ const LoginPage = () => {
 
 
   const [showPassword, setShowPassword] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -33,26 +37,33 @@ const LoginPage = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  const handleGoogleSignIn = async (credential: string) => {
+    setIsGoogleLoading(true);
+    try {
+      const res = await googleAuth({ credential, register: false });
+      persistAuthSession(res.data);
+      navigate("/profile");
+    } catch (err: unknown) {
+      const message = getApiErrorMessage(err, "Google sign-in failed.");
+      toast({
+        title: "Unable to sign in",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
       const res = await loginUser(formData);
 
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("role", res.data.user.role);
-      localStorage.setItem("user_id", res.data.user.id);
-      localStorage.setItem("name", res.data.user.name || "");
-      localStorage.setItem("email", res.data.user.email || formData.email);
-      if (res.data.user.profile_image_url) {
-        localStorage.setItem("profile_image_url", res.data.user.profile_image_url);
-      }
+      persistAuthSession(res.data);
 
-      const role = res.data.user.role;
-
-      if (role === "player" || role === "client") {
-        navigate("/profile");
-      }
+      navigate("/profile");
     } catch (err: unknown) {
       console.error(err);
       const backendError = (err as { response?: { data?: { error?: string } } })?.response?.data?.error;
@@ -141,6 +152,32 @@ const LoginPage = () => {
                   <ArrowRight className="ml-2 w-5 h-5" />
                 </Button>
               </form>
+
+              <div className="relative my-6">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-white/10" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or</span>
+                </div>
+              </div>
+
+              {isGoogleLoading ? (
+                <Button variant="outline" size="lg" className="w-full" disabled>
+                  Signing in with Google...
+                </Button>
+              ) : (
+                <GoogleSignInButton
+                  mode="signin"
+                  onCredential={handleGoogleSignIn}
+                  onError={() =>
+                    toast({
+                      title: "Google sign-in cancelled",
+                      variant: "destructive",
+                    })
+                  }
+                />
+              )}
 
               <p className="text-center mt-8 text-muted-foreground text-sm">
                 Don't have an account?{" "}

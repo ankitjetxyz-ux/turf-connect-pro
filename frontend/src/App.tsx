@@ -3,6 +3,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { GoogleOAuthProvider } from "@react-oauth/google";
+import { getGoogleClientId } from "@/lib/authSession";
 
 import Index from "./pages/Index";
 import TurfsPage from "./pages/TurfsPage";
@@ -34,15 +36,12 @@ import ScrollToTop from "./components/common/ScrollToTop";
 
 
 const queryClient = new QueryClient();
+const googleClientId = getGoogleClientId();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <Routes>
+const AppRoutes = () => (
+  <BrowserRouter>
+    <ScrollToTop />
+    <Routes>
           {/* PUBLIC ROUTES */}
           <Route path="/" element={<Index />} />
           <Route path="/turfs" element={<TurfsPage />} />
@@ -133,10 +132,23 @@ const App = () => (
           />
           <Route path="*" element={<NotFound />} />
         </Routes>
-      </BrowserRouter>
+  </BrowserRouter>
+);
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      {googleClientId ? (
+        <GoogleOAuthProvider clientId={googleClientId}>
+          <AppRoutes />
+        </GoogleOAuthProvider>
+      ) : (
+        <AppRoutes />
+      )}
     </TooltipProvider>
   </QueryClientProvider>
-
 );
 
 export default App;

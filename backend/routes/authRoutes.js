@@ -12,6 +12,8 @@ const {
   changePassword
 } = require("../controllers/authController");
 
+const { googleAuth } = require("../controllers/googleAuthController");
+
 const {
   sendOTP,
   verifyOTP,
@@ -42,6 +44,7 @@ router.post("/otp/resend", sendOTP);
 router.get("/otp/status", checkOTPStatus);
 
 // Auth Routes
+router.post("/google", googleAuth);
 router.post("/register", register);
 router.post("/login", authRateLimiter, login);
 router.post("/forgot-password", forgotPassword);
