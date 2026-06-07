@@ -9,10 +9,10 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Lock } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser, googleAuth } from "@/services/authService";
+import { googleAuth } from "@/services/authService";
 import { persistAuthSession } from "@/lib/authSession";
 import { getApiErrorMessage } from "@/lib/apiConfig";
 import { GoogleSignInButton } from "@/components/auth/GoogleSignInButton";
@@ -24,16 +24,10 @@ const LoginPage = () => {
   const { toast } = useToast();
   usePageSEO({
     title: "Login",
-    description: "Sign in with email and password or Google.",
+    description: "Sign in to TurfBook with your Google account.",
   });
 
-  const [showPassword, setShowPassword] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [formData, setFormData] = useState({ email: "", password: "" });
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
 
   const handleGoogleSignIn = async (credential: string) => {
     setIsGoogleLoading(true);
@@ -49,22 +43,6 @@ const LoginPage = () => {
       });
     } finally {
       setIsGoogleLoading(false);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    try {
-      const res = await loginUser(formData);
-      persistAuthSession(res.data);
-      navigate("/profile");
-    } catch (err: unknown) {
-      toast({
-        title: "Unable to sign in",
-        description: getApiErrorMessage(err, "Invalid email or password."),
-        variant: "destructive",
-      });
     }
   };
 
@@ -87,73 +65,11 @@ const LoginPage = () => {
               </Badge>
               <CardTitle className="text-3xl font-heading font-bold">Sign In</CardTitle>
               <CardDescription className="text-muted-foreground">
-                Sign in with email and password, or use Google
+                Sign in with Google using the same account you registered with.
               </CardDescription>
             </CardHeader>
 
             <CardContent className="pt-6">
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground ml-1">
-                    Email Address
-                  </label>
-                  <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <input
-                      type="email"
-                      name="email"
-                      placeholder="name@gmail.com"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full h-12 pl-12 pr-4 bg-secondary/30 border border-white/10 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium text-muted-foreground ml-1">Password</label>
-                  <div className="relative group">
-                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                    <input
-                      type={showPassword ? "text" : "password"}
-                      name="password"
-                      placeholder="••••••••"
-                      value={formData.password}
-                      onChange={handleInputChange}
-                      className="w-full h-12 pl-12 pr-12 bg-secondary/30 border border-white/10 rounded-xl focus:border-primary/50 focus:ring-1 focus:ring-primary/50 focus:outline-none transition-all placeholder:text-muted-foreground/50"
-                      required
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                    </button>
-                  </div>
-                </div>
-
-                <Button
-                  type="submit"
-                  variant="hero"
-                  size="lg"
-                  className="w-full mt-2 shadow-glow hover:shadow-glow-lg transition-all"
-                >
-                  Sign In
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </form>
-
-              <div className="relative my-6">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-white/10" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or</span>
-                </div>
-              </div>
-
               {isGoogleLoading ? (
                 <Button variant="outline" size="lg" className="w-full" disabled>
                   Signing in with Google...
@@ -167,6 +83,11 @@ const LoginPage = () => {
                   }
                 />
               )}
+
+              <p className="text-xs text-center text-muted-foreground mt-4">
+                Google will ask for your Gmail and password securely — TurfBook never sees your
+                Google password.
+              </p>
 
               <p className="text-center mt-8 text-muted-foreground text-sm">
                 Don&apos;t have an account?{" "}

@@ -1,9 +1,9 @@
+const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const supabase = require("../config/db");
 const { verifyGoogleIdToken, isGoogleAuthConfigured } = require("../utils/googleAuth");
 const { issueSessionTokens } = require("../utils/authTokens");
 const { sendWelcomeEmail } = require("../services/emailService");
-const { validateLoginPassword } = require("../utils/passwordValidation");
 
 const ALLOWED_ROLES = ["player", "client"];
 
@@ -24,7 +24,6 @@ exports.googleAuth = async (req, res) => {
     const credential = String(req.body.credential || req.body.idToken || "").trim();
     const name = String(req.body.name || "").trim();
     const role = req.body.role;
-    const password = String(req.body.password || "");
     const isRegistration = Boolean(req.body.register);
 
     if (!credential) {
@@ -121,12 +120,10 @@ exports.googleAuth = async (req, res) => {
         return res.status(400).json({ error: "Invalid role. Choose Player or Turf Owner." });
       }
 
-      const passwordError = validateLoginPassword(password);
-      if (passwordError) {
-        return res.status(400).json({ error: passwordError });
-      }
-
-      const hashedPassword = await bcrypt.hash(password, 12);
+      const randomPassword = await bcrypt.hash(
+        crypto.randomBytes(32).toString("hex"),
+        12,
+      );
 
       const { data: created, error: insertError } = await supabase
         .from("users")
@@ -134,14 +131,14 @@ exports.googleAuth = async (req, res) => {
           {
             name: displayName,
             email,
-            password: hashedPassword,
+            password: randomPassword,
             role: userRole,
             google_id: googleId,
             auth_provider: "google",
             email_verified: true,
             email_verified_at: new Date().toISOString(),
             profile_image_url: picture,
-            has_login_password: true,
+            has_login_password: false,
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           },
