@@ -1,5 +1,5 @@
 const supabase = require("../config/db");
-const nodemailer = require("nodemailer");
+const { sendMail, isSmtpConfigured } = require("../utils/mailTransport");
 
 exports.submitContactForm = async (req, res) => {
   try {
@@ -33,29 +33,10 @@ exports.submitContactForm = async (req, res) => {
     }
 
     // Send email notification
-    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+    if (isSmtpConfigured()) {
       try {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          host: "smtp.gmail.com",
-          port: 587,
-          secure: false, // Use TLS
-          auth: {
-            user: process.env.SMTP_USER,
-            pass: process.env.SMTP_PASS // Should be an App Password, not regular password
-          },
-          tls: {
-            rejectUnauthorized: false
-          }
-        });
-
-        // Verify transporter configuration
-        await transporter.verify();
-        console.log("✅ SMTP connection verified successfully");
-
-        const mailOptions = {
-          from: `"Book My Turf - Contact Form" <${process.env.SMTP_USER}>`,
-          to: "bookmyturfofficial@gmail.com", // Corrected support email
+        await sendMail({
+          to: "bookmyturfofficial@gmail.com",
           replyTo: userEmail,
           subject: `[Contact Form] ${subject || "General Inquiry"}`,
           text: `New contact form submission:\n\nName: ${name}\nEmail: ${userEmail}\nSubject: ${subject || "General Inquiry"}\n\nMessage:\n${message}`,
@@ -77,11 +58,9 @@ exports.submitContactForm = async (req, res) => {
                 Reply directly to this email to respond to ${name}.
               </p>
             </div>
-          `
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-        console.log("✅ Email sent successfully:", info.messageId);
+          `,
+        });
+        console.log("✅ Contact form email sent");
         console.log("📧 Email sent to: bookmyturfsupport@gmail.com");
         console.log("📤 From:", userEmail);
       } catch (emailError) {

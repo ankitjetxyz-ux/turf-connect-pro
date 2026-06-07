@@ -1,7 +1,7 @@
 const supabase = require("../config/db");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const nodemailer = require("nodemailer");
+const { verifyOTPValue } = require("../utils/otpHash");
 
 // ============================================
 // REGISTER USER
@@ -78,21 +78,10 @@ exports.register = async (req, res) => {
     }
 
     // Verify OTP matches
-    const isValidOTP = await bcrypt.compare(otp, otpRecord.otp_hash);
+    const isValidOTP = await verifyOTPValue(otp, otpRecord.otp_hash);
     if (!isValidOTP) {
-      // Increment attempt count
-      await supabase
-        .from("otp_verifications")
-        .update({
-          attempt_count: otpRecord.attempt_count + 1
-        })
-        .eq("id", otpRecord.id);
-
-      const attemptsLeft = 5 - (otpRecord.attempt_count + 1);
-
       return res.status(400).json({
-        error: "Invalid OTP",
-        attemptsLeft: attemptsLeft > 0 ? attemptsLeft : 0
+        error: "Invalid verification code",
       });
     }
 
@@ -383,21 +372,10 @@ exports.resetPassword = async (req, res) => {
     }
 
     // Verify OTP
-    const isValidOTP = await bcrypt.compare(otp, otpRecord.otp_hash);
+    const isValidOTP = await verifyOTPValue(otp, otpRecord.otp_hash);
     if (!isValidOTP) {
-      // Increment attempt count
-      await supabase
-        .from("otp_verifications")
-        .update({
-          attempt_count: otpRecord.attempt_count + 1
-        })
-        .eq("id", otpRecord.id);
-
-      const attemptsLeft = 5 - (otpRecord.attempt_count + 1);
-
       return res.status(400).json({
-        error: "Invalid OTP",
-        attemptsLeft: attemptsLeft > 0 ? attemptsLeft : 0
+        error: "Invalid verification code",
       });
     }
 

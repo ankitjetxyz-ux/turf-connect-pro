@@ -29,6 +29,7 @@ const {
   testSupabaseConnection,
   supabaseConfig,
 } = require("./config/db");
+const { getTransporter, isSmtpConfigured } = require("./utils/mailTransport");
 
 /* =========================
    GLOBAL MIDDLEWARE
@@ -234,5 +235,11 @@ server.listen(PORT, () => {
     .catch((err) => {
       console.error(`❌ Supabase connection failed: ${err.message}`);
     });
+
+  if (isSmtpConfigured()) {
+    getTransporter();
+  } else {
+    console.warn("⚠️  SMTP not configured — OTP emails will fail");
+  }
 });
 

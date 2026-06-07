@@ -2,12 +2,20 @@ import api from "./api";
 
 // Send OTP with purpose (email_verification or password_reset)
 export const sendOTP = (email: string, purpose: string) => {
-  return api.post("/auth/otp/send", { email, purpose });
+  return api.post(
+    "/auth/otp/send",
+    { email: email.trim().toLowerCase(), purpose },
+    { timeout: 45_000 },
+  );
 };
 
 // Verify OTP with purpose
 export const verifyOTP = (email: string, otp: string, purpose: string) => {
-  return api.post("/auth/otp/verify", { email, otp, purpose });
+  return api.post(
+    "/auth/otp/verify",
+    { email: email.trim().toLowerCase(), otp: otp.trim(), purpose },
+    { timeout: 30_000 },
+  );
 };
 
 // Forgot password endpoint
