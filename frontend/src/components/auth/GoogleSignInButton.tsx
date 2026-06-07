@@ -40,7 +40,7 @@ export function GoogleSignInButton({
         shape="rectangular"
         size="large"
         width={320}
-        theme="outline"
+        theme="filled_black"
       />
     </div>
   );

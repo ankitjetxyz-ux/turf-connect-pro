@@ -84,11 +84,6 @@ const LoginPage = () => {
                 />
               )}
 
-              <p className="text-xs text-center text-muted-foreground mt-4">
-                Google will ask for your Gmail and password securely — TurfBook never sees your
-                Google password.
-              </p>
-
               <p className="text-center mt-8 text-muted-foreground text-sm">
                 Don&apos;t have an account?{" "}
                 <Link to="/register" className="text-primary font-semibold hover:underline">

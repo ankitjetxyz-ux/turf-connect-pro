@@ -233,10 +233,6 @@ const RegisterPage = () => {
                   />
                 )}
 
-                <p className="text-xs text-center text-muted-foreground">
-                  Google verifies your email. Use Sign in with Google on the login page to access
-                  your account on any device.
-                </p>
               </div>
 
               <p className="text-center text-muted-foreground text-sm">
