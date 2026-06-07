@@ -212,6 +212,13 @@ exports.login = async (req, res) => {
       });
     }
 
+    if (user.has_login_password === false) {
+      return res.status(401).json({
+        error: "Create a login password first using Google below, then sign in with email and password.",
+        code: "PASSWORD_NOT_SET",
+      });
+    }
+
     // Verify password
     const isMatch = await bcrypt.compare(password, user.password);
 

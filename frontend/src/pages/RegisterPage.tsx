@@ -225,7 +225,7 @@ const RegisterPage = () => {
                 )}
 
                 <p className="text-xs text-center text-muted-foreground">
-                  Sign in later with Google or email and password on the login page.
+                  After registering, go to Login to create a password for manual sign-in on any device.
                 </p>
               </div>
 
