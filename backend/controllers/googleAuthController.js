@@ -1,3 +1,4 @@
+const crypto = require("crypto");
 const bcrypt = require("bcrypt");
 const supabase = require("../config/db");
 const { verifyGoogleIdToken, isGoogleAuthConfigured } = require("../utils/googleAuth");
@@ -12,20 +13,6 @@ function sanitizeUser(user) {
   return rest;
 }
 
-function validatePassword(password) {
-  if (!password || password.length < 8) {
-    return "Password must be at least 8 characters long";
-  }
-  if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/\d/.test(password)) {
-    return "Password must contain uppercase, lowercase, and numbers";
-  }
-  return null;
-}
-
-async function hashPassword(password) {
-  return bcrypt.hash(password, 12);
-}
-
 exports.googleAuth = async (req, res) => {
   try {
     if (!isGoogleAuthConfigured()) {
@@ -37,7 +24,6 @@ exports.googleAuth = async (req, res) => {
     const credential = String(req.body.credential || req.body.idToken || "").trim();
     const name = String(req.body.name || "").trim();
     const role = req.body.role;
-    const password = String(req.body.password || "");
     const isRegistration = Boolean(req.body.register);
 
     if (!credential) {
@@ -134,12 +120,10 @@ exports.googleAuth = async (req, res) => {
         return res.status(400).json({ error: "Invalid role. Choose Player or Turf Owner." });
       }
 
-      const passwordError = validatePassword(password);
-      if (passwordError) {
-        return res.status(400).json({ error: passwordError });
-      }
-
-      const hashedPassword = await hashPassword(password);
+      const randomPassword = await bcrypt.hash(
+        crypto.randomBytes(32).toString("hex"),
+        12,
+      );
 
       const { data: created, error: insertError } = await supabase
         .from("users")
@@ -147,7 +131,7 @@ exports.googleAuth = async (req, res) => {
           {
             name: displayName,
             email,
-            password: hashedPassword,
+            password: randomPassword,
             role: userRole,
             google_id: googleId,
             auth_provider: "google",
